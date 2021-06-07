@@ -22,6 +22,7 @@ INIT=$3
             "boot_args": "console=ttyS0 reboot=k panic=1 pci=off init=/'"$INIT"'"
         }'
 
+
     curl --silent --unix-socket $SOCKET -i \
         -X PUT 'http://localhost/drives/rootfs' \
         -H 'Accept: application/json'           \
