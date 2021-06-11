@@ -21,8 +21,14 @@ guest (put it in `rootfs/guest/`).
 
 We are using a small kernel config based off the firecracker microvm
 config with `make olddefconfig`.  We have added some kernel features
-relevant to eBPF.  The `getlinux.sh` script ensures we have a matching
-kernel vmlinx file and its config.
+relevant to eBPF.  Importantly some of the BTF stuff requires really
+recent versions of tools (e.g., `pahole`) for the kernel build.  So,
+it's easiest to use a container:
+
+    docker run -v ~/linux:/linux linux-builder make -j32 bzImage
+
+The `getlinux.sh` script ensures we have a matching
+kernel vmlinx file and its config.  
 
 ### VMM
 
