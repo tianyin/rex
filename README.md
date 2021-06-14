@@ -35,6 +35,9 @@ kernel vmlinx file and its config.
 We are using firecracker as our VMM, which we have obtained via
 Firecracker's binary distribution.  
 
+    curl -Lo firecracker https://github.com/firecracker-microvm/firecracker/releases/download/v0.16.0/firecracker-v0.16.0
+    curl -Lo firectl https://firectl-release.s3.amazonaws.com/firectl-v0.1.0
+
 ### running it
 
 We modified some of the Lupine scripts for a single point of

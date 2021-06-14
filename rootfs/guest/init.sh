@@ -13,6 +13,8 @@ chown root:tty /dev/{console,ptmx,tty}
 
 
 mount -t proc none /proc
+mount -t sysfs none /sys
+mount -t debugfs nodev /sys/kernel/debug
 
 ip addr add 192.168.100.2/24 dev eth0
 ip addr add 127.0.0.1/24 dev lo
