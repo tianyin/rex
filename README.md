@@ -12,10 +12,11 @@ stuff to go in the rootfs.
 
 The root filesystem is best built from the top level with:
 
-    make -C rootfs
+    make fs
 
 This can be rerun whenever you want to boot with a new script in the
-guest (put it in `rootfs/guest/`).
+guest (put it in `rootfs/guest/`).  But you don't have to run it
+directly because it's a dependency of `make run`.
 
 ### kernel
 
@@ -43,14 +44,20 @@ Firecracker's binary distribution.
 We modified some of the Lupine scripts for a single point of
 invocation into a guest shell.
 
-    ./firecracker-run.sh vmlinux rootfs/ubuntu-ebpf.ext4 /bin/bash
+    ./firecracker-run-new.sh vmlinux rootfs/ubuntu-ebpf.ext4
+
+or
+
+    make run
+
+At this point it gives us a prompt that is root/root
 
 ### status
 
 So far, we have run the sock_example from the bundled Linux samples.
-See `linux/samples/bpf/README.rst`.
+See `linux/samples/bpf/README.rst`.  Also, the minimal example from
+libbpf-bootstrap.
 
 ### Next steps
 
-- make `/guest/init.sh` run on boot then give us a shell
 - check out some of the debugging features from https://prototype-kernel.readthedocs.io/en/latest/bpf/troubleshooting.html

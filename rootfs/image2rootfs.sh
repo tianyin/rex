@@ -30,15 +30,5 @@ sudo mknod -m 444 $mnt/dev/random c 1 8
 sudo mknod -m 444 $mnt/dev/urandom c 1 9
 sudo mknod -m 660 $mnt/dev/mem c 1 1
 
-sudo mkdir $mnt/guest
-sudo cp guest/* $mnt/guest/
-# # install network setup script
-# sudo cp scripts/busybox-x86_64 $mnt
-# sudo cp scripts/guest* $mnt
-# sudo cp load_entropy/load_entropy $mnt
-# # install musl libc
-# sudo mkdir -p $mnt/trusted
-# sudo cp scripts/libc.so $mnt/trusted/libc.so
-
 sudo umount $mnt
 rmdir $mnt
