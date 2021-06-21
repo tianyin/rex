@@ -1,6 +1,8 @@
 
 .ALWAYS:
 
+all: vmlinux fs
+
 vmlinux:
 	docker run -v ~/linux:/linux linux-builder make -j32 bzImage
 	./get_linux.sh
