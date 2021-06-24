@@ -3,13 +3,22 @@
 
 all: vmlinux fs
 
+bpftool: ~/linux/tools/bpf/bpftool/bpftool
+	docker run -v ~/linux:/linux bpftool-builder make bpftool
+	./get_bpftool.sh
+
 vmlinux:
 	docker run -v ~/linux:/linux linux-builder make -j32 bzImage
 	./get_linux.sh
 
+DOCKERCONTEXT=\
+	rootfs/Dockerfile \
+	rootfs/vm-net-setup.service \
+	rootfs/vm-net-setup.sh
+
 rootfs/.build-base: rootfs/Dockerfile rootfs/vm-net-setup.service rootfs/vm-net-setup.sh
 	rm -f ubuntu-ebpf.ext4
-	docker build -t ubuntu-ebpf rootfs
+	tar zc ${DOCKERCONTEXT} | docker build -f rootfs/Dockerfile -t ubuntu-ebpf -
 	@echo "preparing rootfs"
 	rootfs/image2rootfs.sh ubuntu-ebpf latest ext4 2>&1 > /dev/null
 	touch rootfs/.build-base
