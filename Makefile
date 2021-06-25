@@ -7,7 +7,7 @@ bpftool: ~/linux/tools/bpf/bpftool/bpftool
 	docker run -v ~/linux:/linux bpftool-builder make bpftool
 	./get_bpftool.sh
 
-vmlinux:
+vmlinux: .ALWAYS
 	docker run -v ~/linux:/linux linux-builder make -j32 bzImage
 	./get_linux.sh
 
