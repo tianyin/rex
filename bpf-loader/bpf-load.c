@@ -29,7 +29,7 @@
         return 1;                               \
     } while(0);
 
-
+#define BPF_PROG_LOAD_DJW  0x1234beef
 #define MAX_PROG_SZ 8192
 
 /* I got this directly from the ELF section of the minimal example
@@ -69,7 +69,19 @@ static int bpf(enum bpf_cmd cmd, union bpf_attr *attr, unsigned int size)
     return syscall(__NR_bpf, cmd, attr, size);
 }
 
-#define BPF_PROG_LOAD_DJW  0x1234beef
+
+int do_actual_bpf(void) {
+    union bpf_attr attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.prog_type = BPF_PROG_TYPE_TRACEPOINT;
+    strcpy(attr.prog_name,"handle_tp");
+    attr.insn_cnt = 20;
+    attr.insns = (__u64)prog;
+    attr.kern_version = KERNEL_VERSION(5, 13, 0);
+    attr.license = (__u64)"GPL";
+    return bpf(BPF_PROG_LOAD_DJW, &attr, sizeof(attr));
+}
+
 int main(int argc, char **argv) {
 
 #if 0
@@ -98,16 +110,7 @@ int main(int argc, char **argv) {
     uint64_t (*run_prog)(void) = (uint64_t (*)(void))(area + entry);
 #endif    
 
-    union bpf_attr attr;
-    memset(&attr, 0, sizeof(attr));
-    attr.prog_type = BPF_PROG_TYPE_TRACEPOINT;
-    strcpy(attr.prog_name,"handle_tp");
-    attr.insn_cnt = 20;
-    attr.insns = (__u64)prog;
-    attr.kern_version = KERNEL_VERSION(5, 13, 0);
-    attr.license = (__u64)"GPL";
-    int bpf_fd = bpf(BPF_PROG_LOAD, &attr, sizeof(attr));
-    //int bpf_fd = bpf(BPF_PROG_LOAD, &attr, sizeof(attr));
+    int bpf_fd = do_actual_bpf();
     printf("bpf_fd is %d\n", bpf_fd);
     if (bpf_fd <= 0) {
         PERR("Couldn't load BPF");
