@@ -13,6 +13,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libstdc++-9-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y bc
 #RUN git clone https://github.com/acmel/dwarves.git
 #RUN cd dwarves && git checkout tags/v1.18 && mkdir build && cd build && cmake -D__LIB=lib -DBUILD_SHARED_LIBS=OFF .. && make install
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y flex bison
 
 WORKDIR /linux
 

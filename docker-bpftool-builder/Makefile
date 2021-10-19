@@ -3,5 +3,8 @@
 docker: Dockerfile
 	docker build -t bpftool-builder .
 
-linux:
-	docker run -v ~/linux:~/linux bpftool-builder make bpftool
+bpftool:
+	docker run --rm -v ~/linux:/linux bpftool-builder make bpftool
+
+bpftool-clean:
+	docker run --rm -v ~/linux:/linux bpftool-builder make clean
