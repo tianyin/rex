@@ -3,21 +3,33 @@
 
 all: vmlinux fs
 
-bpftool: ~/linux/tools/bpf/bpftool/bpftool
-	docker run -v ~/linux:/linux bpftool-builder make bpftool
-	./get_bpftool.sh
+DOCKERFILES=\
+./docker/docker-bpftool-builder/Dockerfile \
+./docker/docker-linux-builder/Dockerfile \
+./docker/docker-example-builder/Dockerfile \
 
-vmlinux: .ALWAYS
-	docker run -v ~/linux:/linux linux-builder make -j32 bzImage
-	./get_linux.sh
+docker: ${DOCKERFILES}
+	make -C docker/docker-linux-builder docker
+	make -C docker/docker-bpftool-builder docker
+	make -C docker/docker-example-builder docker
+
+bpftool: ~/linux/tools/bpf/bpftool/bpftool docker
+	docker run --rm -v ~/linux:/linux bpftool-builder make bpftool
+	scripts/get_bpftool.sh
+
+vmlinux: .ALWAYS docker
+	docker run --rm -v ~/linux:/linux linux-builder make -j32 bzImage
+	scripts/get_linux.sh
 
 DOCKERCONTEXT=\
 	rootfs/Dockerfile \
 	rootfs/vm-net-setup.service \
-	rootfs/vm-net-setup.sh
+	rootfs/vm-net-setup.sh \
+	rootfs/authorized_keys
 
 rootfs/.build-base: rootfs/Dockerfile rootfs/vm-net-setup.service rootfs/vm-net-setup.sh
 	rm -f ubuntu-ebpf.ext4
+	cp ~/.ssh/id_rsa.pub rootfs/authorized_keys
 	tar zc ${DOCKERCONTEXT} | docker build -f rootfs/Dockerfile -t ubuntu-ebpf -
 	@echo "preparing rootfs"
 	rootfs/image2rootfs.sh ubuntu-ebpf latest ext4 2>&1 > /dev/null
@@ -33,3 +45,6 @@ run: rootfs/.build-guest
 
 clean:
 	rm -f ubuntu-ebpf.ext4 rootfs/.build-base
+
+shell:
+	ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"

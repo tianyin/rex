@@ -1,5 +1,56 @@
+### VMM
 
+We are using firecracker as our VMM, which we have obtained via
+Firecracker's binary distribution.  
 
+    curl -Lo firecracker https://github.com/firecracker-microvm/firecracker/releases/download/v0.16.0/firecracker-v0.16.0
+    curl -Lo firectl https://firectl-release.s3.amazonaws.com/firectl-v0.1.0
+
+### kernel
+
+We are using a small kernel config based off the firecracker microvm
+config with `make olddefconfig`.  We have added some kernel features
+relevant to eBPF.  Importantly some of the BTF stuff requires really
+recent versions of tools (e.g., `pahole`) for the kernel build.  So,
+it's easiest to use a container.  To get our `linux-builder`
+container, build it like this:
+
+    cd docker-linux-builder
+    make docker
+
+Then, back out in the top-level directory, assuming your linux tree is
+at `~/linux` run:
+
+    make vmlinux
+
+That will just run the following two commands:
+
+    docker run -v ~/linux:/linux linux-builder make -j32 bzImage
+    ./getlinux.sh
+    
+The `getlinux.sh` script simply copies over the kernel vmlinx file and
+its config so that everything matches.
+
+### bpftool
+
+The Linux kernel comes with a tool called bpftool, which can be useful
+but should be built from the same kernel source that we are dealing
+with.  We have a builder container for that too, which you can build
+with:
+
+    cd docker-bpftool-builder
+    make docker
+
+Then, back out in the top-level directory, assuming your linux tree is
+at `~/linux` run:
+
+    make bpftool
+
+That will just run the following two commands:
+
+    docker run -v ~/linux:/linux bpftool-builder make bpftool
+    ./getbpftool.sh
+    
 ### rootfs
 
 We are using a very small distro so that everything stays fast and
@@ -18,33 +69,6 @@ This can be rerun whenever you want to boot with a new script in the
 guest (put it in `rootfs/guest/`).  But you don't have to run it
 directly because it's a dependency of `make run`.
 
-### kernel
-
-We are using a small kernel config based off the firecracker microvm
-config with `make olddefconfig`.  We have added some kernel features
-relevant to eBPF.  Importantly some of the BTF stuff requires really
-recent versions of tools (e.g., `pahole`) for the kernel build.  So,
-it's easiest to use a container.  Assuming your linux tree is at
-`~/linux` run:
-
-    make vmlinux
-
-That will just run the following two commands:
-
-    docker run -v ~/linux:/linux linux-builder make -j32 bzImage
-    ./getlinux.sh
-    
-The `getlinux.sh` script simply copies over the kernel vmlinx file and
-its config so that everything matches.
-
-### VMM
-
-We are using firecracker as our VMM, which we have obtained via
-Firecracker's binary distribution.  
-
-    curl -Lo firecracker https://github.com/firecracker-microvm/firecracker/releases/download/v0.16.0/firecracker-v0.16.0
-    curl -Lo firectl https://firectl-release.s3.amazonaws.com/firectl-v0.1.0
-
 ### running it
 
 We modified some of the Lupine scripts for a single point of
@@ -56,7 +80,9 @@ or
 
     make run
 
-At this point it gives us a prompt that is root/root
+At this point it gives us a root SSH shell.  To get more, type:
+
+    make shell
 
 ### status
 
