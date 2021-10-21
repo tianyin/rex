@@ -21,6 +21,10 @@ vmlinux: .ALWAYS docker
 	docker run --rm -v ~/linux:/linux linux-builder make -j32 bzImage
 	scripts/get_linux.sh
 
+examples: .ALWAYS docker
+	docker run --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap libbpf-bootstrap-example-builder make
+	scripts/get_examples.sh
+
 DOCKERCONTEXT=\
 	rootfs/Dockerfile \
 	rootfs/vm-net-setup.service \
@@ -40,7 +44,7 @@ rootfs/.build-guest: $(shell find rootfs/guest) rootfs/.build-base
 
 fs: rootfs/.build-guest
 
-run: rootfs/.build-guest
+run: rootfs/.build-guest 
 	./firecracker-run-new.sh vmlinux ubuntu-ebpf.ext4
 
 clean:

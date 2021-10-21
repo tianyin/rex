@@ -1,3 +1,11 @@
+### Docker build containers
+
+We have a lot of build environments in the form of Docker containers.
+While they should get built as a makefile dependency, the build
+containers can be built with:
+
+    make docker
+
 ### VMM
 
 We are using firecracker as our VMM, which we have obtained via
@@ -12,49 +20,42 @@ We are using a small kernel config based off the firecracker microvm
 config with `make olddefconfig`.  We have added some kernel features
 relevant to eBPF.  Importantly some of the BTF stuff requires really
 recent versions of tools (e.g., `pahole`) for the kernel build.  So,
-it's easiest to use a container.  To get our `linux-builder`
-container, build it like this:
-
-    cd docker-linux-builder
-    make docker
-
-Then, back out in the top-level directory, assuming your linux tree is
-at `~/linux` run:
+it's easiest to use a container.  Assuming your linux tree is at
+`~/linux` run:
 
     make vmlinux
 
-That will just run the following two commands:
-
-    docker run -v ~/linux:/linux linux-builder make -j32 bzImage
-    ./getlinux.sh
-    
-The `getlinux.sh` script simply copies over the kernel vmlinx file and
-its config so that everything matches.
+It will build and copy over the kernel vmlinux file and its config so
+that everything matches.
 
 ### bpftool
 
 The Linux kernel comes with a tool called bpftool, which can be useful
 but should be built from the same kernel source that we are dealing
-with.  We have a builder container for that too, which you can build
-with:
-
-    cd docker-bpftool-builder
-    make docker
-
-Then, back out in the top-level directory, assuming your linux tree is
-at `~/linux` run:
+with.  We have a builder container for that too, so assuming your
+linux tree is at `~/linux` run:
 
     make bpftool
 
-That will just run the following two commands:
+It will put the bpftool into the `rootfs/guest` directory where it
+will be used by the guest.
 
-    docker run -v ~/linux:/linux bpftool-builder make bpftool
-    ./getbpftool.sh
-    
+### examples
+
+There's a project called libbpf-bootstrap, which has some minimal bpf
+examples.  We have a builder container for that too, so assuming your
+libbpf-bootstrap tree is at `~/libbpf-bootstrap` run:
+
+    make examples
+
+It will put the `minimal` example into the `rootfs/guest` directory
+where it will be used by the guest.
+
+
 ### rootfs
 
-We are using a very small distro so that everything stays fast and
-manageable (e.g., kernel build, building the rootfs, etc.).  The
+We are trying to use a very small distro so that everything stays fast
+and manageable (e.g., kernel build, building the rootfs, etc.).  The
 distro we are using is from some scripts adapted from Lupine Linux.
 Lupine's scripts create a rootfs from a Docker image.  We put our
 stuff in there (based on ubuntu at this point because we needed a
@@ -74,13 +75,10 @@ directly because it's a dependency of `make run`.
 We modified some of the Lupine scripts for a single point of
 invocation into a guest shell.
 
-    ./firecracker-run-new.sh vmlinux rootfs/ubuntu-ebpf.ext4
-
-or
-
     make run
 
-At this point it gives us a root SSH shell.  To get more, type:
+At this point it gives us a root SSH shell.  To get more shells to do
+stuff with, type:
 
     make shell
 
