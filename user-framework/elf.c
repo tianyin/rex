@@ -152,7 +152,8 @@ static bool ehdr_is_valid(const Elf64_Ehdr *hdr)
     /*
      * 3. Validate that this is an executable for our target architecture.
      */
-    if (hdr->e_type != ET_EXEC)
+    if ((hdr->e_type != ET_EXEC)
+        && (hdr->e_type != ET_DYN)) /* DJW: PIE makes ET_DYN */
         return false;
     if (hdr->e_machine != EM_TARGET)
         return false;
@@ -212,8 +213,8 @@ int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t mem_size,
         goto out_error;
     if (nbytes != sizeof(Elf64_Ehdr))
         goto out_invalid;
-    //if (!ehdr_is_valid(ehdr))
-    //goto out_invalid;
+    if (!ehdr_is_valid(ehdr))
+        goto out_invalid;
 
     e_entry = ehdr->e_entry;
 
