@@ -3,16 +3,17 @@
 #![no_main]
 
 use core::panic::PanicInfo;
-
+pub mod interface;
+    
 fn bpf_test_call() {
-    let ptr = 0x0000000000401370 as *const ();
+    let ptr = interface::STUB_BPF_TEST_CALL as *const ();
     let code: extern "C" fn() = unsafe { core::mem::transmute(ptr) };
     (code)();
 }
 
 macro_rules! bpf_trace_printk {
     ($s:literal,$($a:expr),*;$($t:ty),*) => {
-        let ptr = 0x0000000000401200 as *const ();
+        let ptr = interface::STUB_BPF_TRACE_PRINTK as *const ();
         let code: extern "C" fn(&str, $($t),*) = unsafe { core::mem::transmute(ptr) };
         code($s, $($a),*);
     }

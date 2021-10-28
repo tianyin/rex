@@ -24,3 +24,20 @@ nm prog-run \
           > /tmp/2
 
 paste -d'x' /tmp/1 /tmp/2 > interface.h
+
+
+# pub const STUB_BPF_GET_CURRENT_PID_TGID : u64 = 0
+# pub const STUB_BPF_TEST_CALL : u64 = 0
+# pub const STUB_BPF_TRACE_PRINTK : u64 = 0
+cat prog-run.c \
+    | grep stub \
+    | grep -v printf \
+    | sort -k 2 \
+    | cut -f 2 -d ' ' \
+    | cut -f 1 -d'(' \
+    | tr [:lower:] [:upper:] \
+    | sed s/^/"pub const "/ \
+    | sed s/$/" : u64 = 0"/ \
+          > /tmp/r1
+
+paste -d'x' /tmp/r1 /tmp/2 > rust_test/src/interface.rs
