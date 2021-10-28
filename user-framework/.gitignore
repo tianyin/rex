@@ -1,2 +1,2 @@
 interface.h
-rust_test_src/interface.rs
+rust_test/src/interface.rs
