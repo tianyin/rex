@@ -1,3 +1,26 @@
+# Inner Unikernels
+
+This project is about running non-BPF code at program points in the
+Linux kernel where BPF code would normally be run.  Ultimately, this
+code should be safe; we plan on using languages like Rust or OCaml
+unikernels to achieve memory safety.  This project is at very early
+stages.
+
+We have a userspace setup to practice loading self-contained programs
+and calling stubs that pretend to be the bpf helper functions.  Then
+we have a virtual machine setup to run on a modified Linux kernel.
+
+## Userspace setup
+
+The directory `user-framework` contains everything for testing loading
+inner-unikernel programs in userspace.  Entering that directory and
+typing `make run` or `make rust` should demonstrate.
+
+For the Rust programs, https://os.phil-opp.com/ is a great resource
+that showed how to create a freestanding Rust binary.
+
+## Virtual machine setup
+
 ### Docker build containers
 
 We have a lot of build environments in the form of Docker containers.
