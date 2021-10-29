@@ -8,8 +8,7 @@ int bpf_main(void *ctx) {
       bpf_test_call();
 
       int pid = bpf_get_current_pid_tgid() >> 32;
-      
-      bpf_trace_printk("BPF triggered from PID %d.\n", 29, pid);
+      bpf_trace_printk("BPF triggered from PID 0x%x.\n", 29, pid);
       
       return 0;
 }

@@ -50,5 +50,8 @@ run: rootfs/.build-guest
 clean:
 	rm -f ubuntu-ebpf.ext4 rootfs/.build-base
 
+linux-clean:
+	docker run -v ~/linux:/linux linux-builder make clean
+
 shell:
 	ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
