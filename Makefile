@@ -1,7 +1,7 @@
 
 .ALWAYS:
 
-all: vmlinux fs
+all: vmlinux fs examples
 
 DOCKERFILES=\
 ./docker/docker-bpftool-builder/Dockerfile \
@@ -46,6 +46,9 @@ fs: rootfs/.build-guest
 
 run: rootfs/.build-guest 
 	./firecracker-run-new.sh vmlinux ubuntu-ebpf.ext4
+
+runq: rootfs/.build-guest
+	./qemu-run.sh bzImage ubuntu-ebpf.ext4
 
 clean:
 	rm -f ubuntu-ebpf.ext4 rootfs/.build-base
