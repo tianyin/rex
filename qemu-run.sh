@@ -27,9 +27,11 @@ sudo $QEMU -M microvm,rtc=on \
     -device virtio-net-device,netdev=n0,mac=AA:FC:00:00:00:01 \
     -netdev tap,id=n0,ifname=$TAP,script=no,downscript=no \
     -no-reboot \
-    -no-acpi 2>&1 > /dev/null &
+    -no-acpi \
+    -s -S
+#2>&1 > /dev/null &
 
-sleep 5
-ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
+# sleep 5
+# ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
 
 

@@ -49,8 +49,8 @@ typedef int (*guest_mprotect_fn_t)(void *t_arg, uint64_t addr_start,
  * If the executable is invalid, or on any other error, reports to stderr and
  * terminates the program.
  */
-int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t mem_size,
-              uint64_t *p_entry);
+int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t *mem_size,
+             uint64_t *p_entry);
 /*
  * Load the Solo5-owned NOTE of (note_type) from the ELF binary (file).
  * Internal alignment of the note descriptor (content) will be adjusted to

@@ -196,7 +196,7 @@ static int align_up(Elf64_Addr addr, Elf64_Xword align, Elf64_Addr *out_result)
         return 1;
 }
 
-int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t mem_size,
+int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t *mem_size,
              uint64_t *p_entry)
 {
     ssize_t nbytes;
@@ -267,11 +267,11 @@ int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t mem_size,
         /*
          * Verify p_vaddr + p_filesz is within range.
          */
-        if (p_vaddr >= mem_size)
+        if (p_vaddr >= *mem_size)
             goto out_invalid;
         if (add_overflow(p_vaddr, p_filesz, temp))
             goto out_invalid;
-        if (temp > mem_size)
+        if (temp > *mem_size)
             goto out_invalid;
         /*
          * Compute p_vaddr_end = p_vaddr + p_memsz, aligned up to requested
@@ -283,7 +283,7 @@ int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t mem_size,
             goto out_invalid;
         if (align_up(p_vaddr_end, p_align, &p_vaddr_end))
             goto out_invalid;
-        if (p_vaddr_end > mem_size)
+        if (p_vaddr_end > *mem_size)
             goto out_invalid;
         /*
          * Keep track of the highest byte of memory occupied by the program.
@@ -291,7 +291,8 @@ int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t mem_size,
         if (p_vaddr_end > e_end) {
             e_end = p_vaddr_end;
         }
-
+        *mem_size = e_end;
+            
         /*
          * Load the segment (p_vaddr .. p_vaddr + p_filesz) into host memory at
          * host_vaddr and ensure any BSS (p_memsz - p_filesz) is initialised to

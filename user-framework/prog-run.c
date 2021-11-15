@@ -58,7 +58,8 @@ int main(int argc, char **argv) {
         ERR("Couldn't create map of size %d\n", MAX_PROG_SZ);
     printf("Area is at %p\n", area);
     uint64_t entry = 0;
-    if (elf_load(fd, argv[1], area, MAX_PROG_SZ, &entry))
+    size_t mem_size = MAX_PROG_SZ;
+    if (elf_load(fd, argv[1], area, &mem_size, &entry))
         ERR("Couldn't load\n");
     printf("Entry point is 0x%lx\n", entry);
     uint64_t (*run_prog)(void) = (uint64_t (*)(void))(area + entry);
