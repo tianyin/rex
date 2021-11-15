@@ -1,0 +1,40 @@
+
+* KERNEL stuff
+
+- bpf_prog_select_runtime is where the JIT happens, it's right after the bpf_check in bpf_prog_load
+- it looks like the struct bpf_prog (in filter.h) is what we need to populate, and say it's always jitted
+- I think we need to allocate the memory specially, like they do in bpf_jit_binary_alloc, which ultimately becomes module_alloc
+
+- I don't know why the program isn't working now, but printk debugging seems insufficient...
+  - [X] move VM framework to work with QEMU
+  - [X] use gdb on QEMU 
+
+- It is trying to jump to the right address, but the protections are wrong...
+[   14.220817] kernel tried to execute NX-protected page - exploit attempt? (uid: 0)
+[   14.222440] BUG: unable to handle page fault for address: ffffffffa0070000
+
+
+
+** debugging with qemu
+- start QEMU with -s -S
+- `gdb vmlinux`, then:
+  - target remote :1234
+  - hbreak start_kernel
+  - c
+
+** questions
+- how do we get the helper function addresses?
+  - /proc/kallsys
+- are they always the same per boot?
+  - yes, assuming we don't rebuild the kernel and aren't using KASLR
+- should we parse the ELF in userspace and pass down the loaded image,
+  or do the loading in the kernel?
+  - let's try user first
+
+* USERSPACE loading
+- [X] compile a standalone C program with helper stubs
+- [X] compile a standalone Rust program with helper stubs
+  - [X] change stubs to get addrs
+  - [X] figure out string argument
+  - [X] figure out stub that returns something
+  
