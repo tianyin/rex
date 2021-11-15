@@ -10,7 +10,7 @@ We have a userspace setup to practice loading self-contained programs
 and calling stubs that pretend to be the bpf helper functions.  Then
 we have a virtual machine setup to run on a modified Linux kernel.
 
-** TODO
+** TO DO
    - [ ] Run the user-framework tests (Rust and C) (Sayeed)
    - [ ] Build the VM environment, guest kernel, etc. (Sayeed)
    - [ ] Run the VM environment (Sayeed)
