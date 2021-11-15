@@ -1,4 +1,4 @@
-# Inner Unikernels
+* Inner Unikernels
 
 This project is about running non-BPF code at program points in the
 Linux kernel where BPF code would normally be run.  Ultimately, this
@@ -10,7 +10,18 @@ We have a userspace setup to practice loading self-contained programs
 and calling stubs that pretend to be the bpf helper functions.  Then
 we have a virtual machine setup to run on a modified Linux kernel.
 
-## Userspace setup
+** TODO
+   - [ ] Run the user-framework tests (Rust and C) (Sayeed)
+   - [ ] Build the VM environment, guest kernel, etc. (Sayeed)
+   - [ ] Run the VM environment (Sayeed)
+   - [ ] Gather a list of real BPF programs and run in the test environment (Sayeed)
+   - [ ] Implement the BPF programs in standalone C/Rust
+   - [ ] Figure out why kernel memory is not allocated as executable
+   - [ ] Watchdog timer for infinite loop
+   - [ ] Fuzz test 
+
+
+** Userspace setup
 
 The directory `user-framework` contains everything for testing loading
 inner-unikernel programs in userspace.  Entering that directory and
@@ -19,9 +30,9 @@ typing `make run` or `make rust` should demonstrate.
 For the Rust programs, https://os.phil-opp.com/ is a great resource
 that showed how to create a freestanding Rust binary.
 
-## Virtual machine setup
+** Virtual machine setup
 
-### Docker build containers
+*** Docker build containers
 
 We have a lot of build environments in the form of Docker containers.
 While they should get built as a makefile dependency, the build
@@ -29,7 +40,7 @@ containers can be built with:
 
     make docker
 
-### VMM
+*** VMM
 
 We are using firecracker as our VMM, which we have obtained via
 Firecracker's binary distribution.  
@@ -37,7 +48,7 @@ Firecracker's binary distribution.
     curl -Lo firecracker https://github.com/firecracker-microvm/firecracker/releases/download/v0.16.0/firecracker-v0.16.0
     curl -Lo firectl https://firectl-release.s3.amazonaws.com/firectl-v0.1.0
 
-### kernel
+*** kernel
 
 We are using a small kernel config based off the firecracker microvm
 config with `make olddefconfig`.  We have added some kernel features
@@ -51,7 +62,7 @@ it's easiest to use a container.  Assuming your linux tree is at
 It will build and copy over the kernel vmlinux file and its config so
 that everything matches.
 
-### bpftool
+*** bpftool
 
 The Linux kernel comes with a tool called bpftool, which can be useful
 but should be built from the same kernel source that we are dealing
@@ -63,7 +74,7 @@ linux tree is at `~/linux` run:
 It will put the bpftool into the `rootfs/guest` directory where it
 will be used by the guest.
 
-### examples
+*** examples
 
 There's a project called libbpf-bootstrap, which has some minimal bpf
 examples.  We have a builder container for that too, so assuming your
@@ -75,7 +86,7 @@ It will put the `minimal` example into the `rootfs/guest` directory
 where it will be used by the guest.
 
 
-### rootfs
+*** rootfs
 
 We are trying to use a very small distro so that everything stays fast
 and manageable (e.g., kernel build, building the rootfs, etc.).  The
@@ -93,7 +104,7 @@ This can be rerun whenever you want to boot with a new script in the
 guest (put it in `rootfs/guest/`).  But you don't have to run it
 directly because it's a dependency of `make run`.
 
-### running it
+*** running it
 
 We modified some of the Lupine scripts for a single point of
 invocation into a guest shell.
@@ -105,12 +116,12 @@ stuff with, type:
 
     make shell
 
-### status
+*** status
 
 So far, we have run the sock_example from the bundled Linux samples.
 See `linux/samples/bpf/README.rst`.  Also, the minimal example from
 libbpf-bootstrap.
 
-### Next steps
+*** Next steps
 
 - check out some of the debugging features from https://prototype-kernel.readthedocs.io/en/latest/bpf/troubleshooting.html
