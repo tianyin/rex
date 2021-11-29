@@ -3,12 +3,7 @@
 
 all: vmlinux fs examples
 
-DOCKERFILES=\
-./docker/docker-bpftool-builder/Dockerfile \
-./docker/docker-linux-builder/Dockerfile \
-./docker/docker-example-builder/Dockerfile \
-
-docker: ${DOCKERFILES}
+docker: .ALWAYS
 	make -C docker/docker-linux-builder docker
 	make -C docker/docker-bpftool-builder docker
 	make -C docker/docker-example-builder docker
