@@ -1,4 +1,4 @@
-FROM debian:unstable
+FROM debian:unstable-20211115
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential fakeroot libncurses5-dev libssl-dev ccache dwarves
