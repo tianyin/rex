@@ -21,6 +21,8 @@ yes | mkfs."$fs" "$app.$fs"
 sudo mount "$app.$fs" $mnt
 sudo tar -xvf $app.tar -C $mnt
 
+sudo sed -i '/session\toptional\tpam_systemd.so/s/^/#/' $mnt/etc/pam.d/common-session
+
 # install devices
 sudo mknod -m 666 $mnt/dev/null c 1 3
 sudo mknod -m 666 $mnt/dev/zero c 1 5

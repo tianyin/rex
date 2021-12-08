@@ -28,10 +28,12 @@ sudo $QEMU -M microvm,rtc=on \
     -netdev tap,id=n0,ifname=$TAP,script=no,downscript=no \
     -no-reboot \
     -no-acpi \
-#    -s -S
-#2>&1 > /dev/null &
+    2>&1 > /dev/null &
 
-# sleep 5
-# ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
+    #    -s -S
+
+
+sleep 5
+ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
 
 
