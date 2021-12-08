@@ -291,7 +291,6 @@ int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t *mem_size,
         if (p_vaddr_end > e_end) {
             e_end = p_vaddr_end;
         }
-        *mem_size = e_end;
             
         /*
          * Load the segment (p_vaddr .. p_vaddr + p_filesz) into host memory at
@@ -335,6 +334,7 @@ int elf_load(int bin_fd, const char *bin_name, uint8_t *mem, size_t *mem_size,
         /*     goto out_invalid; */
         /* } */
     }
+    *mem_size = e_end;
 
     free(ehdr);
     free(phdr);
