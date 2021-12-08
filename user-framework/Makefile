@@ -27,3 +27,6 @@ run: prog-run test/hello
 
 rust: prog-run rust_test/target/debug/rust_test
 	./prog-run rust_test/target/debug/rust_test
+
+vm: bpf-load test/hello
+	cp bpf-load test/hello ../rootfs/guest/
