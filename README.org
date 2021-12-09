@@ -34,6 +34,12 @@ that showed how to create a freestanding Rust binary.
 
 *** Docker build containers
 
+At first, make sure you have docker engine installed on your machine. 
+You can check that using `docker --version`. If not installed, follow 
+instructions from [[https://docs.docker.com/engine/install/ubuntu/][here]].
+There are options for other distros as well. After installing, follow 
+these [[https://docs.docker.com/engine/install/linux-postinstall/][post-installation steps]].
+
 We have a lot of build environments in the form of Docker containers.
 While they should get built as a makefile dependency, the build
 containers can be built with:
@@ -48,19 +54,36 @@ Firecracker's binary distribution.
     curl -Lo firecracker https://github.com/firecracker-microvm/firecracker/releases/download/v0.16.0/firecracker-v0.16.0
     curl -Lo firectl https://firectl-release.s3.amazonaws.com/firectl-v0.1.0
 
+For using QEMU:
+
+    sudo apt update
+    sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
+    
 *** kernel
 
 We are using a small kernel config based off the firecracker microvm
 config with `make olddefconfig`.  We have added some kernel features
 relevant to eBPF.  Importantly some of the BTF stuff requires really
 recent versions of tools (e.g., `pahole`) for the kernel build.  So,
-it's easiest to use a container.  Assuming your linux tree is at
-`~/linux` run:
+it's easiest to use a container.  Run:
 
-    make vmlinux
+#+BEGIN_SRC bash
+cd
+git clone https://github.com/djwillia/linux.git
+cd linux/
+git checkout djw-ebpf-5.15
+cp <path_to_inner_unikernels>/ebpf_tests.config .config
+cd <path_to_inner_unikernels>
+make vmlinux
+#+END_SRC
 
 It will build and copy over the kernel vmlinux file and its config so
 that everything matches.
+
+Before going through anything below create a directory under rootfs:
+
+    mkdir rootfs/guest
+
 
 *** bpftool
 
@@ -77,10 +100,16 @@ will be used by the guest.
 *** examples
 
 There's a project called libbpf-bootstrap, which has some minimal bpf
-examples.  We have a builder container for that too, so assuming your
-libbpf-bootstrap tree is at `~/libbpf-bootstrap` run:
+examples.  We have a builder container for that too. Run:
 
-    make examples
+#+BEGIN_SRC bash
+cd
+git clone https://github.com/libbpf/libbpf-bootstrap.git
+cd libbpf-bootstrap/
+git submodule update --init --recursive
+cd <path_to_inner_unikernels>
+make examples
+#+END_SRC
 
 It will put the `minimal` example into the `rootfs/guest` directory
 where it will be used by the guest.
@@ -94,9 +123,11 @@ distro we are using is from some scripts adapted from Lupine Linux.
 Lupine's scripts create a rootfs from a Docker image.  We put our
 stuff in there (based on ubuntu at this point because we needed a
 glibc-based system).  The `rootfs/Dockerfile` contains the build-time
-stuff to go in the rootfs.
+stuff to go in the rootfs. Before building this, make sure you have a 
+generated public key for ssh. If not, run `ssh-keygen -t rsa -b 2048 
+-C "<comment>"` and save the key in the default directory.
 
-The root filesystem is best built from the top level with:
+Then the root filesystem is best built from the top level with:
 
     make fs
 
