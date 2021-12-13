@@ -68,7 +68,9 @@ int do_actual_bpf(void *prog, size_t size) {
     union bpf_attr attr;
     memset(&attr, 0, sizeof(attr));
     attr.prog_type = BPF_PROG_TYPE_TRACEPOINT;
-    strcpy(attr.prog_name,"handle_tp");
+    //strcpy(attr.prog_name,"our_cool_program");
+    //strcpy(attr.prog_name,"handle_tt");
+    strcpy(attr.prog_name,"cool_prog");
     attr.insn_cnt = size;
     attr.insns = (__u64)prog;
     attr.kern_version = KERNEL_VERSION(5, 13, 0);
@@ -120,7 +122,9 @@ int main(int argc, char **argv) {
     p_attr.size = PERF_ATTR_SIZE_VER5;
     p_attr.config = atoi(config_str);
     fd2 = perf_event_open(&p_attr, -1, 0, -1, PERF_FLAG_FD_CLOEXEC);
+    printf("perf event opened with %d\n", fd2);
     ioctl(fd2, PERF_EVENT_IOC_SET_BPF, bpf_fd);
+    printf("bpf should be attached now...\n");
     ioctl(fd2, PERF_EVENT_IOC_ENABLE, 0);
 
     printf("opening debug pipe");

@@ -39,7 +39,9 @@ rootfs/.build-guest: $(shell find rootfs/guest) rootfs/.build-base
 
 fs: rootfs/.build-guest
 
-run: rootfs/.build-guest 
+run:
+	make -C user-framework vm
+	rootfs/update_guest_files.sh ubuntu-ebpf.ext4
 	./firecracker-run-new.sh vmlinux ubuntu-ebpf.ext4
 
 runq: rootfs/.build-guest

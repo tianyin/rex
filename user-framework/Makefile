@@ -1,6 +1,6 @@
 all: prog-run bpf-load test/hello rust_test/target/debug/rust_test
 
-test/hello: test/hello.c test/link.lds Makefile interface.h
+test/hello: test/hello.c test/link.lds Makefile interface.h interface-kernel.h
 	clang -static --target=x86_64-none-elf -march=x86-64 -fPIC -static -fno-asynchronous-unwind-tables -ffreestanding -fno-builtin -nostdlib -nostdinc -Wl,-pie -Wl,-Ttest/link.lds,-N,-static,-ebpf_main test/hello.c -o test/hello
 
 rust_test/target/debug/rust_test: rust_test/Cargo.toml rust_test/src/main.rs rust_test/src/interface.rs

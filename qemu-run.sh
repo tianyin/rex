@@ -28,9 +28,10 @@ sudo $QEMU -M microvm,rtc=on \
     -netdev tap,id=n0,ifname=$TAP,script=no,downscript=no \
     -no-reboot \
     -no-acpi \
+    -s -S \
     2>&1 > /dev/null &
 
-    #    -s -S
+
 
 
 sleep 5
