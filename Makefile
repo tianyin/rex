@@ -8,7 +8,7 @@ docker: .ALWAYS
 	make -C docker/docker-bpftool-builder docker
 	make -C docker/docker-example-builder docker
 
-bpftool: ~/linux/tools/bpf/bpftool/bpftool docker
+bpftool: .ALWAYS docker
 	docker run --rm -v ~/linux:/linux bpftool-builder make bpftool
 	scripts/get_bpftool.sh
 
