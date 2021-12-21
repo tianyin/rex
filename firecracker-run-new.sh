@@ -27,5 +27,5 @@ fc-bin/firectl --firecracker-binary=$(pwd)/fc-bin/firecracker \
                -d \
                --kernel-opts="console=ttyS0 panic=1 init=/sbin/init" >firelog 2>&1 &
 
-sleep 3
+sleep 4
 ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
