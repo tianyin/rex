@@ -7,6 +7,10 @@ edition = "2018"
 
 [dependencies]
 
+[dependencies.compiler_builtins]
+git = "https://github.com/rust-lang/compiler-builtins"
+features = ["mem"]
+
 [profile.dev]
 panic = "abort"
 
