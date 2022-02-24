@@ -54,10 +54,9 @@ where
     V: Copy,
 {
     let f_ptr = interface::STUB_BPF_LOOKUP_ELEM as *const ();
-    let helper: extern "C" fn(*const i32, *const K) -> *mut V =
-        unsafe { core::mem::transmute(f_ptr) };
+    let helper: extern "C" fn(i32, *const K) -> *mut V = unsafe { core::mem::transmute(f_ptr) };
 
-    let value = helper(&map, &key) as *mut V;
+    let value = helper(map, &key) as *mut V;
 
     if value.is_null() {
         None
@@ -68,10 +67,10 @@ where
 
 fn bpf_map_update_elem<K, V>(map: i32, key: K, value: V, flags: u64) -> i64 {
     let f_ptr = interface::STUB_BPF_UPDATE_ELEM as *const ();
-    let helper: extern "C" fn(*const i32, *const K, *const V, u64) -> i64 =
+    let helper: extern "C" fn(i32, *const K, *const V, u64) -> i64 =
         unsafe { core::mem::transmute(f_ptr) };
 
-    helper(&map, &key, &value, flags)
+    helper(map, &key, &value, flags)
 }
 
 #[no_mangle]
