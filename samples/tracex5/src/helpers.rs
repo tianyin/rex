@@ -1,5 +1,5 @@
 extern crate compiler_builtins;
-use crate::linux_errno::*;
+use crate::linux::errno::*;
 use crate::stub;
 
 #[macro_export]

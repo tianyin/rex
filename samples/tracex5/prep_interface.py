@@ -70,9 +70,25 @@ def bindgen(header):
 def prep_headers(usr_include):
     for h in headers:
         output = bindgen(os.path.join(usr_include, h))
-        with open(os.path.join('src', '%s.rs' % h[:-2].replace('/', '_')),
-                  'w') as bind_f:
+
+        dir, file = h.split('/')
+        dir = os.path.join('src', dir)
+        if not os.path.exists(dir):
+            os.makedirs(dir)
+
+        with open(os.path.join(dir, '%s.rs' % file[:-2]), 'w') as bind_f:
             bind_f.write(output)
+
+    for _, dirs, _ in os.walk('./src'):
+        for d in dirs:
+            d = os.path.join('./src', d)
+            mod_rs = ''
+            for _, _, files in os.walk(d):
+                mod_rs += '\n'.join(["pub mod %s;" % f[:-3]\
+                                    for f in files if f != 'mod.rs'])
+
+        with open(os.path.join(d, 'mod.rs'), 'w') as mod_f:
+            mod_f.write(mod_rs)
 
 def main(argv):
     linux_path = argv[1]

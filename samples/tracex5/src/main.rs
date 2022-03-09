@@ -3,18 +3,15 @@
 
 extern crate compiler_builtins;
 
+mod linux;
 mod helpers;
-mod linux_errno;
-mod linux_ptrace;
-mod linux_seccomp;
-mod linux_unistd;
 mod stub;
 
 use crate::helpers::*;
-use crate::linux_errno::*;
-use crate::linux_ptrace::pt_regs;
-use crate::linux_seccomp::seccomp_data;
-use crate::linux_unistd::*;
+use crate::linux::errno::*;
+use crate::linux::ptrace::pt_regs;
+use crate::linux::seccomp::seccomp_data;
+use crate::linux::unistd::*;
 use core::panic::PanicInfo;
 
 pub fn func_sys_write(ctx: &pt_regs) -> i32 {
@@ -76,30 +73,26 @@ pub fn func_sys_mmap(ctx: &pt_regs) -> i32 {
     return 0;
 }
 
+// Rustonomicon says reference is safe here
 #[no_mangle]
-pub extern "C" fn _start(ctx: *const pt_regs) -> i32 {
-    if !ctx.is_null() {
-        let regs = unsafe { *ctx };
-        match regs.rdi as u32 {
-            __NR_read => {
-                return func_sys_read(&regs);
-            }
-            __NR_write => {
-                return func_sys_write(&regs);
-            }
-            __NR_mmap => {
-                return func_sys_mmap(&regs);
-            }
-            __NR_getuid..=__NR_getsid => {
-                bpf_trace_printk!("syscall=%d (one of get/set uid/pid/gid)\n");
-                return 0;
-            }
-            _ => {
-                return 0;
-            }
+pub extern "C" fn _start(ctx: &pt_regs) -> i32 {
+    match ctx.rdi as u32 {
+        __NR_read => {
+            return func_sys_read(&ctx);
         }
-    } else {
-        return -(EINVAL as i32);
+        __NR_write => {
+            return func_sys_write(&ctx);
+        }
+        __NR_mmap => {
+            return func_sys_mmap(&ctx);
+        }
+        __NR_getuid..=__NR_getsid => {
+            bpf_trace_printk!("syscall=%d (one of get/set uid/pid/gid)\n");
+            return 0;
+        }
+        _ => {
+            return 0;
+        }
     }
 }
 
