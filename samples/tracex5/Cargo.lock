@@ -4,11 +4,11 @@ version = 3
 
 [[package]]
 name = "compiler_builtins"
-version = "0.1.66"
-source = "git+https://github.com/rust-lang/compiler-builtins#ea0cb5b589cc498d629c545e9bae600301ba6aed"
+version = "0.1.70"
+source = "git+https://github.com/rust-lang/compiler-builtins#4f7ca0a343314e7c534be194a06ef78734243884"
 
 [[package]]
-name = "rust_test"
+name = "tracex5"
 version = "0.1.0"
 dependencies = [
  "compiler_builtins",
