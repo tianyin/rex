@@ -1,5 +1,4 @@
-extern crate compiler_builtins;
-use crate::linux_bpf::*;
+use crate::linux::bpf::*;
 use crate::stub;
 
 macro_rules! bpf_trace_printk {

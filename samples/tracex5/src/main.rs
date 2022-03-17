@@ -1,10 +1,11 @@
 #![no_std]
 #![no_main]
 
-extern crate compiler_builtins;
+//extern crate compiler_builtins;
+extern crate rlibc;
 
-mod linux;
 mod helpers;
+mod linux;
 mod stub;
 
 use crate::helpers::*;
@@ -28,7 +29,6 @@ pub fn func_sys_write(ctx: &pt_regs) -> i32 {
     if ret < 0 {
         return ret as i32;
     }
-
     if sd.args[2] == 512 {
         bpf_trace_printk!(
             "write(fd=%d, buf=%p, size=%d)\n",
@@ -37,7 +37,6 @@ pub fn func_sys_write(ctx: &pt_regs) -> i32 {
             u64: sd.args[2]
         );
     }
-
     return 0;
 }
 
@@ -64,7 +63,6 @@ pub fn func_sys_read(ctx: &pt_regs) -> i32 {
             u64: sd.args[2]
         );
     }
-
     return 0;
 }
 
@@ -87,7 +85,7 @@ pub extern "C" fn _start(ctx: &pt_regs) -> i32 {
             return func_sys_mmap(&ctx);
         }
         __NR_getuid..=__NR_getsid => {
-            bpf_trace_printk!("syscall=%d (one of get/set uid/pid/gid)\n");
+            bpf_trace_printk!("syscall=%d (one of get/set uid/pid/gid)\n", u32: (ctx.rdi as u32));
             return 0;
         }
         _ => {

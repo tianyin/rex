@@ -8,8 +8,8 @@
  *
  *  Author: Yoann GHIGOFF <yoann.ghigoff@orange.com> et al.
  */
-mod linux_bpf;
-use crate::linux_bpf::*;
+
+use crate::linux::bpf::*;
 
 pub const BMC_MAX_KEY_LENGTH: u32 = 250;
 pub const BMC_MAX_VAL_LENGTH: u32 = 1000;
@@ -38,7 +38,7 @@ struct bmc_cache_entry {
     pub len: u32,
     valid: i8,
     hash: i32,
-    pub data: [i8; BMC_MAX_CACHE_DATA_SIZE],
+    pub data: [i8; BMC_MAX_CACHE_DATA_SIZE as usize],
 }
 
 struct bmc_stats {

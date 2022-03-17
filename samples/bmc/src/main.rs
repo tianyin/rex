@@ -1,8 +1,11 @@
 #![no_std]
 #![no_main]
 
+extern crate rlibc;
+
+mod bmc_common;
 mod helpers;
-mod linux_bpf;
+mod linux;
 mod stub;
 use crate::helpers::*;
 use core::panic::PanicInfo;
