@@ -1,7 +1,33 @@
 MEETING MINUTES
 
 
-* 22-02-04 (scribe: Sayeed)
+* 22-03-18 (scribe: Tianyin)
+Rough notes:
+- Compatibility issue for managing extension
+  - Only a year, already cannot run the old extension
+- tracex5
+- No need to do tail call
+- No unsafe code in the core; unsafe on the boundary
+- How to manage the code (inner_unikernel create?)
+  - When things get more complex
+- Stub – the address is hardcoded
+- Cannot support array map
+- Diagram of the maps
+  - Compare with the original bpf map
+  - Figure out what each party (Rust app, loader, kernel) is required to do.
+- Get BMC done
+- Write an abstract
+- Cast studies
+
+TODO:
+- Map diagram
+  - Compare with the original bpf map
+  - Figure out what each party (Rust app, loader, kernel) is required to do.
+- CPU stats working without map
+- BMC done
+- Abstract
+
+* 22-03-04 (scribe: Sayeed)
 - Permissions fixed
 	- Can be tested for sanity
 - Map types
