@@ -1,0 +1,196 @@
+MEETING MINUTES
+
+
+* 22-03-18 (scribe: Tianyin)
+Rough notes:
+- Compatibility issue for managing extension
+  - Only a year, already cannot run the old extension
+- tracex5
+- No need to do tail call
+- No unsafe code in the core; unsafe on the boundary
+- How to manage the code (inner_unikernel create?)
+  - When things get more complex
+- Stub – the address is hardcoded
+- Cannot support array map
+- Diagram of the maps
+  - Compare with the original bpf map
+  - Figure out what each party (Rust app, loader, kernel) is required to do.
+- Get BMC done
+- Write an abstract
+- Cast studies
+
+TODO:
+- Map diagram
+  - Compare with the original bpf map
+  - Figure out what each party (Rust app, loader, kernel) is required to do.
+- CPU stats working without map
+- BMC done
+- Abstract
+
+* 22-03-04 (scribe: Sayeed)
+- Permissions fixed
+	- Can be tested for sanity
+- Map types
+	- Hash, Program arrays, per-cpu etc.
+	- Reason for different types
+	- Generic interface for I/O
+	- Local storage, a bit different from other types
+		- Similar to task storage
+- Map Management
+	- Allocation and deallocation
+		- Userspace: Symbol -> FD
+		- Kernelspace: FD -> Address
+	- Sharing maps across different programs
+- Fuzzing to crash kernel
+	- To find bugs in helper functions that passes the verifier
+	- Fuzzing attachment locations
+- Next Tasks
+	- Implementing simple applications
+	- Implementing BMC
+	- Abstract and evaluation of paper
+
+* 22-02-18 (scribe: Jinghao)
+Just realized I forgot to upload the meeting summary
+
+#### Where we are
+- finished ELF loader
+
+#### Where we are going
+- Doing BPF w/o the verifier
+    - the verifier does checking -> Rust provides type/mem-safety
+    - the verifier rewrites program to use maps -> needs fix
+        - new linking concept: verifier acting as the linker
+
+- implement map
+    - need a way to link maps and programs (it's done by the verifier in BPF)
+        - current workflow
+        - challenge
+        - potential solutions
+    - reason about the map interface using the applications
+
+- Two types of applications:
+    - test program: whether the runtime is working
+        - infinite loop
+        - exhaust kernel stack
+        - unsafe Rust code: (arbitrary memory access?)
+    - program that shows the benefit of our framework
+        - BMC
+        - JPG copmressor (stateless)
+
+- next step:
+    - write test programs
+    - write programs w/ increasing hardness
+    - write a plan
+        
+* 22-02-11 (scribe: Sayeed)
+- Implementation progress
+	- Memory management
+		- Done
+	- Page permission
+		- Planned
+- BMC: Whole memcached in BPF?
+	- Application is large
+	- Kernel stack limitations
+- Do we think it can be improved some way if we are not restricted by BPF?
+	- Performance
+	- Better programs
+	- 2 programs in Rust versus 7 programs in BPF
+- Tradeoffs between stateless and stateful models
+	- Turing-completeness
+	- Code length limitations
+- Stateful +ves
+	- Better performance
+	- Easy implementation
+	- Existing user programs
+	- Benefits of Rust
+		- Crates (e.g. JPEG Compression, Thumbnail)
+- Stateful -ves
+	- Statefulness -> unpredictability of states
+	- Dependence between functions
+	- Cleaning of states
+	- Process migration
+- Stateless +ves
+	- Extension of serverless
+	- Ability to reuse
+- Stateless -ves
+	- Different states stored in the same place
+	- Organization of states
+	- Stateless granularity
+	- How much state to put into external storage
+- Stateless vs stateful discussion is important, but no need to be solved now
+- SABPF (Audit)
+	- BPF local storage
+		- Task storage
+
+* 22-02-04 (scribe: Jinghao)
+Here are the points we discussed today
+
+- ELF loader
+    - progress: debugging file read function
+    - page permissions: right now it has to be writable to load contents in, need to change to non-writable e.g. for code section
+    - program memory: deallocate pages when ref count gets to 0
+- eBPF maps
+    - life time of maps in eBPF
+        1.  created by libbpf
+        2. in-program reference rewritten to fd by libbpf
+        3. fd rewritten to map address by verifier
+        4. deallocated when ref count gets to 0
+- Program model -- need to think more about how it should look like and in either ways we want type-safety 
+    - serverless function/distributed system model (current eBPF)
+        - programs/processes being entirely stateless -- eBPF is 100% stateless
+        - talking to remote KV storage -- eBPF maps
+    - uni-kernel model
+        - keeps states in programs
+        - need to find a way to start programs freshly but also with access to the state
+    - more an Dan's notes
+
+* 22-01-28 (scribe: Sayeed)
+- ELF loading (TODO 1)
+	- Proposed to solve the compiler problem with the entry point
+	- Yet to see how Kernel will react
+- Relative positions of the segments
+	- Proposed to be contiguous
+	- Is it really needed to be continuous?
+	- Will there be any problem with page alignment?
+- Permissions
+	- How do you adjust permissions?
+- Is there a better way to allocate the memory?
+	- If two programs are loaded, will there be conflicts?
+- What happens to data segment -> Stack & Heap?
+	- Kernel stack will be used instead of user stack
+	- Current programs don't have heaps
+	- Do we want heaps in BPF or maps are sufficient?
+	- How to integrate the maps?
+	- Map identifiers can be passed to the helper function
+	- Looking at and rewriting verifier (TODO 3)
+	- Performance experiment to measure tradeoffs (TODO 4)
+- Test-driven development
+	- We will gradually run programs of increasing hardness
+- List of BPF programs
+	- Replacing the helper function with expressible Rust
+	- Reduce the number of helper functions
+	- Listing programs, helpers
+	- Classification of helpers based on necessity
+	- 1 BPF program to discuss next week - KV store (TODO 2)
+-  Priority tasks:
+	- Implementation of ELF loader in the kernel
+	- Discuss KV store (#1) in the next meeting
+
+* 22-01-21 (scribe: Jinghao)
+Thanks everyone for attending the meeting, it was an amazing discussion!
+
+We talked about the following:
+- Whether to move the ELF loader into the kernel: our conclusion is yes, as merely putting all the stuff from an ELF file into the kernel might make the data section executable and by moving the loader to the kernel it might save us from running into some nasty problems in the future
+- Attacker & safety: 
+    - how shall we go with the threat model and should it be similar to eBPF? 
+    - What if an attacker loads some malicious assembly code into our framework? Idea: use a trusted compiler to sign the program (low priority)
+    - safety issue for trusted users: probably adding some additional checks/restrictions -- depends on later observation (low priority)
+- eBPF map support in Rust:
+    - how to support them in Rust? Maybe perform some rewrite during the loading of ELF in the kernel
+- kernel API and internal headers:
+    - support api headers in Rust: https://github.com/rust-lang/rust-bindgen is a good way to go
+    - eBPF programs using internal kernel headers: needs to inspect more eBPF programs
+
+Next Steps:
+- make ELF great again -- some progress on the in-kernel loader
+- Gather an ordered list of which eBPF program we want to do first or last
