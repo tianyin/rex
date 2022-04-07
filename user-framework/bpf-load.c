@@ -21,7 +21,7 @@
 
 #define ERR(x...)                               \
     do {                                        \
-        printf(x);                              \
+        fprintf(stderr, x);                              \
         return 1;                               \
     } while(0);
 
@@ -46,14 +46,14 @@ uint64_t stub_bpf_get_current_pid_tgid(void) {
     return 0xdeadbeefdeadbeef;
 }
 void stub_bpf_test_call(void) {
-    printf("Hello world!\n");
+    fprintf(stderr, "Hello world!\n");
 }
 
 static long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
                             int cpu, int  group_fd, unsigned long flags)
 {
     int ret;
-    
+
     ret = syscall(__NR_perf_event_open, hw_event, pid, cpu,
                   group_fd, flags);
     return ret;
@@ -64,54 +64,60 @@ static int bpf(enum bpf_cmd cmd, union bpf_attr *attr, unsigned int size)
     return syscall(__NR_bpf, cmd, attr, size);
 }
 
-int do_actual_bpf(void *prog, size_t size) {
+int do_actual_bpf(int fd, int *used_maps) {
     union bpf_attr attr;
     memset(&attr, 0, sizeof(attr));
     attr.prog_type = BPF_PROG_TYPE_TRACEPOINT;
-    //strcpy(attr.prog_name,"our_cool_program");
-    //strcpy(attr.prog_name,"handle_tt");
     strcpy(attr.prog_name,"cool_prog");
-    attr.insn_cnt = size;
-    attr.insns = (__u64)prog;
+    attr.rustfd = fd;
     attr.kern_version = KERNEL_VERSION(5, 13, 0);
     attr.license = (__u64)"GPL";
+    attr.iu_maps = (__u64)used_maps;
+    attr.iu_maps_len = 1;
     return bpf(BPF_PROG_LOAD_DJW, &attr, sizeof(attr));
+}
+
+int bpf_map_create(int id) {
+    union bpf_attr attr;
+    memset(&attr, 0, sizeof(attr));
+    attr.map_type = BPF_MAP_TYPE_HASH;
+    attr.key_size = 4;
+    attr.value_size = 8;
+    attr.max_entries = 16;
+    attr.is_iu_map = 1;
+    attr.iu_idx = id;
+    return bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
 }
 
 int main(int argc, char **argv) {
     int fd;
     void *area;
     size_t sz, n;
- 
+    int used_maps[1];
+
     if (argc != 2)
         ERR("Usage: %s <prog>\n", argv[0]);
+
+    if ((fd = bpf_map_create(0)) < 0) {
+        PERR("bpf_map_create");
+    }
+    used_maps[0] = fd;
 
     fd = open(argv[1], O_RDONLY);
     if (!fd)
         ERR("Couldn't open file %s\n", argv[1]);
 
-    area = mmap(NULL, MAX_PROG_SZ,
-                PROT_EXEC | PROT_WRITE,
-                MAP_PRIVATE | MAP_ANONYMOUS,
-                -1, 0);
-    if (area == MAP_FAILED)
-        ERR("Couldn't create map of size %d\n", MAX_PROG_SZ);
-    printf("Area is at %p\n", area);
-    uint64_t entry = 0;
-    size_t mem_size = MAX_PROG_SZ;
-    if (elf_load(fd, argv[1], area, &mem_size, &entry))
-        ERR("Couldn't load\n");
-    printf("Entry point is 0x%lx\n", entry);
-    //uint64_t (*run_prog)(void) = (uint64_t (*)(void))(area + entry);
-
-    printf("Sending bpf %p (size %zu)\n", area + entry, mem_size);
-    int bpf_fd = do_actual_bpf(area + entry, mem_size);
-    printf("bpf_fd is %d\n", bpf_fd);
+    int bpf_fd = do_actual_bpf(fd, used_maps);
+    fprintf(stderr, "bpf_fd is %d\n", bpf_fd);
     if (bpf_fd <= 0) {
         PERR("Couldn't load BPF");
     }
-    int fd2 = openat(AT_FDCWD, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_write/id", O_RDONLY);
 
+    int fd2 = openat(AT_FDCWD, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id", O_RDONLY);
+    if (fd2 < 0) {
+        perror("openat");
+        exit(1);
+    }
     char config_str[256];
     read(fd2, config_str, 256);
     close(fd2);
@@ -122,12 +128,16 @@ int main(int argc, char **argv) {
     p_attr.size = PERF_ATTR_SIZE_VER5;
     p_attr.config = atoi(config_str);
     fd2 = perf_event_open(&p_attr, -1, 0, -1, PERF_FLAG_FD_CLOEXEC);
-    printf("perf event opened with %d\n", fd2);
+    if (fd2 < 0) {
+        perror("perf_event_open");
+        exit(1);
+    }
+    fprintf(stderr, "perf event opened with %d\n", fd2);
     ioctl(fd2, PERF_EVENT_IOC_SET_BPF, bpf_fd);
-    printf("bpf should be attached now...\n");
+    fprintf(stderr, "bpf should be attached now...\n");
     ioctl(fd2, PERF_EVENT_IOC_ENABLE, 0);
 
-    printf("opening debug pipe");
+    fprintf(stderr, "opening debug pipe");
     int fd3 = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe", O_RDONLY);
     for (;;) {
         char c;
@@ -137,4 +147,3 @@ int main(int argc, char **argv) {
 
     return 0;
 }
-
