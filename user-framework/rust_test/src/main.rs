@@ -1,7 +1,7 @@
 #![no_std]
 #![no_main]
 
-extern crate compiler_builtins;
+extern crate rlibc;
 use core::panic::PanicInfo;
 pub mod interface;
 

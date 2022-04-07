@@ -6,10 +6,11 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+rlibc = "1.0.0"
 
-[dependencies.compiler_builtins]
-git = "https://github.com/rust-lang/compiler-builtins"
-features = ["mem"]
+#[dependencies.compiler_builtins]
+#git = "https://github.com/rust-lang/compiler-builtins"
+#features = ["mem"]
 
 [profile.dev]
 panic = "abort"

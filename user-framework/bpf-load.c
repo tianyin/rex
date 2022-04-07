@@ -13,11 +13,9 @@
 #include <linux/hw_breakpoint.h>
 #include <sys/ioctl.h>
 #include <string.h>
-#include <linux/perf_event.h>
 #include <asm/unistd.h>
 #include <linux/version.h>
 
-#include "elf.h"
 
 #define ERR(x...)                               \
     do {                                        \
