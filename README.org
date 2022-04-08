@@ -188,6 +188,58 @@ stuff with, type:
 
     make shell
 
+Another more convenient way to run QEMU can be to run from the 
+q-script directory. In this way the whole filesystem can be used 
+inside the VM, instead of only the rootfs/guest directory. To do 
+this, first, q-script/.config is needed to be copied into your Linux 
+kernel directory (sudo might be necessary). Then the kernel needs to 
+be recompiled either by `make` inside the kernel directory, or doing 
+`make vmlinux` in this directory. After this one-time action, the VM 
+can be started by:
+
+    make qscript
+
+** Samples
+
+We are currently in the process of writing samples applications. They 
+can be run according to the following:
+
+*** Hello World!
+
+    make hello
+
+Then the vm can be started using `make run`, `make runq`, or `make 
+qscript`.
+
+TODO: The linker script is needed to be added, right now the 
+interface addresses are updated manually.
+
+*** Simple map application
+
+    make map
+
+The vm can be started using `make run`, `make runq`, or `make 
+qscript`.
+
+*** tracex5
+
+    make tracex5
+
+In this case, it is only supported by `make qscript`.
+
+*** cpustat
+
+    make tracex5
+
+Like tracex5, it is only supported by `make qscript`. Right now, the 
+programs can be loaded inside the kernel successfully, which is just 
+enough for our context, they don't run, as sclaing cpu frequency 
+inside the VM might not be possible. This needs to be further 
+investigated.
+
+TODO: The linker script is needed to be added, right now the 
+interface addresses are updated manually.
+
 *** status
 
 So far, we have run the sock_example from the bundled Linux samples.
