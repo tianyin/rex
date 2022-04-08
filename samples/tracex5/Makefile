@@ -1,9 +1,9 @@
-LINUX ?= /home/jinghao/inner-kernel-linux
+LINUX ?= $(HOME)/linux
 
 all: target/debug/tracex5 tracex5
 
 target/debug/tracex5: prep_interface.py ./src/*.rs ${LINUX}/vmlinux
-	python prep_interface.py  ${LINUX}
+	python3 prep_interface.py  ${LINUX}
 	cargo rustc -vv -- -C opt-level=0 -C link-arg=-nostartfiles -A unused -A non_camel_case_types -A non_upper_case_globals -A non_snake_case
 
 tracex5: tracex5.c

@@ -62,7 +62,7 @@ static int bpf(enum bpf_cmd cmd, union bpf_attr *attr, unsigned int size)
     return syscall(__NR_bpf, cmd, attr, size);
 }
 
-int do_actual_bpf(int fd, int *used_maps) {
+int do_actual_bpf(int fd) {
     union bpf_attr attr;
     memset(&attr, 0, sizeof(attr));
     attr.prog_type = BPF_PROG_TYPE_TRACEPOINT;
@@ -70,48 +70,26 @@ int do_actual_bpf(int fd, int *used_maps) {
     attr.rustfd = fd;
     attr.kern_version = KERNEL_VERSION(5, 13, 0);
     attr.license = (__u64)"GPL";
-    attr.iu_maps = (__u64)used_maps;
-    attr.iu_maps_len = 1;
     return bpf(BPF_PROG_LOAD_DJW, &attr, sizeof(attr));
-}
-
-int bpf_map_create(int id) {
-    union bpf_attr attr;
-    memset(&attr, 0, sizeof(attr));
-    attr.map_type = BPF_MAP_TYPE_HASH;
-    attr.key_size = 4;
-    attr.value_size = 8;
-    attr.max_entries = 16;
-    attr.is_iu_map = 1;
-    attr.iu_idx = id;
-    return bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
 }
 
 int main(int argc, char **argv) {
     int fd;
-    void *area;
-    size_t sz, n;
-    int used_maps[1];
 
     if (argc != 2)
         ERR("Usage: %s <prog>\n", argv[0]);
-
-    if ((fd = bpf_map_create(0)) < 0) {
-        PERR("bpf_map_create");
-    }
-    used_maps[0] = fd;
 
     fd = open(argv[1], O_RDONLY);
     if (!fd)
         ERR("Couldn't open file %s\n", argv[1]);
 
-    int bpf_fd = do_actual_bpf(fd, used_maps);
+    int bpf_fd = do_actual_bpf(fd);
     fprintf(stderr, "bpf_fd is %d\n", bpf_fd);
     if (bpf_fd <= 0) {
         PERR("Couldn't load BPF");
     }
 
-    int fd2 = openat(AT_FDCWD, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id", O_RDONLY);
+    int fd2 = openat(AT_FDCWD, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_write/id", O_RDONLY);
     if (fd2 < 0) {
         perror("openat");
         exit(1);

@@ -11,7 +11,7 @@ rust_test/target/debug/rust_test: rust_test/Cargo.toml rust_test/src/main.rs rus
 
 # this rule assumes a linux symlink in the project rootdir
 FORCE:
-	python ./fixup_addrs.py `realpath ../linux/vmlinux`
+	python3 ./fixup_addrs.py $(HOME)/linux/vmlinux
 
 interface-kernel.h: FORCE
 
@@ -20,8 +20,8 @@ rust_test/src/interface.rs: FORCE
 prog-run: prog-run.c elf.c elf.h Makefile
 	clang -g $< elf.c -o $@
 
-bpf-load: bpf-load.c elf.c elf.h Makefile
-	clang -I `realpath ../linux/usr/include` -g $< elf.c -o $@
+bpf-load: bpf-load.c Makefile
+	clang -I $(HOME)/linux/usr/include -g $< -o $@
 
 event-trigger: event-trigger.c
 	clang -g $< -o $@

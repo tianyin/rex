@@ -3,13 +3,14 @@
 version = 3
 
 [[package]]
-name = "compiler_builtins"
-version = "0.1.66"
-source = "git+https://github.com/rust-lang/compiler-builtins#ea0cb5b589cc498d629c545e9bae600301ba6aed"
+name = "rlibc"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "fc874b127765f014d792f16763a81245ab80500e2ad921ed4ee9e82481ee08fe"
 
 [[package]]
 name = "rust_test"
 version = "0.1.0"
 dependencies = [
- "compiler_builtins",
+ "rlibc",
 ]
