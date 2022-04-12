@@ -1,5 +1,35 @@
 MEETING MINUTES
+* 22-04-01 (scribe: Jinghao)
+*** Where we are
+- Abstract merged
+  - The second paragraph is expected to be changing over time
+- A working but nasty map implementation
+  - https://github.com/djwillia/inner_unikernels/blob/main/docs/inner-unitkernel-map.pptx
+  - problems:
+    - Users needs to agree on the map index they use since a conflict will break
+      one of them
+    - The Rust program (kernel) part and the loader (user) part are coupled
+      because they now needs to supply the map index
+    - The Rust program does not have the map declarations, which means ~rustc~
+      cannot type check map accesses.
+- A working ~cpustat~ sample program
 
+*** Insights & discussion:
+  - Needs to design a way to support pseudo-distributed applications
+  - two crates/libraries
+    1. helper crate: contains all helper implementation and (hopefully) all
+       unsafe code
+    2. loader library: provides ~libbpf~ equivalent APIs
+  - Advanced map implementation
+    - Use the same way as current eBPF
+      - generate placeholder reloc in ELF and rewrite the code gradually
+
+*** Where we are going
+  - start advanced map implementation
+  - come up with a list of experiments to do in the paper
+    - the goal is to show the expressiveness and to convinces others
+  - Think about the design to support pseudo-distributed applications
+  - ask the BMC folks again via email
 
 * 22-03-18 (scribe: Tianyin)
 Rough notes:
@@ -52,10 +82,10 @@ TODO:
 * 22-02-18 (scribe: Jinghao)
 Just realized I forgot to upload the meeting summary
 
-#### Where we are
+*** Where we are
 - finished ELF loader
 
-#### Where we are going
+*** Where we are going
 - Doing BPF w/o the verifier
     - the verifier does checking -> Rust provides type/mem-safety
     - the verifier rewrites program to use maps -> needs fix
@@ -81,7 +111,7 @@ Just realized I forgot to upload the meeting summary
     - write test programs
     - write programs w/ increasing hardness
     - write a plan
-        
+
 * 22-02-11 (scribe: Sayeed)
 - Implementation progress
 	- Memory management
@@ -135,7 +165,7 @@ Here are the points we discussed today
         2. in-program reference rewritten to fd by libbpf
         3. fd rewritten to map address by verifier
         4. deallocated when ref count gets to 0
-- Program model -- need to think more about how it should look like and in either ways we want type-safety 
+- Program model -- need to think more about how it should look like and in either ways we want type-safety
     - serverless function/distributed system model (current eBPF)
         - programs/processes being entirely stateless -- eBPF is 100% stateless
         - talking to remote KV storage -- eBPF maps
@@ -181,8 +211,8 @@ Thanks everyone for attending the meeting, it was an amazing discussion!
 
 We talked about the following:
 - Whether to move the ELF loader into the kernel: our conclusion is yes, as merely putting all the stuff from an ELF file into the kernel might make the data section executable and by moving the loader to the kernel it might save us from running into some nasty problems in the future
-- Attacker & safety: 
-    - how shall we go with the threat model and should it be similar to eBPF? 
+- Attacker & safety:
+    - how shall we go with the threat model and should it be similar to eBPF?
     - What if an attacker loads some malicious assembly code into our framework? Idea: use a trusted compiler to sign the program (low priority)
     - safety issue for trusted users: probably adding some additional checks/restrictions -- depends on later observation (low priority)
 - eBPF map support in Rust:

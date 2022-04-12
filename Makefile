@@ -47,6 +47,22 @@ run:
 runq: rootfs/.build-guest
 	./qemu-run.sh bzImage ubuntu-ebpf.ext4
 
+THISDIR=$(shell pwd)
+qscript: .ALWAYS
+	(cd $(HOME)/linux && $(THISDIR)/q-script/yifei-q)
+
+hello: .ALWAYS
+	make -C samples/hello/ vmcopy
+
+map: .ALWAYS
+	make -C user-framework/ vm
+
+tracex5: .ALWAYS
+	make -C samples/tracex5/
+
+cpustat: .ALWAYS
+	make -C samples/cpustat/
+
 clean:
 	rm -f ubuntu-ebpf.ext4 rootfs/.build-base
 
