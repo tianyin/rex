@@ -18,4 +18,4 @@ libiu.o: libiu.cpp libiu.h
 	${CXX} ${CXXFLAGS} -c libiu.cpp -o $@
 
 clean:
-	rm -f libiu.o libiu.a
+	rm -f libiu.o libiu.a libiu.so
