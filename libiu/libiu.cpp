@@ -87,12 +87,12 @@ iu_map::iu_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
 	this->def = *(map_def *)((unsigned char *)data->d_buf + off - base);
 
 	if (debug) {
-		std::cerr << "sym_name=" << c_name << std::endl;
-		std::cerr << "map_type=" << this->def.map_type << std::endl;
-		std::cerr << "key_size=" << this->def.key_size << std::endl;
-		std::cerr << "val_size=" << this->def.val_size << std::endl;
-		std::cerr << "max_size=" << this->def.max_size << std::endl;
-		std::cerr << "map_flag=" << this->def.map_flag << std::endl;
+		std::clog << "sym_name=" << c_name << std::endl;
+		std::clog << "map_type=" << this->def.map_type << std::endl;
+		std::clog << "key_size=" << this->def.key_size << std::endl;
+		std::clog << "val_size=" << this->def.val_size << std::endl;
+		std::clog << "max_size=" << this->def.max_size << std::endl;
+		std::clog << "map_flag=" << this->def.map_flag << std::endl;
 	}
 }
 
@@ -151,7 +151,7 @@ iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
 	int fd = open(c_path, 0, O_RDONLY);
 	this->elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
 	file_size = get_file_size(fd);
-	file_map = (unsigned char *)mmap(NULL, file_size, PROT_READ | PROT_WRITE, 
+	file_map = (unsigned char *)mmap(NULL, file_size, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE, fd, 0);
 	close(fd);
 }
@@ -166,7 +166,7 @@ iu_prog::~iu_prog()
 }
 
 int iu_prog::parse_scns()
-{	
+{
 	size_t shstrndx;
 
 	if(elf_getshdrstrndx(elf, &shstrndx)) {
@@ -193,29 +193,45 @@ int iu_prog::parse_scns()
 		}
 
 		if (debug)
-			std::cerr << "section " << name << ", idx=" << idx << std::endl;
+			std::clog << "section " << name << ", idx=" << idx << std::endl;
 
 		if (sh->sh_type == SHT_SYMTAB)
 			this->symtab_scn = scn;
 		else if (!strcmp(".maps", name))
 			this->maps_scn = scn;
 	}
-	
+
+	if (!this->maps_scn && debug) {
+		std::clog << "section .maps not found" << std::endl;
+	}
+
 	return 0;
 }
 
 int iu_prog::parse_maps()
 {
-	Elf_Data *maps = elf_getdata(maps_scn, 0);
-	Elf_Data *syms = elf_getdata(symtab_scn, 0);
+	Elf_Data *maps, *syms;
 	int nr_syms, nr_maps = 0, maps_shndx;
 	size_t strtabidx;
 	Elf64_Addr maps_shaddr;
 
-	if (!maps || !syms) {
-		std::cerr << "elf: failed to get map/symbol definitions" << std::endl;
+	if (!this->maps_scn) {
+		return 0;
+	}
+
+	maps = elf_getdata(maps_scn, 0);
+	syms = elf_getdata(symtab_scn, 0);
+
+	if (!syms) {
+		std::cerr << "elf: failed to get symbol definitions" << std::endl;
 		return -1;
 	}
+
+	if (!maps) {
+		std::cerr << "elf: failed to get map definitions" << std::endl;
+		return -1;
+	}
+
 
 	strtabidx = elf64_getshdr(symtab_scn)->sh_link;
 	maps_shndx = elf_ndxscn(maps_scn);
@@ -233,7 +249,7 @@ int iu_prog::parse_maps()
 		name = elf_strptr(elf, strtabidx, sym->st_name);
 
 		if (debug) {
-			std::cerr << "symbol: " << name << ", st_value=0x" << std::hex
+			std::clog << "symbol: " << name << ", st_value=0x" << std::hex
 				<< sym->st_value << ", st_size=" << std::dec << sym->st_size
 				<< std::endl;
 		}
@@ -249,7 +265,7 @@ int iu_prog::parse_maps()
 	}
 
 	if (debug)
-		std::cerr << "# of symbols in \".maps\": " << nr_maps << std::endl;
+		std::clog << "# of symbols in \".maps\": " << nr_maps << std::endl;
 
 	return 0;
 }
@@ -270,12 +286,19 @@ int iu_prog::parse_elf()
 }
 
 int iu_prog::fix_maps()
-{	
-	Elf64_Addr maps_shaddr = elf64_getshdr(maps_scn)->sh_addr; 
-	Elf64_Off maps_shoff = elf64_getshdr(maps_scn)->sh_offset;
-	
-	if (debug) {	
-		std::cerr << ".maps section file offset=0x" << std::hex
+{
+	Elf64_Addr maps_shaddr;
+	Elf64_Off maps_shoff;
+
+	if (!this->maps_scn) {
+		return 0;
+	}
+
+	maps_shaddr = elf64_getshdr(maps_scn)->sh_addr;
+	maps_shoff = elf64_getshdr(maps_scn)->sh_offset;
+
+	if (debug) {
+		std::clog << ".maps section file offset=0x" << std::hex
 			<< elf64_getshdr(maps_scn)->sh_offset << std::dec << std::endl;
 	}
 
@@ -296,10 +319,10 @@ int iu_prog::fix_maps()
 		}
 
 		if (debug) {
-			std::cerr << "map_ptr=0x" << std::hex << map_addr << std::dec
+			std::clog << "map_ptr=0x" << std::hex << map_addr << std::dec
 				<< std::endl;
-			std::cerr << "pointed obj name: " << it->second.name << std::endl;
-			std::cerr << "map_ptr_offset=0x" << std::hex 
+			std::clog << "pointed obj name: " << it->second.name << std::endl;
+			std::clog << "map_ptr_offset=0x" << std::hex
 				<< ptr.first->st_value << std::dec << std::endl;
 		}
 
@@ -310,7 +333,7 @@ int iu_prog::fix_maps()
 		}
 
 		if (debug)
-			std::cerr << "map_fd=" << map_fd << std::endl;
+			std::clog << "map_fd=" << map_fd << std::endl;
 
 		val_to_buf<uint64_t>(&this->file_map[pos], map_fd);
 	}
@@ -327,7 +350,7 @@ int iu_prog::load()
 
 	// TODO: Will have race condition if multiple progs loaded at same time
 	std::ofstream output("rust.out", std::ios::out | std::ios::binary);
-	
+
 	output.write((char *)this->file_map, this->file_size);
 	output.close();
 
@@ -369,12 +392,12 @@ void iu_set_debug(const int val)
 	debug = val;
 }
 
-int iu_prog_load(const char *file_path) 
+int iu_prog_load(const char *file_path)
 {
 	int ret;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
-		fprintf(stderr, "failed to init libelf");
+		std::cerr << "elf: failed to init libelf" << std::endl;
 		return 1;
 	}
 
