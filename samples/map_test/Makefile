@@ -23,7 +23,7 @@ asm: ./src/*.rs prep_interface.py ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS} --emit asm
 
 loader: loader.c
-	clang -I${LINUX_INC} -I${LIBIU_DIR} -g $< ${LIBIU_DIR}/libiu.a -lelf -lstdc++ -o $@
+	clang -I${LINUX_INC} -I${LIBIU_DIR} -g $< -L${LIBIU_DIR} -liu -o $@
 
 event-trigger: event-trigger.c
 	clang -I${LINUX_INC} -g $< -o $@
