@@ -35,6 +35,9 @@ def get_symbols(vmlinux):
             result.stdout.decode('utf-8').split('\n'))
 
 def gen_stubs(vmlinux):
+    if len(helpers) == 0:
+        return
+
     # Construct a func -> addr map
     text_syms = dict(map(lambda l: (l[2], l[0]),
                          filter(filter_text, get_symbols(vmlinux))))
@@ -54,6 +57,9 @@ def bindgen(header):
     return output
 
 def prep_headers(usr_include):
+    if len(headers) == 0:
+        return
+
     for h in headers:
         output = bindgen(os.path.join(usr_include, h))
 
