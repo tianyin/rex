@@ -2,8 +2,9 @@ LINUX ?= $(HOME)/linux
 
 all: target/debug/tracex5 tracex5
 
-target/debug/tracex5: prep_interface.py ./src/*.rs ${LINUX}/vmlinux
-	python3 prep_interface.py  ${LINUX}
+target/debug/tracex5: config.py ./src/*.rs ${LINUX}/vmlinux
+	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
+		`realpath .`
 	cargo rustc -vv -- -C opt-level=0 -C link-arg=-nostartfiles -A unused -A non_camel_case_types -A non_upper_case_globals -A non_snake_case
 
 tracex5: tracex5.c

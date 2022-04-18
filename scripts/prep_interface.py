@@ -2,43 +2,27 @@ import subprocess
 import sys
 import os
 
-helpers = [
-           'bpf_probe_read_kernel',
-           'bpf_trace_printk',
-]
-
 # TODO: this is not configured automatically, fix this on your machine first
 types = {
-         '::std::os::raw::c_char': 'i8',
-         '::std::os::raw::c_double': 'f64',
-         '::std::os::raw::c_float': 'f32',
-         '::std::os::raw::c_int': 'i32',
-         '::std::os::raw::c_longlong': 'i64',
-         '::std::os::raw::c_long': 'i64',
-         '::std::os::raw::c_schar': 'i8',
-         '::std::os::raw::c_short': 'i16',
-         '::std::os::raw::c_uchar': 'u8',
-         '::std::os::raw::c_uint': 'u32',
-         '::std::os::raw::c_ulonglong': 'u64',
-         '::std::os::raw::c_ulong': 'u64',
-         '::std::os::raw::c_ushort': 'u16'
+    '::std::os::raw::c_char': 'i8',
+    '::std::os::raw::c_double': 'f64',
+    '::std::os::raw::c_float': 'f32',
+    '::std::os::raw::c_int': 'i32',
+    '::std::os::raw::c_longlong': 'i64',
+    '::std::os::raw::c_long': 'i64',
+    '::std::os::raw::c_schar': 'i8',
+    '::std::os::raw::c_short': 'i16',
+    '::std::os::raw::c_uchar': 'u8',
+    '::std::os::raw::c_uint': 'u32',
+    '::std::os::raw::c_ulonglong': 'u64',
+    '::std::os::raw::c_ulong': 'u64',
+    '::std::os::raw::c_ushort': 'u16'
 }
-
-headers = [
-           'linux/ptrace.h',
-           'linux/unistd.h',
-           'linux/errno.h',
-           'linux/seccomp.h',
-]
-
-stubs = """
-pub const STUB_BPF_PROBE_READ_KERNEL: u64 = 0x%s;
-pub const STUB_BPF_TRACE_PRINTK: u64 = 0x%s;
-"""
 
 # https://github.com/rust-lang/rust-bindgen
 bindgen_cmd = 'bindgen --size_t-is-usize --use-core --no-doc-comments '\
-'--translate-enum-integer-types --no-layout-tests'.split()
+        '--translate-enum-integer-types --no-layout-tests '\
+        '--no-prepend-enum-name'.split()
 
 # These 2 functions are from the old fixup_addrs.py
 def filter_text(nm_line):
@@ -48,12 +32,14 @@ def filter_text(nm_line):
 def get_symbols(vmlinux):
     result = subprocess.run(['nm', vmlinux], check=True, capture_output=True)
     return map(lambda l: l.strip().split(),
-               result.stdout.decode('utf-8').split('\n'))
+            result.stdout.decode('utf-8').split('\n'))
 
 def gen_stubs(vmlinux):
     # Construct a func -> addr map
     text_syms = dict(map(lambda l: (l[2], l[0]),
                          filter(filter_text, get_symbols(vmlinux))))
+    stubs = '\n'.join(map(lambda h: 'pub const STUB_%s: u64 = 0x%%s;' %\
+            h.upper(), helpers))
     output = stubs % tuple(map(lambda f: text_syms[f], helpers))
     with open(os.path.join('src', 'stub.rs'), 'w') as stub_f:
         stub_f.write(output)
@@ -85,7 +71,7 @@ def prep_headers(usr_include):
             mod_rs = ''
             for _, _, files in os.walk(d):
                 mod_rs += '\n'.join(["pub mod %s;" % f[:-3]\
-                                    for f in files if f != 'mod.rs'])
+                        for f in files if f != 'mod.rs'])
 
         with open(os.path.join(d, 'mod.rs'), 'w') as mod_f:
             mod_f.write(mod_rs)
@@ -97,4 +83,6 @@ def main(argv):
     return 0
 
 if __name__ == '__main__':
+    sys.path.insert(1, sys.argv[2])
+    from config import helpers, headers
     exit(main(sys.argv))

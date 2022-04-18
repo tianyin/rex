@@ -3,14 +3,15 @@ LINUX ?= $(HOME)/linux
 LINUX_INC = ${LINUX}/usr/include
 LIBIU_DIR = "../../libiu"
 
-RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0 \
-		-C link-arg=-nostartfiles -A unused -A non_camel_case_types \
+RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
+		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
 		-A non_upper_case_globals -A non_snake_case
 
 all: target/debug/map_test loader event-trigger
 
-target/debug/map_test: ./src/*.rs prep_interface.py ${LINUX}/vmlinux
-	python3 prep_interface.py  ${LINUX}
+target/debug/map_test: ./src/*.rs config.py ${LINUX}/vmlinux
+	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
+		`realpath .`
 	cargo rustc -vv -- ${RUST_FLAGS}
 
 llvm-ir: ./src/*.rs prep_interface.py ${LINUX}/vmlinux
@@ -30,4 +31,4 @@ event-trigger: event-trigger.c
 
 clean:
 	cargo clean
-	rm -rf loader event-trigger
+	rm -rf loader event-trigger ./src/linux/*.rs ./src/stub.rs
