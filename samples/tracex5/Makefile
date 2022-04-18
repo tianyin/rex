@@ -12,4 +12,4 @@ tracex5: tracex5.c
 
 clean:
 	cargo clean
-	rm -rf ./src/linux/*.rs ./src/stub.rs tracex5
+	rm -rf ./src/linux ./src/stub.rs tracex5

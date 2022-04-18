@@ -31,4 +31,4 @@ event-trigger: event-trigger.c
 
 clean:
 	cargo clean
-	rm -rf loader event-trigger ./src/linux/*.rs ./src/stub.rs
+	rm -rf loader event-trigger ./src/linux ./src/stub.rs
