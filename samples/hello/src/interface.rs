@@ -1,2 +1,0 @@
-pub const STUB_BPF_GET_CURRENT_PID_TGID: u64 = 0xffffffff81208500;
-pub const STUB_BPF_TRACE_PRINTK: u64 = 0xffffffff811d7260;
