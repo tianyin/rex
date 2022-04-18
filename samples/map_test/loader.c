@@ -27,13 +27,15 @@ int main(void)
 	iu_set_debug(1); // enable debug info
 
 	prog_fd = iu_prog_load(EXE);
-	
+
 	if (prog_fd < 0)
 		exit(1);
 
-	trace_id_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id", O_RDONLY);
+	trace_id_fd = openat(AT_FDCWD,
+		"/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id", O_RDONLY);
 	if (trace_id_fd < 0) {
-		perror("openat(/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id)");
+		perror("openat(/sys/kernel/debug/tracing/events"
+			"/syscalls/sys_enter_dup/id)");
 		exit(1);
 	}
 	read(trace_id_fd, config_str, 256);
@@ -52,7 +54,8 @@ int main(void)
 	ioctl(perf_event_fd, PERF_EVENT_IOC_SET_BPF, prog_fd);
 	ioctl(perf_event_fd, PERF_EVENT_IOC_ENABLE, 0);
 
-	trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe", O_RDONLY);
+	trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe",
+		O_RDONLY);
 
 	for (;;) {
         char c;
