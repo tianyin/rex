@@ -1,6 +1,7 @@
+import os
 import subprocess
 import sys
-import os
+import toml
 
 # TODO: this is not configured automatically, fix this on your machine first
 types = {
@@ -34,7 +35,7 @@ def get_symbols(vmlinux):
     return map(lambda l: l.strip().split(),
             result.stdout.decode('utf-8').split('\n'))
 
-def gen_stubs(vmlinux):
+def gen_stubs(vmlinux, helpers):
     if len(helpers) == 0:
         return
 
@@ -56,7 +57,7 @@ def bindgen(header):
     assert 'std::' not in output # sanity check
     return output
 
-def prep_headers(usr_include):
+def prep_headers(usr_include, headers):
     if len(headers) == 0:
         return
 
@@ -76,19 +77,30 @@ def prep_headers(usr_include):
             d = os.path.join('./src', d)
             mod_rs = ''
             for _, _, files in os.walk(d):
-                mod_rs += '\n'.join(["pub mod %s;" % f[:-3]\
+                mod_rs += '\n'.join(['pub mod %s;' % f[:-3]\
                         for f in files if f != 'mod.rs'])
 
         with open(os.path.join(d, 'mod.rs'), 'w') as mod_f:
             mod_f.write(mod_rs)
 
+def parse_config(cargo_toml):
+    config = toml.load(cargo_toml)
+    
+    if not 'inner_unikernel' in config:
+        return [], []
+
+    helpers = config['inner_unikernel'].get('helpers', [])
+    headers = config['inner_unikernel'].get('headers', [])
+
+    return helpers, headers
+
 def main(argv):
     linux_path = argv[1]
-    gen_stubs(os.path.join(linux_path, 'vmlinux'))
-    prep_headers(os.path.join(linux_path, 'usr/include'))
+    target_path = argv[2]
+    helpers, headers = parse_config(os.path.join(target_path, 'Cargo.toml'))
+    gen_stubs(os.path.join(linux_path, 'vmlinux'), helpers)
+    prep_headers(os.path.join(linux_path, 'usr/include'), headers)
     return 0
 
 if __name__ == '__main__':
-    sys.path.insert(1, sys.argv[2])
-    from config import helpers, headers
     exit(main(sys.argv))

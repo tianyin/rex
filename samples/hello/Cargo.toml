@@ -13,3 +13,12 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
+
+[inner_unikernel]
+helpers = [
+    "bpf_trace_printk",
+    "bpf_get_current_pid_tgid"
+]
+
+# Also define this if any kernel uapi headers are required
+# headers = []
