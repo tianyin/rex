@@ -9,7 +9,7 @@ RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 
 all: target/debug/map_test loader event-trigger
 
-target/debug/map_test: ./src/*.rs config.py ${LINUX}/vmlinux
+target/debug/map_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
 		`realpath .`
 	cargo rustc -vv -- ${RUST_FLAGS}
