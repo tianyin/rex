@@ -9,7 +9,7 @@ RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 
 all: target/debug/hello loader event-trigger
 
-target/debug/hello: Cargo.toml src/*.rs
+target/debug/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
 		`realpath .`
 	cargo rustc -vv -- ${RUST_FLAGS}
