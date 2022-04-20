@@ -1,4 +1,4 @@
-LINUX ?= ../linux
+LINUX ?= $(HOME)/linux
 
 CXX = clang++
 CXXFLAGS = -g -pipe -std=c++17 -fPIC -I${LINUX}/usr/include

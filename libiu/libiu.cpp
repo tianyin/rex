@@ -7,6 +7,7 @@
 #include <memory>
 #include <type_traits>
 #include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include <fcntl.h>
@@ -25,7 +26,10 @@
 
 namespace { // begin anynomous namespace
 
+class iu_prog; // forward declaration
+
 static int debug = 0;
+static std::unordered_map<int, std::unique_ptr<iu_prog>> progs;
 
 static inline int64_t get_file_size(int fd)
 {
@@ -68,21 +72,21 @@ struct map_def {
 
 class iu_map {
 	map_def def;
-	int fd;
+	int map_fd;
 	const std::string name; // for debug msg
 
 public:
 	iu_map() = delete;
 	iu_map(const Elf_Data *, Elf64_Addr, Elf64_Off, const char *);
-	~iu_map() = default;
+	~iu_map();
 
-	int create(const std::string &name);
+	int create(const std::string &);
 
 	friend class iu_prog; // for debug msg
 };
 
 iu_map::iu_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
-		const char *c_name) : fd(-1), name(c_name)
+		const char *c_name) : map_fd(-1), name(c_name)
 {
 	this->def = *(map_def *)((unsigned char *)data->d_buf + off - base);
 
@@ -94,6 +98,12 @@ iu_map::iu_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
 		std::clog << "max_size=" << this->def.max_size << std::endl;
 		std::clog << "map_flag=" << this->def.map_flag << std::endl;
 	}
+}
+
+iu_map::~iu_map()
+{
+	if (map_fd >= 0)
+		close(map_fd);
 }
 
 int iu_map::create(const std::string &name)
@@ -112,12 +122,13 @@ int iu_map::create(const std::string &name)
 	if (name.size() < BPF_OBJ_NAME_LEN)
 		memcpy(attr.map_name, name.c_str(), name.size());
 
-	this->fd = (int)bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
-	return this->fd;
+	this->map_fd = (int)bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
+	return this->map_fd;
 }
 
 class iu_prog {
 	std::unordered_map<Elf64_Off, iu_map> map_defs;
+	std::unordered_map<std::string, const iu_map *> name2map;
 	std::vector<std::pair<Elf64_Sym *, std::string>> map_ptrs;
 	Elf *elf;
 	Elf_Scn *symtab_scn;
@@ -141,8 +152,10 @@ public:
 
 	// Making this a separate function to avoid exceptions in constructor
 	int parse_elf();
+
 	int fix_maps();
-	int load();
+	int load(unsigned);
+	int find_map_by_name(const char *) const;
 };
 
 iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
@@ -163,6 +176,9 @@ iu_prog::~iu_prog()
 
 	if (file_map)
 		munmap(file_map, file_size);
+
+	if (prog_fd >= 0)
+		close(prog_fd);
 }
 
 int iu_prog::parse_scns()
@@ -332,6 +348,8 @@ int iu_prog::fix_maps()
 			return -1;
 		}
 
+		name2map.insert(std::make_pair(std::string(ptr.second), &it->second));
+
 		if (debug)
 			std::clog << "map_fd=" << map_fd << std::endl;
 
@@ -341,7 +359,7 @@ int iu_prog::fix_maps()
 	return 0;
 }
 
-int iu_prog::load()
+int iu_prog::load(unsigned prog_type)
 {
 	int fd;
 	auto arr = std::make_unique<uint64_t[]>(map_ptrs.size());
@@ -362,7 +380,7 @@ int iu_prog::load()
 
 	memset(&attr, 0, sizeof(attr));
 
-	attr.prog_type = BPF_PROG_TYPE_TRACEPOINT;
+	attr.prog_type = prog_type;
 	memcpy(attr.prog_name, "map_test", sizeof("map_test"));
 	attr.rustfd = fd;
 	attr.license = (__u64)"GPL";
@@ -379,10 +397,23 @@ int iu_prog::load()
 
 	if (remove("rust.out") < 0) {
 		perror("remove");
+
+		if (ret < 0)
+			close(ret);
+
 		ret = -1;
 	}
 
+	if (ret >= 0)
+		this->prog_fd = ret;
+
 	return ret;
+}
+
+int iu_prog::find_map_by_name(const char *name) const
+{
+	auto it = name2map.find(name);
+	return it != name2map.end() ? it->second->map_fd : -1;
 }
 
 } // end anynomous namespace
@@ -392,20 +423,40 @@ void iu_set_debug(const int val)
 	debug = val;
 }
 
-int iu_prog_load(const char *file_path)
+int iu_prog_load(const char *file_path, unsigned prog_type)
 {
 	int ret;
 
 	if (elf_version(EV_CURRENT) == EV_NONE) {
 		std::cerr << "elf: failed to init libelf" << std::endl;
-		return 1;
+		return -1;
 	}
 
-	iu_prog prog(file_path);
+	auto prog = std::make_unique<iu_prog>(file_path);
 
-	ret = prog.parse_elf();
-	ret = ret ? : prog.fix_maps();
-	ret = ret ? : prog.load();
+	ret = prog->parse_elf();
+	ret = ret ? : prog->fix_maps();
+	ret = ret ? : prog->load(prog_type);
+
+	if (ret >= 0)
+		progs[ret] = std::move(prog);
 
 	return ret;
+}
+
+int iu_prog_close(int prog_fd)
+{
+	auto it = progs.find(prog_fd);
+	if (it != progs.end()) {
+		progs.erase(it);
+		return 0;
+	}
+
+	return -1;
+}
+
+int iu_prog_get_map(int prog_fd, const char *map_name)
+{
+	auto it = progs.find(prog_fd);
+	return it != progs.end() ? it->second->find_map_by_name(map_name) : -1;
 }
