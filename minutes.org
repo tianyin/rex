@@ -1,4 +1,33 @@
 MEETING MINUTES
+* 22-04-15 (scribe: Sayeed)
+- Running ~cpustat~ might not be possible in VM
+  - The files needed for scaling max frequency is absent in VM
+  - Changing ~config~ did not work
+- Loading multiple programs succeeded
+  - We should think of following the ~libbpf~ way to load programs
+  - Current attaching is simpler than ~libbpf~
+- Working map implementation similar to the eBPF way
+  - Static struct variables have relocation
+  - No rewriting the address above 32 bits
+  - Difference between map address and program can be more than 32 bits
+  - SOLUTION: Static variable for map and pointer to that variable
+- The eBPF way for maps
+  - Map defined in kernel program and allocated inside the kernel as global
+  - Loading: Iterating through the symbol table to find maps
+- Trust model
+  - Are map offsets in the loader trusted?
+  - Can an attacker pass a bad map offset?
+  - Trusted part in userspace needs to be reduced
+  - Currently the only unsafe portion in Rust is pointer dereferencing
+  - Loader should not be trusted
+  - Think about what normal eBPF loader does which we are not doing (or vice versa)
+  - Signature scheme can be used by Rust compiler
+- Next tasks
+  - Implementing all sample applications to see if we covered all cases
+  - Wrap up loading part -> API can be same as ~libbpf~
+  - Trust model like kernel modules
+- Ultimate vision
+  - Running kernel through extensions
 * 22-04-01 (scribe: Jinghao)
 *** Where we are
 - Abstract merged
