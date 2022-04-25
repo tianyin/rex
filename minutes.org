@@ -1,4 +1,47 @@
 MEETING MINUTES
+* 22-04-22 (scribe: Jinghao)
+*** Where we are
+- The ~libiu~ now has basic functionalities.
+  - load maps in the eBPF way
+  - allow userspace to retrieve map fds to communicate with in-kernel programs
+- New onboarding task created
+  - walks through the environment setup and the ~hello~ example
+  - asks for an inner-unikernel implementation of [[https://elixir.bootlin.com/linux/v5.15/source/samples/bpf/trace_event_kern.c][trace_event]].
+
+*** Insights & discussion:
+- Current infrastructure does not support multiple programs (entry functions) in
+  the same file
+  - This is the case in many eBPF programs, notably kernel samples and BMC
+- Solution to above: make it the eBPF's way
+  - Let user to annotate the entry functions using section attributes
+    - e.g. ~SEC("kprobe/__seccomp_filter")~ specifies this is an entry function
+      for ~BPF_PROG_TYPE_KPROBE~.
+  - At load time we first load the whole ELF into the kernel as a base object
+    - Corresponds to one inner-unikernel src file
+    - Could have multiple entry points
+  - Then by using the userspace library to parse out the entry functions, we can
+    create actual programs in the kernel that has the ~prog->bpf_func~ set
+    correctly.
+    - These programs should take ref-counts to the base object so that it is not
+      deallocated until all programs are gone.
+- Using Rust also allows users to use static variables to store state
+  - States now also stored in programs itselfs, instead of only in maps
+  - Static variables are not atomic. Since programs can be triggered from
+    multiple tasks at the same time (e.g. trace-point), accessing them requires
+    locks.
+- evaluation: we want to design experiments that makes eBPF look bad and us look
+  good
+- security
+  - Side channels and transient execution attack?
+  - Threat model is also interesting, the loading part may be trusted but since
+    the actually execution can happen on any task so it's not trusted. Could a
+    malicious user trick inner-unikernel programs into doing something bad?
+
+*** Where we are going
+- Focus on BMC
+  - eBPF part: @Sayeed42
+  - Rust part + new infrastructure (see above): @jiajinghao1998
+
 * 22-04-15 (scribe: Sayeed)
 - Running ~cpustat~ might not be possible in VM
   - The files needed for scaling max frequency is absent in VM
