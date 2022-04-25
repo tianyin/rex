@@ -7,6 +7,10 @@ MEETING MINUTES
 - New onboarding task created
   - walks through the environment setup and the ~hello~ example
   - asks for an inner-unikernel implementation of [[https://elixir.bootlin.com/linux/v5.15/source/samples/bpf/trace_event_kern.c][trace_event]].
+- New ~vmalloc~ implementation of loading code finished
+  - Allocates the program as a whole and then sets up page permissions
+  - Not longer need to allocate sections separately, which requires us to
+    specify the start and end address for the sections to be on contiguous pages
 
 *** Insights & discussion:
 - Current infrastructure does not support multiple programs (entry functions) in
