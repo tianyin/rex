@@ -4,37 +4,26 @@ MEETING MINUTES
   - The way eBPF does it
     - Different functions in different sections, all code in same file
   - Our implementation
-    - We were loading different programs (functions) separately, 
-    which could not share maps
-    - It is possible to put different functions in different sections 
-    in Rust, just like eBPF
+    - We were loading different programs (functions) separately, which could not share maps
+    - It is possible to put different functions in different sections in Rust, just like eBPF
     - But it would still need ~_start~ function to compile properly
     - Absence of ~_start~ function results in dead code
     - Turning off dead code in compiler is not an option
-    - So we keep ~_start~ function just as a placeholder, but it is 
-    never executed
+    - So we keep ~_start~ function just as a placeholder, but it is never executed
     - Other functions are executed using offsets to the sections
 - Security model
-  - There are existing attacks that exploit current eBPF, like 
-  transient execution attacks
-  - Our current implementation may not have the protection, that SMAP 
-  provides
+  - There are existing attacks that exploit current eBPF, like transient execution attacks
+  - Our current implementation may not have the protection, that SMAP provides
   - We need to explore the implications of the absence of SMAP
-  - So in the context of security, the question that needs to be 
-  answered:
-    - Are we making it worse than eBPF, keeping at the same level as 
-    eBPF, or making it better?
+  - So in the context of security, the question that needs to be answered:
+    - Are we making it worse than eBPF, keeping at the same level as eBPF, or making it better?
 - BMC
   - The original one still getting rejected by verifier
-  - Newer kernel version or newer compiler version can be the 
-  underlying cause
-  - Nevertheless, we want to rewrite it, so that it gets verified and 
-  the logic is preserved
-  - The dump log shows the rejected instruction at the bytecode 
-  level, which may not be evident from the corresponding C code
-  - The whole function may need to be understood to debug the 
-  rejected lines and rewrite them
-
+  - Newer kernel version or newer compiler version can be the underlying cause
+  - Nevertheless, we want to rewrite it, so that it gets verified and the logic is preserved
+  - The dump log shows the rejected instruction at the bytecode level, which may not be evident from the corresponding line of C code
+  - The whole function may need to be understood to debug the rejected lines and rewrite them
+  
 * 22-04-22 (scribe: Jinghao)
 *** Where we are
 - The ~libiu~ now has basic functionalities.
