@@ -18,7 +18,8 @@ use crate::linux::bpf::*;
 MAP_DEF!(map1, __map_1, i32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
 
 #[no_mangle]
-fn _start() -> i32 {
+#[link_section = "tracepoint/"]
+fn iu_prog1() -> i32 {
     let key: i32 = 0;
 
     match bpf_map_lookup_elem::<i32, i64>(map1, key) {
@@ -36,6 +37,11 @@ fn _start() -> i32 {
     bpf_map_update_elem(map1, key, pid as i64, BPF_ANY.into());
     return 0;
 }
+
+//#[no_mangle]
+//fn _start() -> i32 {
+//   iu_prog1();
+//}
 
 // This function is called on panic.
 #[panic_handler]

@@ -21,16 +21,23 @@ static inline long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
 
 int main(void)
 {
-	int prog_fd, trace_id_fd, perf_event_fd, trace_pipe_fd;
+	int base_fd, prog_fd, trace_id_fd, perf_event_fd, trace_pipe_fd;
 	char config_str[256];
 	struct perf_event_attr p_attr;
 
 	iu_set_debug(1); // enable debug info
 
-	prog_fd = iu_prog_load(EXE, BPF_PROG_TYPE_TRACEPOINT);
+	base_fd = iu_prog_load(EXE, BPF_PROG_TYPE_TRACEPOINT);
 
-	if (prog_fd < 0)
+	if (base_fd < 0)
 		exit(1);
+
+	prog_fd = iu_prog_get_subprog(base_fd, "iu_prog1");
+
+	if (prog_fd < 0) {
+		fprintf(stderr, "iu_prog1 not found\n");
+		exit(1);
+	}
 
 	trace_id_fd = openat(AT_FDCWD,
 		"/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id", O_RDONLY);
