@@ -1,3 +1,4 @@
+#include <array>
 #include <cerrno>
 #include <cstring>
 #include <cstdint>
@@ -22,9 +23,42 @@
 
 #include "libiu.h"
 
-#define BPF_PROG_LOAD_DJW 0x1234beef
-
 namespace { // begin anynomous namespace
+#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
+
+// https://elixir.bootlin.com/linux/v5.15/source/tools/lib/bpf/libbpf.c#L224
+struct iu_sec_def {
+	const char *sec;
+	size_t len;
+	bpf_prog_type prog_type;
+};
+
+#define SEC_DEF(sec_pfx, ptype) {					    \
+	.sec = sec_pfx,							    \
+	.len = sizeof(sec_pfx) - 1,					    \
+	.prog_type = BPF_PROG_TYPE_##ptype,				    \
+}
+
+static iu_sec_def section_defs[] = {
+	SEC_DEF("kprobe/", KPROBE),
+	SEC_DEF("tracepoint/", TRACEPOINT),
+	// more sec defs in the future
+};
+
+#undef SEC_DEF
+
+static int find_sec_def(const char *sec_name)
+{
+	int i, n = ARRAY_SIZE(section_defs);
+
+	for (i = 0; i < n; i++) {
+		if (strncmp(sec_name,
+			    section_defs[i].sec, section_defs[i].len))
+			continue;
+		return section_defs[i].prog_type;
+	}
+	return -1;
+}
 
 class iu_prog; // forward declaration
 
@@ -127,9 +161,23 @@ int iu_map::create(const std::string &name)
 }
 
 class iu_prog {
+	struct subprog {
+		std::string name;
+		int prog_type;
+		Elf64_Off offset;
+		int fd;
+
+		subprog() = delete;
+		subprog(const char *nm, int prog_ty, Elf64_Off off) : name(nm), 
+			prog_type(prog_ty), offset(off), fd(-1) {}
+		~subprog() = default;
+	};
+
 	std::unordered_map<Elf64_Off, iu_map> map_defs;
 	std::unordered_map<std::string, const iu_map *> name2map;
 	std::vector<std::pair<Elf64_Sym *, std::string>> map_ptrs;
+	std::unordered_map<std::string, subprog> subprogs;
+
 	Elf *elf;
 	Elf_Scn *symtab_scn;
 	Elf_Scn *maps_scn;
@@ -139,6 +187,7 @@ class iu_prog {
 
 	int parse_scns();
 	int parse_maps();
+	int parse_subprogs();
 
 public:
 	iu_prog() = delete;
@@ -156,6 +205,7 @@ public:
 	int fix_maps();
 	int load(unsigned);
 	int find_map_by_name(const char *) const;
+	int find_subprog_by_name(const char *) const;
 };
 
 iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
@@ -164,6 +214,7 @@ iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
 	int fd = open(c_path, 0, O_RDONLY);
 	this->elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
 	file_size = get_file_size(fd);
+	// FIXME probably going to corrupt original file
 	file_map = (unsigned char *)mmap(NULL, file_size, PROT_READ | PROT_WRITE,
 			MAP_PRIVATE, fd, 0);
 	close(fd);
@@ -201,10 +252,10 @@ int iu_prog::parse_scns()
 			return -1;
 		}
 
-		name = elf_strptr(elf, shstrndx, sh->sh_name);
+		name = elf_strptr(this->elf, shstrndx, sh->sh_name);
 
 		if (!name) {
-			std::cerr << "nelf: failed to get section name" << std::endl;
+			std::cerr << "elf: failed to get section name" << std::endl;
 			return -1;
 		}
 
@@ -286,6 +337,57 @@ int iu_prog::parse_maps()
 	return 0;
 }
 
+// get sec name
+// get function symbols
+int iu_prog::parse_subprogs()
+{
+	size_t shstrndx, strtabidx;
+	Elf_Data *syms;
+	int nr_syms;
+	
+	strtabidx = elf64_getshdr(symtab_scn)->sh_link;
+
+	if (elf_getshdrstrndx(elf, &shstrndx)) {
+		std::cerr << "elf: failed to get section names section index"
+			<< std::endl;                                                       
+		return -1; 	
+	}
+
+	syms = elf_getdata(symtab_scn, 0);
+	
+	if (!syms) {
+		std::cerr << "elf: failed to get symbol definitions" << std::endl;
+		return -1;
+    }
+
+	nr_syms = syms->d_size / sizeof(Elf64_Sym);
+
+	for (int i = 0; i < nr_syms; i++) {
+		Elf64_Sym *sym = (Elf64_Sym *)syms->d_buf + i;
+		Elf_Scn *scn = elf_getscn(this->elf, sym->st_shndx);
+		char *scn_name, *sym_name;
+
+		if (!scn || ELF64_ST_TYPE(sym->st_info) != STT_FUNC)
+			continue;
+
+		scn_name = elf_strptr(this->elf, shstrndx, 
+				elf64_getshdr(scn)->sh_name);
+		
+		int prog_type = find_sec_def(scn_name);
+		if (prog_type < 0)
+			continue;
+		
+		sym_name = elf_strptr(elf, strtabidx, sym->st_name);
+
+		if (debug) {
+			std::clog << "section: " << scn_name << std::endl;
+			std::clog << "symbol: " << sym_name << std::endl;
+		}
+
+		subprogs.try_emplace(sym_name, sym_name, prog_type, sym->st_value);
+	}
+	return 0;
+};
 int iu_prog::parse_elf()
 {
 	int ret;
@@ -297,6 +399,7 @@ int iu_prog::parse_elf()
 
 	ret = this->parse_scns();
 	ret = ret < 0 ? : this->parse_maps();
+	ret = ret < 0 ? : this->parse_subprogs();
 
 	return ret;
 }
@@ -363,7 +466,7 @@ int iu_prog::load(unsigned prog_type)
 {
 	int fd;
 	auto arr = std::make_unique<uint64_t[]>(map_ptrs.size());
-	union bpf_attr attr;
+	union bpf_attr attr, sp_attr;
 	int idx = 0, ret = 0;
 
 	// TODO: Will have race condition if multiple progs loaded at same time
@@ -380,7 +483,7 @@ int iu_prog::load(unsigned prog_type)
 
 	memset(&attr, 0, sizeof(attr));
 
-	attr.prog_type = prog_type;
+	attr.prog_type = BPF_PROG_TYPE_IU_BASE;
 	memcpy(attr.prog_name, "map_test", sizeof("map_test"));
 	attr.rustfd = fd;
 	attr.license = (__u64)"GPL";
@@ -388,32 +491,64 @@ int iu_prog::load(unsigned prog_type)
 	attr.map_offs = (__u64)arr.get();
 	attr.map_cnt = map_ptrs.size();
 
-	ret = bpf(BPF_PROG_LOAD_DJW, &attr, sizeof(attr));
+	ret = bpf(BPF_PROG_LOAD_IU_BASE, &attr, sizeof(attr));
 
 	if (ret < 0) {
-		perror("bpf_prog_load");
-		ret = -1;
+		perror("bpf_prog_load_iu_base");
+		return -1;
 	}
+
+	this->prog_fd = ret;
+
+	if (debug)
+		std::clog << "Base program loaded, fd = " << ret << std::endl;
 
 	if (remove("rust.out") < 0) {
 		perror("remove");
-
-		if (ret < 0)
-			close(ret);
-
-		ret = -1;
+		goto close_fds;
 	}
 
-	if (ret >= 0)
-		this->prog_fd = ret;
+	for (auto &it: subprogs) {
+		memset(&sp_attr, 0, sizeof(sp_attr));
+		attr.prog_type = it.second.prog_type;
+		strncpy(attr.prog_name, it.second.name.c_str(),
+				sizeof(attr.prog_name) - 1);
+		attr.base_prog_fd = this->prog_fd;
+		attr.prog_offset = it.second.offset;
+		attr.license = (__u64)"GPL";
+		it.second.fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
+		
+		if (it.second.fd < 0) {
+			perror("bpf_prog_load_iu");
+			goto close_fds;
+		}
+
+		if (debug)
+			std::clog << "Program " << it.first << " loaded, fd = "
+				<< it.second.fd << std::endl;
+	}
 
 	return ret;
+
+close_fds:
+	for (auto &it: subprogs) {
+		if (it.second.fd >= 0)
+			close(it.second.fd);
+	}
+	close(this->prog_fd);
+	return -1;
 }
 
 int iu_prog::find_map_by_name(const char *name) const
 {
 	auto it = name2map.find(name);
 	return it != name2map.end() ? it->second->map_fd : -1;
+}
+
+int iu_prog::find_subprog_by_name(const char *name) const
+{
+	auto it = subprogs.find(name);
+	return it != subprogs.end() ? it->second.fd : -1;
 }
 
 } // end anynomous namespace
@@ -459,4 +594,11 @@ int iu_prog_get_map(int prog_fd, const char *map_name)
 {
 	auto it = progs.find(prog_fd);
 	return it != progs.end() ? it->second->find_map_by_name(map_name) : -1;
+}
+
+int iu_prog_get_subprog(int prog_fd, const char *subprog_name)
+{
+	auto it = progs.find(prog_fd);
+	return it != progs.end() ?
+		it->second->find_subprog_by_name(subprog_name) : -1;
 }
