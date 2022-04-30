@@ -5,7 +5,6 @@
 #include <sys/ioctl.h>
 #include <unistd.h>
 
-#include <linux/bpf.h>
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 
@@ -27,7 +26,7 @@ int main(void)
 
 	iu_set_debug(1); // enable debug info
 
-	base_fd = iu_prog_load(EXE, BPF_PROG_TYPE_TRACEPOINT);
+	base_fd = iu_prog_load(EXE);
 
 	if (base_fd < 0)
 		exit(1);
