@@ -203,7 +203,7 @@ public:
 	int parse_elf();
 
 	int fix_maps();
-	int load(unsigned);
+	int load();
 	int find_map_by_name(const char *) const;
 	int find_subprog_by_name(const char *) const;
 };
@@ -462,7 +462,7 @@ int iu_prog::fix_maps()
 	return 0;
 }
 
-int iu_prog::load(unsigned prog_type)
+int iu_prog::load()
 {
 	int fd;
 	auto arr = std::make_unique<uint64_t[]>(map_ptrs.size());
@@ -558,7 +558,7 @@ void iu_set_debug(const int val)
 	debug = val;
 }
 
-int iu_prog_load(const char *file_path, unsigned prog_type)
+int iu_prog_load(const char *file_path)
 {
 	int ret;
 
@@ -571,7 +571,7 @@ int iu_prog_load(const char *file_path, unsigned prog_type)
 
 	ret = prog->parse_elf();
 	ret = ret ? : prog->fix_maps();
-	ret = ret ? : prog->load(prog_type);
+	ret = ret ? : prog->load();
 
 	if (ret >= 0)
 		progs[ret] = std::move(prog);
