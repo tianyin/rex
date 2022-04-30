@@ -38,10 +38,10 @@ fn iu_prog1() -> i32 {
     return 0;
 }
 
-//#[no_mangle]
-//fn _start() -> i32 {
-//   iu_prog1();
-//}
+#[no_mangle]
+fn _start() -> i32 {
+    iu_prog1()
+}
 
 // This function is called on panic.
 #[panic_handler]
