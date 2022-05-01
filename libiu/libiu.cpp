@@ -168,7 +168,7 @@ class iu_prog {
 		int fd;
 
 		subprog() = delete;
-		subprog(const char *nm, int prog_ty, Elf64_Off off) : name(nm), 
+		subprog(const char *nm, int prog_ty, Elf64_Off off) : name(nm),
 			prog_type(prog_ty), offset(off), fd(-1) {}
 		~subprog() = default;
 	};
@@ -344,17 +344,17 @@ int iu_prog::parse_subprogs()
 	size_t shstrndx, strtabidx;
 	Elf_Data *syms;
 	int nr_syms;
-	
+
 	strtabidx = elf64_getshdr(symtab_scn)->sh_link;
 
 	if (elf_getshdrstrndx(elf, &shstrndx)) {
 		std::cerr << "elf: failed to get section names section index"
-			<< std::endl;                                                       
-		return -1; 	
+			<< std::endl;
+		return -1;
 	}
 
 	syms = elf_getdata(symtab_scn, 0);
-	
+
 	if (!syms) {
 		std::cerr << "elf: failed to get symbol definitions" << std::endl;
 		return -1;
@@ -370,13 +370,13 @@ int iu_prog::parse_subprogs()
 		if (!scn || ELF64_ST_TYPE(sym->st_info) != STT_FUNC)
 			continue;
 
-		scn_name = elf_strptr(this->elf, shstrndx, 
+		scn_name = elf_strptr(this->elf, shstrndx,
 				elf64_getshdr(scn)->sh_name);
-		
+
 		int prog_type = find_sec_def(scn_name);
 		if (prog_type < 0)
 			continue;
-		
+
 		sym_name = elf_strptr(elf, strtabidx, sym->st_name);
 
 		if (debug) {
@@ -517,7 +517,7 @@ int iu_prog::load()
 		attr.prog_offset = it.second.offset;
 		attr.license = (__u64)"GPL";
 		it.second.fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
-		
+
 		if (it.second.fd < 0) {
 			perror("bpf_prog_load_iu");
 			goto close_fds;
