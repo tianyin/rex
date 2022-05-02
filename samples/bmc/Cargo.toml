@@ -17,3 +17,22 @@ panic = "abort"
 
 [profile.release]
 panic = "abort"
+
+[inner_unikernel]
+
+helpers = [
+    "bpf_map_lookup_elem",
+    "bpf_spin_lock",
+    "bpf_spin_unlock",
+    "bpf_xdp_adjust_head",
+    "bpf_xdp_adjust_tail",
+    "bpf_trace_printk", # for debugging
+]
+
+headers = [
+    "linux/bpf.h",
+    "linux/if_ether.h",
+    "linux/ip.h",
+    "linux/udp.h",
+    "linux/tcp.h",
+]
