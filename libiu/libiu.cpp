@@ -79,13 +79,13 @@ static inline int64_t get_file_size(int fd)
 template<typename T, std::enable_if_t<std::is_integral<T>::value, bool> = true>
 static inline T val_from_buf(const unsigned char *buf)
 {
-	return *(const T *)(buf);
+	return *reinterpret_cast<const T *>(buf);
 }
 
 template<typename T, std::enable_if_t<std::is_integral<T>::value, bool> = true>
 static inline void val_to_buf(unsigned char *buf, const T val)
 {
-	*(T *)(buf) = val;
+	*reinterpret_cast<T *>(buf) = val;
 }
 
 static inline long bpf(__u64 cmd, union bpf_attr *attr, unsigned int size)
@@ -122,7 +122,8 @@ public:
 iu_map::iu_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
 		const char *c_name) : map_fd(-1), name(c_name)
 {
-	this->def = *(map_def *)((unsigned char *)data->d_buf + off - base);
+	auto def_addr = reinterpret_cast<uint64_t>(data->d_buf) + off - base;
+	this->def = *reinterpret_cast<map_def *>(def_addr);
 
 	if (debug) {
 		std::clog << "sym_name=" << c_name << std::endl;
@@ -156,7 +157,7 @@ int iu_map::create(const std::string &name)
 	if (name.size() < BPF_OBJ_NAME_LEN)
 		memcpy(attr.map_name, name.c_str(), name.size());
 
-	this->map_fd = (int)bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
+	this->map_fd = static_cast<int>(bpf(BPF_MAP_CREATE, &attr, sizeof(attr)));
 	return this->map_fd;
 }
 
@@ -215,8 +216,8 @@ iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
 	this->elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
 	file_size = get_file_size(fd);
 	// FIXME probably going to corrupt original file
-	file_map = (unsigned char *)mmap(NULL, file_size, PROT_READ | PROT_WRITE,
-			MAP_PRIVATE, fd, 0);
+	file_map = reinterpret_cast<unsigned char *>(mmap(NULL, file_size,
+			PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
 	close(fd);
 }
 
@@ -306,7 +307,7 @@ int iu_prog::parse_maps()
 	nr_syms = syms->d_size / sizeof(Elf64_Sym);
 
 	for (int i = 0; i < nr_syms; i++) {
-		Elf64_Sym *sym = (Elf64_Sym *)syms->d_buf + i;
+		Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + i;
 		char *name;
 
 		if (sym->st_shndx != maps_shndx ||
@@ -363,7 +364,7 @@ int iu_prog::parse_subprogs()
 	nr_syms = syms->d_size / sizeof(Elf64_Sym);
 
 	for (int i = 0; i < nr_syms; i++) {
-		Elf64_Sym *sym = (Elf64_Sym *)syms->d_buf + i;
+		Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + i;
 		Elf_Scn *scn = elf_getscn(this->elf, sym->st_shndx);
 		char *scn_name, *sym_name;
 
@@ -421,7 +422,7 @@ int iu_prog::fix_maps()
 			<< elf64_getshdr(maps_scn)->sh_offset << std::dec << std::endl;
 	}
 
-	if (this->file_size < 0 || (int64_t)this->file_map < 0) {
+	if (this->file_size < 0 || reinterpret_cast<int64_t>(this->file_map) < 0) {
 		perror("mmap");
 		return -1;
 	}
