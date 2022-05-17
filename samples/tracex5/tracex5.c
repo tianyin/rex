@@ -15,6 +15,8 @@
 #include <sys/prctl.h>
 #include <unistd.h>
 
+#include "libiu.h"
+
 #define BPF_PROG_LOAD_DJW 0x1234beef
 
 /* install fake seccomp program to enable seccomp code path inside the kernel,
@@ -171,28 +173,29 @@ static void read_trace_pipe(void)
 
 int main(void)
 {
-	int fd1, fd2;
+	int prog_fd, base_fd;
 	FILE *f;
 
-	fd1 = open("./target/debug/tracex5", O_RDONLY);
-	if (fd1 < 0) {
-		perror("open");
-		goto out_err;
-	}
+	iu_set_debug(1); // enable debug info
 
-	fd2 = do_actual_bpf(fd1);
+	base_fd = iu_prog_load("./target/debug/tracex5");
 
-	if (fd2 < 0) {
+	if (base_fd < 0)
+		exit(1);
+
+	prog_fd = iu_prog_get_subprog(base_fd, "_start");
+
+ 	if (prog_fd < 0) {
+ 		fprintf(stderr, "_start not found\n");
+ 		exit(1);
+ 	}
+
+	if (prog_fd < 0) {
 		perror("bpf");
 		goto out_err;
 	}
 
-	if (close(fd1) < 0) {
-		perror("close");
-		goto out_err;
-	}
-
-	if (kprobe_attach(fd2, "__seccomp_filter") < 0) {
+	if (kprobe_attach(prog_fd, "__seccomp_filter") < 0) {
 		perror("kprobe_attach");
 		goto out_err;
 	}

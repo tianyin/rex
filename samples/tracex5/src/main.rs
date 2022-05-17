@@ -73,6 +73,7 @@ pub fn func_sys_mmap(ctx: &pt_regs) -> i32 {
 
 // Rustonomicon says reference is safe here
 #[no_mangle]
+#[link_section = "kprobe/"]
 pub extern "C" fn _start(ctx: &pt_regs) -> i32 {
     match ctx.rdi as u32 {
         __NR_read => {
