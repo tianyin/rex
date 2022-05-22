@@ -1,5 +1,5 @@
 MEETING MINUTES
-* 22-05-06 (scribe: Jinghao)
+* 22-05-20 (scribe: Jinghao)
 *** Where we are
 - BMC
   - The code passes the verfier using clang-9
