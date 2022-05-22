@@ -17,8 +17,6 @@
 
 #include "libiu.h"
 
-#define BPF_PROG_LOAD_DJW 0x1234beef
-
 /* install fake seccomp program to enable seccomp code path inside the kernel,
  * so that our kprobe attached to seccomp_phase1() can be triggered
  */
@@ -33,22 +31,6 @@ static void install_accept_all_seccomp(void)
 	};
 	if (prctl(PR_SET_SECCOMP, 2, &prog))
 		perror("prctl");
-}
-
-static int bpf(enum bpf_cmd cmd, union bpf_attr *attr, unsigned int size)
-{
-	return syscall(__NR_bpf, cmd, attr, size);
-}
-
-int do_actual_bpf(int fd) {
-	union bpf_attr attr;
-	memset(&attr, 0, sizeof(attr));
-	attr.prog_type = BPF_PROG_TYPE_KPROBE;
-	strcpy(attr.prog_name,"cool_prog");
-	attr.rustfd = fd;
-	attr.kern_version = KERNEL_VERSION(5, 13, 0);
-	attr.license = (__u64)"GPL";
-	return bpf(BPF_PROG_LOAD_DJW, &attr, sizeof(attr));
 }
 
 #define STRERR_BUFSIZE  128
