@@ -1,4 +1,25 @@
 MEETING MINUTES
+* 22-05-06 (scribe: Jinghao)
+*** Where we are
+- BMC
+  - The code passes the verfier using clang-9
+  - We might want to know why it is failing the verifier when using the lastest
+    llvm-toolchain, but looks like it would take too much time.
+*** Where we are going
+- Run BMC
+  - Setup memcached and run some benchmark
+  - e.g. [[https://redis.com/blog/memtier_benchmark-a-high-throughput-benchmarking-tool-for-redis-memcached/][memtier_benchmark]]
+- We want to draw a graph that when we gradually increase the data size we get
+  a sudden degradation in performance because the eBPF program cannot process
+  such a large data size.
+- Summer plan:
+  - After talking to Tianyin, I (i.e. Jinghao) agree with him that I should
+    spend most of my time on the internship project. I will still help on our
+	project during the summer but probably will only be able to do discussion /
+	code fix stuff.
+- misc: This is a good read and I think it is kinda related to our porject (I
+  have already sent it to our channel).
+  [[https://www.bunniestudios.com/blog/?p=6375]]
 * 22-04-29 (scribe: Sayeed)
 - Sharing maps among multiple programs
   - The way eBPF does it
@@ -23,7 +44,7 @@ MEETING MINUTES
   - Nevertheless, we want to rewrite it, so that it gets verified and the logic is preserved
   - The dump log shows the rejected instruction at the bytecode level, which may not be evident from the corresponding line of C code
   - The whole function may need to be understood to debug the rejected lines and rewrite them
-  
+
 * 22-04-22 (scribe: Jinghao)
 *** Where we are
 - The ~libiu~ now has basic functionalities.
