@@ -15,8 +15,8 @@ MEETING MINUTES
 - Summer plan:
   - After talking to Tianyin, I (i.e. Jinghao) agree with him that I should
     spend most of my time on the internship project. I will still help on our
-	project during the summer but probably will only be able to do discussion /
-	code fix stuff.
+    project during the summer but probably will only be able to do discussion /
+    code fix stuff.
 - misc: This is a good read and I think it is kinda related to our porject (I
   have already sent it to our channel).
   [[https://www.bunniestudios.com/blog/?p=6375]]
