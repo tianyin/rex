@@ -1,8 +1,5 @@
-#include <array>
-#include <cerrno>
 #include <cstring>
 #include <cstdint>
-#include <cstdio>
 #include <fstream>
 #include <iostream>
 #include <memory>
@@ -215,7 +212,10 @@ iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
 	int fd = open(c_path, 0, O_RDONLY);
 	this->elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
 	file_size = get_file_size(fd);
-	// FIXME probably going to corrupt original file
+	
+	// MAP_PRIVATE ensures the changes are not carried through to the backing
+	// file
+	// reference: `man 2 mmap`
 	file_map = reinterpret_cast<unsigned char *>(mmap(NULL, file_size,
 			PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
 	close(fd);
