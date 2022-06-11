@@ -84,7 +84,6 @@ fi
 		-machine accel=kvm:tcg \
 		-watchdog i6300esb \
 		-device virtio-rng-pci \
-		-cpu host \
 		-smp $NRCPU \
 		-m $MEMORY \
 		$fs \
