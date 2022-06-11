@@ -13,10 +13,11 @@ pub const PERF_MAX_STACK_DEPTH: usize = 127;
 //     u32 userstack;
 // };
 
+#[derive(Copy, Clone)]
 pub struct key_t {
-    comm: [u8; TASK_COMM_LEN],
-    kernstack: u32,
-    userstack: u32,
+    pub comm: [u8; TASK_COMM_LEN],
+    pub kernstack: u32,
+    pub userstack: u32,
 }
 
 #[repr(C)]
