@@ -57,7 +57,14 @@ fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
         KERN_STACKID_FLAGS,
     ) as u32;
 
-    bpf_trace_printk!("kernstack: %u\n", u32: key.kernstack);
+    key.userstack = bpf_get_stackid::<bpf_perf_event_data, IUMap<u32, [u64; PERF_MAX_STACK_DEPTH]>>(
+        ctx,
+        stackmap,
+        USER_STACKID_FLAGS,
+    ) as u32;
+
+    bpf_trace_printk!("kernstack: 0x%08u\n", u32: key.kernstack);
+    bpf_trace_printk!("userstack: 0x%08u\n", u32: key.userstack);
 
     match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
