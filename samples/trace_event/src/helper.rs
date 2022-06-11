@@ -7,6 +7,12 @@ pub fn bpf_get_current_pid_tgid() -> u64 {
     code()
 }
 
+pub fn bpf_get_current_comm<T>(buf: &T, size_of_buf: usize) -> i64 {
+    let ptr = stub::STUB_BPF_GET_CURRENT_COMM as *const ();
+    let code: extern "C" fn(&T, u32) -> i64 = unsafe { core::mem::transmute(ptr) };
+    code(buf, size_of_buf as u32) 
+}
+
 #[macro_export]
 macro_rules! bpf_trace_printk {
     ($s:expr) => {

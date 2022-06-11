@@ -33,11 +33,15 @@ pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK
 #[no_mangle]
 #[link_section = "perf_event"]
 fn iu_prog1() -> i32 {
-    let pe_key: key_t = key_t {
+    let mut pe_key: key_t = key_t {
         comm: [0; TASK_COMM_LEN],
         kernstack: 0,
         userstack: 0,
     };
+
+    bpf_get_current_comm::<i8>(&pe_key.comm[0], TASK_COMM_LEN);
+
+    bpf_trace_printk!("command: %s\n", &i8: &pe_key.comm[0]);
 
     match bpf_map_lookup_elem::<key_t, u64>(counts, pe_key) {
         None => {
