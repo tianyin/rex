@@ -35,7 +35,7 @@ pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK
 #[no_mangle]
 #[link_section = "perf_event"]
 fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
-    let mut pe_key: key_t = key_t {
+    let mut key: key_t = key_t {
         comm: [0; TASK_COMM_LEN],
         kernstack: 0,
         userstack: 0,
@@ -47,18 +47,18 @@ fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
         return 0;
     }
 
-    bpf_get_current_comm::<i8>(&pe_key.comm[0], TASK_COMM_LEN);
+    bpf_get_current_comm::<i8>(&key.comm[0], TASK_COMM_LEN);
 
-    bpf_trace_printk!("command: %s\n", &i8: &pe_key.comm[0]);
+    bpf_trace_printk!("command: %s\n", &i8: &key.comm[0]);
 
-    match bpf_map_lookup_elem::<key_t, u64>(counts, pe_key) {
+    match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
-            bpf_trace_printk!("`pe_key' is encontered the first time. Create record in the map with count one.\n");
-            bpf_map_update_elem(counts, pe_key, 1, BPF_NOEXIST.into());
+            bpf_trace_printk!("`key' is encontered the first time. Create record in the map with count one.\n");
+            bpf_map_update_elem(counts, key, 1, BPF_NOEXIST.into());
         }
         Some(val) => {
-            bpf_trace_printk!("`pe_key' is already in the map. Previous count is %llu. Update its count.\n", u64: val);
-            bpf_map_update_elem(counts, pe_key, val+1, BPF_EXIST.into());
+            bpf_trace_printk!("`key' is already in the map. Previous count is %llu. Update its count.\n", u64: val);
+            bpf_map_update_elem(counts, key, val+1, BPF_EXIST.into());
         }
     }
 
