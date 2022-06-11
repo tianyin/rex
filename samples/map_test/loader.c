@@ -26,12 +26,12 @@ int main(void)
 
 	iu_set_debug(1); // enable debug info
 
-	base_fd = iu_prog_load(EXE);
+	base_fd = iu_obj_load(EXE);
 
 	if (base_fd < 0)
 		exit(1);
 
-	prog_fd = iu_prog_get_subprog(base_fd, "iu_prog1");
+	prog_fd = iu_obj_get_prog(base_fd, "iu_prog1");
 
 	if (prog_fd < 0) {
 		fprintf(stderr, "iu_prog1 not found\n");

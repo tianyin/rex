@@ -160,12 +160,12 @@ int main(void)
 
 	iu_set_debug(1); // enable debug info
 
-	base_fd = iu_prog_load("./target/debug/tracex5");
+	base_fd = iu_obj_load("./target/debug/tracex5");
 
 	if (base_fd < 0)
 		exit(1);
 
-	prog_fd = iu_prog_get_subprog(base_fd, "_start");
+	prog_fd = iu_obj_get_prog(base_fd, "_start");
 
  	if (prog_fd < 0) {
  		fprintf(stderr, "_start not found\n");
