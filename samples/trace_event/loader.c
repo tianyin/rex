@@ -10,7 +10,7 @@
 
 #include "libiu.h"
 
-#define EXE "./target/debug/map_test"
+#define EXE "./target/debug/" SAMPLE_NAME
 
 static inline long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
 							int cpu, int  group_fd, unsigned long flags)
