@@ -31,7 +31,7 @@ pub const KERN_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP) as u64;
 pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
 #[no_mangle]
-#[link_section = "tracepoint/"]
+#[link_section = "perf_event"]
 fn iu_prog1() -> i32 {
     let pe_key: key_t = key_t {
         comm: [0; TASK_COMM_LEN],

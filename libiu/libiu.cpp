@@ -40,6 +40,7 @@ struct iu_sec_def {
 static iu_sec_def section_defs[] = {
 	SEC_DEF("kprobe/", KPROBE),
 	SEC_DEF("tracepoint/", TRACEPOINT),
+	SEC_DEF("perf_event", PERF_EVENT),
 	// more sec defs in the future
 };
 
