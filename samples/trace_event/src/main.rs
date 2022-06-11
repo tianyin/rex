@@ -15,6 +15,8 @@ use crate::helper::*;
 mod linux;
 use crate::linux::bpf::*;
 
+use crate::linux::bpf_perf_event::bpf_perf_event_data;
+
 MAP_DEF!(
     counts, __counts,
     key_t, u64, BPF_MAP_TYPE_HASH, 10000, 0
@@ -32,12 +34,14 @@ pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK
 
 #[no_mangle]
 #[link_section = "perf_event"]
-fn iu_prog1() -> i32 {
+fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
     let mut pe_key: key_t = key_t {
         comm: [0; TASK_COMM_LEN],
         kernstack: 0,
         userstack: 0,
     };
+
+    bpf_trace_printk!("sample period: %lu\n", u64: (*ctx).sample_period);
 
     bpf_get_current_comm::<i8>(&pe_key.comm[0], TASK_COMM_LEN);
 
@@ -58,8 +62,8 @@ fn iu_prog1() -> i32 {
 }
 
 #[no_mangle]
-fn _start() -> i32 {
-    iu_prog1()
+fn _start(ctx: &bpf_perf_event_data) -> i32 {
+    iu_prog1(ctx)
 }
 
 // This function is called on panic.
