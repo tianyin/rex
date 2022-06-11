@@ -307,22 +307,22 @@ int main(void)
 		goto cleanup;
 	}
 
-	base_fd = iu_prog_load(EXE);
+	base_fd = iu_obj_load(EXE);
 
 	if (base_fd < 0) {
 		printf("couldn't load the base inner-unikernels program\n");
 		goto cleanup;
 	}
 
-	prog_fd = iu_prog_get_subprog(base_fd, "iu_prog1");
+	prog_fd = iu_obj_get_prog(base_fd, "iu_prog1");
 
 	if (prog_fd < 0) {
 		printf("couldn't find inner-unikernels program `iu_prog1'\n");
 		goto cleanup;
 	}
 
-	map_fd[0] = iu_prog_get_map(base_fd, "counts");
-	map_fd[1] = iu_prog_get_map(base_fd, "stackmap");
+	map_fd[0] = iu_obj_get_map(base_fd, "counts");
+	map_fd[1] = iu_obj_get_map(base_fd, "stackmap");
 	if (map_fd[0] < 0 || map_fd[1] < 0) {
 		printf("finding a counts/stackmap map in obj file failed\n");
 		goto cleanup;
