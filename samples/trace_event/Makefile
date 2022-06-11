@@ -1,4 +1,18 @@
-# Dependency: pip install toml-cli
+# The purpose here is to define `hello', `trace_event', whatever, in only
+# _one_ place (in this case, in Cargo.toml). The `toml-cli' solution may
+# be very ad-hoc and not optimal. But let it be...
+
+ifeq (, $(shell which toml))
+    $(info  )
+    $(info  Command `toml' not found.)
+    $(info  )
+    $(info  This is only a stop-gap, but at this stage please install the dependency with the following command:)
+    $(info  )
+    $(info  $$ pip install toml-cli)
+    $(info  )
+    $(error )
+endif
+
 SAMPLE_NAME = $(shell toml get --toml-path Cargo.toml package.name)
 
 LINUX ?= $(HOME)/linux
