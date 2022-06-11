@@ -16,6 +16,7 @@ mod linux;
 use crate::linux::bpf::*;
 
 use crate::linux::bpf_perf_event::bpf_perf_event_data;
+use crate::linux::bpf_perf_event::pt_regs;
 
 MAP_DEF!(
     counts, __counts,
@@ -31,6 +32,10 @@ MAP_DEF!(
 // #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
 pub const KERN_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP) as u64;
 pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
+
+fn PT_REGS_IP(x: &pt_regs) -> u64 {
+    return (*x).rip;
+}
 
 #[no_mangle]
 #[link_section = "perf_event"]
@@ -65,6 +70,13 @@ fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
 
     bpf_trace_printk!("kernstack: 0x%08u\n", u32: key.kernstack);
     bpf_trace_printk!("userstack: 0x%08u\n", u32: key.userstack);
+
+    bpf_trace_printk!(
+        "CPU-%d period %lld ip %llx",
+        i32: 0, // TODO cpu
+        u64: (*ctx).sample_period,
+        u64: PT_REGS_IP(&((*ctx).regs))
+    );
 
     match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
