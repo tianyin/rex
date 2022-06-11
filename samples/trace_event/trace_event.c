@@ -24,10 +24,7 @@ static inline long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
 
 int main(void)
 {
-	int base_fd, prog_fd, trace_id_fd, perf_event_fd, trace_pipe_fd;
-	char config_str[256];
-	struct perf_event_attr p_attr;
-	int pmu_fd;
+	int base_fd, prog_fd, pmu_fd, trace_pipe_fd;
 
 	// TODO: For now, only one out of the six events.
 	struct perf_event_attr attr_type_sw = {
@@ -52,26 +49,6 @@ int main(void)
 		fprintf(stderr, "iu_prog1 not found\n");
 		exit(1);
 	}
-
-	// trace_id_fd = openat(AT_FDCWD,
-	// 	"/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id", O_RDONLY);
-	// if (trace_id_fd < 0) {
-	// 	perror("openat(/sys/kernel/debug/tracing/events"
-	// 		"/syscalls/sys_enter_dup/id)");
-	// 	exit(1);
-	// }
-	// read(trace_id_fd, config_str, 256);
-	// close(trace_id_fd);
-
-	// memset(&p_attr, 0, sizeof(p_attr));
-	// p_attr.type = PERF_TYPE_TRACEPOINT;
-	// p_attr.size = PERF_ATTR_SIZE_VER5;
-	// p_attr.config = atoi(config_str);
-	// perf_event_fd = perf_event_open(&p_attr, -1, 0, -1, PERF_FLAG_FD_CLOEXEC);
-	// if (perf_event_fd < 0) {
-	// 	perror("perf_event_open");
-	// 	exit(1);
-	// }
 
 	pid = fork();
 	if (pid == 0) {
