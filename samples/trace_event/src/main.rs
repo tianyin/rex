@@ -43,6 +43,10 @@ fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
 
     bpf_trace_printk!("sample period: %lu\n", u64: (*ctx).sample_period);
 
+    if ((*ctx).sample_period < 10000) {
+        return 0;
+    }
+
     bpf_get_current_comm::<i8>(&pe_key.comm[0], TASK_COMM_LEN);
 
     bpf_trace_printk!("command: %s\n", &i8: &pe_key.comm[0]);
