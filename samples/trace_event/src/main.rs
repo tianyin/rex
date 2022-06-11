@@ -51,6 +51,14 @@ fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
 
     bpf_trace_printk!("command: %s\n", &i8: &key.comm[0]);
 
+    key.kernstack = bpf_get_stackid::<bpf_perf_event_data, IUMap<u32, [u64; PERF_MAX_STACK_DEPTH]>>(
+        ctx,
+        stackmap,
+        KERN_STACKID_FLAGS,
+    ) as u32;
+
+    bpf_trace_printk!("kernstack: %u\n", u32: key.kernstack);
+
     match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
             bpf_trace_printk!("`key' is encontered the first time. Create record in the map with count one.\n");

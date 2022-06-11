@@ -13,6 +13,7 @@ panic = "abort"
 
 [inner_unikernel]
 helpers = [
+    "bpf_get_stackid",
     "bpf_get_current_comm",
     "bpf_map_lookup_elem",
     "bpf_map_update_elem",
