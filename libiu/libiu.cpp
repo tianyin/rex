@@ -21,6 +21,7 @@
 #include "libiu.h"
 
 namespace { // begin anynomous namespace
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
 
 // https://elixir.bootlin.com/linux/v5.15/source/tools/lib/bpf/libbpf.c#L224
@@ -57,10 +58,10 @@ static int find_sec_def(const char *sec_name)
 	return -1;
 }
 
-class iu_prog; // forward declaration
+class iu_obj; // forward declaration
 
 static int debug = 0;
-static std::unordered_map<int, std::unique_ptr<iu_prog>> progs;
+static std::unordered_map<int, std::unique_ptr<iu_obj>> objs;
 
 static inline int64_t get_file_size(int fd)
 {
@@ -113,7 +114,7 @@ public:
 
 	int create(const std::string &);
 
-	friend class iu_prog; // for debug msg
+	friend class iu_obj; // for debug msg
 };
 
 iu_map::iu_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
@@ -158,23 +159,23 @@ int iu_map::create(const std::string &name)
 	return this->map_fd;
 }
 
-class iu_prog {
-	struct subprog {
+class iu_obj {
+	struct iu_prog {
 		std::string name;
 		int prog_type;
 		Elf64_Off offset;
 		int fd;
 
-		subprog() = delete;
-		subprog(const char *nm, int prog_ty, Elf64_Off off) : name(nm),
+		iu_prog() = delete;
+		iu_prog(const char *nm, int prog_ty, Elf64_Off off) : name(nm),
 			prog_type(prog_ty), offset(off), fd(-1) {}
-		~subprog() = default;
+		~iu_prog() = default;
 	};
 
 	std::unordered_map<Elf64_Off, iu_map> map_defs;
 	std::unordered_map<std::string, const iu_map *> name2map;
 	std::vector<std::pair<Elf64_Sym *, std::string>> map_ptrs;
-	std::unordered_map<std::string, subprog> subprogs;
+	std::unordered_map<std::string, iu_prog> progs;
 
 	Elf *elf;
 	Elf_Scn *symtab_scn;
@@ -185,17 +186,17 @@ class iu_prog {
 
 	int parse_scns();
 	int parse_maps();
-	int parse_subprogs();
+	int parse_progs();
 
 public:
-	iu_prog() = delete;
-	explicit iu_prog(const char *);
-	iu_prog(const iu_prog &) = delete;
-	iu_prog(iu_prog &&) = delete;
-	~iu_prog();
+	iu_obj() = delete;
+	explicit iu_obj(const char *);
+	iu_obj(const iu_obj &) = delete;
+	iu_obj(iu_obj &&) = delete;
+	~iu_obj();
 
-	iu_prog &operator=(const iu_prog &) = delete;
-	iu_prog &operator=(iu_prog &&) = delete;
+	iu_obj &operator=(const iu_obj &) = delete;
+	iu_obj &operator=(iu_obj &&) = delete;
 
 	// Making this a separate function to avoid exceptions in constructor
 	int parse_elf();
@@ -203,10 +204,12 @@ public:
 	int fix_maps();
 	int load();
 	int find_map_by_name(const char *) const;
-	int find_subprog_by_name(const char *) const;
+	int find_prog_by_name(const char *) const;
 };
 
-iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
+} // end anynomous namespace
+
+iu_obj::iu_obj(const char *c_path) : map_defs(), map_ptrs(),
 	symtab_scn(nullptr), maps_scn(nullptr), prog_fd(-1)
 {
 	int fd = open(c_path, 0, O_RDONLY);
@@ -221,7 +224,7 @@ iu_prog::iu_prog(const char *c_path) : map_defs(), map_ptrs(),
 	close(fd);
 }
 
-iu_prog::~iu_prog()
+iu_obj::~iu_obj()
 {
 	if (this->elf)
 		elf_end(this->elf);
@@ -233,7 +236,7 @@ iu_prog::~iu_prog()
 		close(prog_fd);
 }
 
-int iu_prog::parse_scns()
+int iu_obj::parse_scns()
 {
 	size_t shstrndx;
 
@@ -276,7 +279,7 @@ int iu_prog::parse_scns()
 	return 0;
 }
 
-int iu_prog::parse_maps()
+int iu_obj::parse_maps()
 {
 	Elf_Data *maps, *syms;
 	int nr_syms, nr_maps = 0, maps_shndx;
@@ -340,7 +343,7 @@ int iu_prog::parse_maps()
 
 // get sec name
 // get function symbols
-int iu_prog::parse_subprogs()
+int iu_obj::parse_progs()
 {
 	size_t shstrndx, strtabidx;
 	Elf_Data *syms;
@@ -385,11 +388,11 @@ int iu_prog::parse_subprogs()
 			std::clog << "symbol: " << sym_name << std::endl;
 		}
 
-		subprogs.try_emplace(sym_name, sym_name, prog_type, sym->st_value);
+		progs.try_emplace(sym_name, sym_name, prog_type, sym->st_value);
 	}
 	return 0;
 };
-int iu_prog::parse_elf()
+int iu_obj::parse_elf()
 {
 	int ret;
 
@@ -400,12 +403,12 @@ int iu_prog::parse_elf()
 
 	ret = this->parse_scns();
 	ret = ret < 0 ? : this->parse_maps();
-	ret = ret < 0 ? : this->parse_subprogs();
+	ret = ret < 0 ? : this->parse_progs();
 
 	return ret;
 }
 
-int iu_prog::fix_maps()
+int iu_obj::fix_maps()
 {
 	Elf64_Addr maps_shaddr;
 	Elf64_Off maps_shoff;
@@ -463,14 +466,14 @@ int iu_prog::fix_maps()
 	return 0;
 }
 
-int iu_prog::load()
+int iu_obj::load()
 {
 	int fd;
 	auto arr = std::make_unique<uint64_t[]>(map_ptrs.size());
-	union bpf_attr attr, sp_attr;
+	union bpf_attr attr;
 	int idx = 0, ret = 0;
 
-	// TODO: Will have race condition if multiple progs loaded at same time
+	// TODO: Will have race condition if multiple objs loaded at same time
 	std::ofstream output("rust.out", std::ios::out | std::ios::binary);
 
 	output.write((char *)this->file_map, this->file_size);
@@ -509,8 +512,7 @@ int iu_prog::load()
 		goto close_fds;
 	}
 
-	for (auto &it: subprogs) {
-		memset(&sp_attr, 0, sizeof(sp_attr));
+	for (auto &it: progs) {
 		attr.prog_type = it.second.prog_type;
 		strncpy(attr.prog_name, it.second.name.c_str(),
 				sizeof(attr.prog_name) - 1);
@@ -532,7 +534,7 @@ int iu_prog::load()
 	return ret;
 
 close_fds:
-	for (auto &it: subprogs) {
+	for (auto &it: progs) {
 		if (it.second.fd >= 0)
 			close(it.second.fd);
 	}
@@ -540,26 +542,24 @@ close_fds:
 	return -1;
 }
 
-int iu_prog::find_map_by_name(const char *name) const
+int iu_obj::find_map_by_name(const char *name) const
 {
 	auto it = name2map.find(name);
 	return it != name2map.end() ? it->second->map_fd : -1;
 }
 
-int iu_prog::find_subprog_by_name(const char *name) const
+int iu_obj::find_prog_by_name(const char *name) const
 {
-	auto it = subprogs.find(name);
-	return it != subprogs.end() ? it->second.fd : -1;
+	auto it = progs.find(name);
+	return it != progs.end() ? it->second.fd : -1;
 }
-
-} // end anynomous namespace
 
 void iu_set_debug(const int val)
 {
 	debug = val;
 }
 
-int iu_prog_load(const char *file_path)
+int iu_obj_load(const char *file_path)
 {
 	int ret;
 
@@ -568,38 +568,38 @@ int iu_prog_load(const char *file_path)
 		return -1;
 	}
 
-	auto prog = std::make_unique<iu_prog>(file_path);
+	auto obj = std::make_unique<iu_obj>(file_path);
 
-	ret = prog->parse_elf();
-	ret = ret ? : prog->fix_maps();
-	ret = ret ? : prog->load();
+	ret = obj->parse_elf();
+	ret = ret ? : obj->fix_maps();
+	ret = ret ? : obj->load();
 
 	if (ret >= 0)
-		progs[ret] = std::move(prog);
+		objs[ret] = std::move(obj);
 
 	return ret;
 }
 
-int iu_prog_close(int prog_fd)
+int iu_obj_close(int prog_fd)
 {
-	auto it = progs.find(prog_fd);
-	if (it != progs.end()) {
-		progs.erase(it);
+	auto it = objs.find(prog_fd);
+	if (it != objs.end()) {
+		objs.erase(it);
 		return 0;
 	}
 
 	return -1;
 }
 
-int iu_prog_get_map(int prog_fd, const char *map_name)
+int iu_obj_get_map(int prog_fd, const char *map_name)
 {
-	auto it = progs.find(prog_fd);
-	return it != progs.end() ? it->second->find_map_by_name(map_name) : -1;
+	auto it = objs.find(prog_fd);
+	return it != objs.end() ? it->second->find_map_by_name(map_name) : -1;
 }
 
-int iu_prog_get_subprog(int prog_fd, const char *subprog_name)
+int iu_obj_get_prog(int prog_fd, const char *prog_name)
 {
-	auto it = progs.find(prog_fd);
-	return it != progs.end() ?
-		it->second->find_subprog_by_name(subprog_name) : -1;
+	auto it = objs.find(prog_fd);
+	return it != objs.end() ?
+		it->second->find_prog_by_name(prog_name) : -1;
 }

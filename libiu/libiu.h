@@ -6,10 +6,11 @@ extern "C" {
 #endif
 
 void iu_set_debug(const int val);
-int iu_prog_load(const char *file_path);
-int iu_prog_close(int prog_fd);
-int iu_prog_get_map(int prog_fd, const char *map_name);
-int iu_prog_get_subprog(int prog_fd, const char *subprog_name);
+int iu_obj_load(const char *file_path);
+int iu_obj_close(int prog_fd);
+int iu_obj_get_map(int prog_fd, const char *map_name);
+int iu_obj_get_prog(int prog_fd, const char *prog_name);
+
 #ifdef __cplusplus
 }
 #endif
