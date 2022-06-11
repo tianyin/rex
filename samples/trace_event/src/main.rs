@@ -17,6 +17,16 @@ use crate::linux::bpf::*;
 
 MAP_DEF!(map1, __map_1, i32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
 
+MAP_DEF!(
+    counts, __counts,
+    key_t, u64, BPF_MAP_TYPE_HASH, 10000, 0
+);
+
+MAP_DEF!(
+    stackmap, __stackmap,
+    u32, [u64; PERF_MAX_STACK_DEPTH], BPF_MAP_TYPE_STACK_TRACE, 10000, 0
+);
+
 #[no_mangle]
 #[link_section = "tracepoint/"]
 fn iu_prog1() -> i32 {
