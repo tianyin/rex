@@ -27,6 +27,11 @@ MAP_DEF!(
     u32, [u64; PERF_MAX_STACK_DEPTH], BPF_MAP_TYPE_STACK_TRACE, 10000, 0
 );
 
+// #define KERN_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP)
+// #define USER_STACKID_FLAGS (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK)
+pub const KERN_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP) as u64;
+pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
+
 #[no_mangle]
 #[link_section = "tracepoint/"]
 fn iu_prog1() -> i32 {
