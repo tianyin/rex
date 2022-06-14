@@ -14,8 +14,9 @@ pub fn bpf_get_current_comm<T>(buf: &T, size_of_buf: usize) -> i64 {
     code(buf, size_of_buf as u32) 
 }
 
-pub fn bpf_get_stackid<T1, T2>(ctx: &T1, map: &T2, flags: u64) -> i64 {
-    let ptr = stub::STUB_BPF_GET_STACKID as *const ();
+// TODO hard to generalize
+pub fn bpf_get_stackid_pe<T1, T2>(ctx: &T1, map: &T2, flags: u64) -> i64 {
+    let ptr = stub::STUB_BPF_GET_STACKID_PE as *const ();
     let code: extern "C" fn(&T1, &T2, u64) -> i64 = unsafe { core::mem::transmute(ptr) };
     code(ctx, map, flags) 
 }

@@ -10,7 +10,7 @@
 
 #include "libiu.h"
 
-#define EXE "./target/debug/" SAMPLE_NAME
+#define EXE "./target/debug/trace_event_kern"
 
 #define SAMPLE_FREQ 3
 
