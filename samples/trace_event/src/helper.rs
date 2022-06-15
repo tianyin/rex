@@ -1,6 +1,7 @@
 use crate::map::IUMap;
 use crate::stub;
 use crate::linux::bpf_perf_event::bpf_perf_event_data;
+use crate::linux::bpf::bpf_perf_event_value;
 
 pub fn bpf_get_current_pid_tgid() -> u64 {
     let ptr = stub::STUB_BPF_GET_CURRENT_PID_TGID as *const ();
@@ -19,6 +20,26 @@ pub fn bpf_get_stackid_pe<T1, T2>(ctx: &T1, map: &T2, flags: u64) -> i64 {
     let ptr = stub::STUB_BPF_GET_STACKID_PE as *const ();
     let code: extern "C" fn(&T1, &T2, u64) -> i64 = unsafe { core::mem::transmute(ptr) };
     code(ctx, map, flags) 
+}
+
+pub fn bpf_get_smp_processor_id() -> u32 {
+    let ptr = stub::STUB_BPF_GET_SMP_PROCESSOR_ID as *const ();
+    let code: extern "C" fn() -> u32 = unsafe { core::mem::transmute(ptr) };
+    code() 
+}
+
+pub fn bpf_perf_prog_read_value(
+    ctx: &bpf_perf_event_data,
+    buf: &bpf_perf_event_value,
+    buf_size: usize
+) -> i64 {
+    let ptr = stub::STUB_BPF_PERF_PROG_READ_VALUE as *const ();
+    let code: extern "C" fn(
+        &bpf_perf_event_data,
+        &bpf_perf_event_value,
+        u32
+    ) -> i64 = unsafe { core::mem::transmute(ptr) };
+    code(ctx, buf, buf_size as u32) 
 }
 
 #[macro_export]

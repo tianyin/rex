@@ -13,6 +13,8 @@ panic = "abort"
 
 [inner_unikernel]
 helpers = [
+    "bpf_perf_prog_read_value",
+    "bpf_get_smp_processor_id",
     "bpf_get_stackid_pe",
     "bpf_get_current_comm",
     "bpf_map_lookup_elem",
