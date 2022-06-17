@@ -1,4 +1,16 @@
 MEETING MINUTES
+* 22-05-17 (scribe: Jinghao)
+*** Where we are
+- ~bpftool~ displays correctly the run count of eBPF programs, so it could be
+  used for debugging
+- We can now reliably trigger the XDP hook (thanks to Dan's sharp intuition),
+  the reason we previously cannot trigger the hook is that YiFei's ~q~ script
+  uses virtual network by default and packets simply does not go through the
+  NIC.
+*** Where we are going
+- Sayeed will continue working on the BMC experiment
+- I (i.e. Jinghao) might spend some time looking in the the ~clang~ issue by
+  checking the code generated after each ~llc~ CodeGen pass.
 * 22-05-20 (scribe: Jinghao)
 *** Where we are
 - BMC
