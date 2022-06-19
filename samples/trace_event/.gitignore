@@ -1,2 +1,3 @@
 trace_event
 trace_helpers.o
+bpf.o

@@ -15,16 +15,15 @@ target/debug/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}
 
 trace_helpers.o: trace_helpers.c
-	clang -g -c $^ -o $@
+	clang -I${LINUX_INC} -g -c $^ -o $@
 
-# TODO mixture of libiu and libbpf, well, plus a portion of trace_helpers
-trace_event: trace_event_user.c trace_helpers.o
-	clang -I${LINUX_INC} -I${LIBIU_DIR} -I${LINUX}/tools/lib\
-		-g -Wl,--as-needed $^\
-		-L${LIBIU_DIR} -L${LINUX}/tools/lib/bpf/\
-		-liu -lbpf\
-		-o $@
+bpf.o: bpf.c
+	clang -I${LINUX_INC} -g -c $^ -o $@
+
+trace_event: trace_event_user.c trace_helpers.o bpf.o
+	clang -I${LINUX_INC} -I${LIBIU_DIR} -g -Wl,--as-needed $^ -L${LIBIU_DIR}\
+		-liu -o $@
 
 clean:
 	cargo clean
-	rm -rf trace_event ./src/linux ./src/stub.rs
+	rm -rf bpf.o trace_helpers.o trace_event ./src/linux ./src/stub.rs

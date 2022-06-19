@@ -6,12 +6,9 @@
 #include <unistd.h>
 #include <errno.h>
 #include <stdbool.h>
-// TODO
-// mixture of libiu and libbpf
-// should implement bpf_map_lookup_elem() etc in libiu?
-#include <bpf/bpf.h>
 #include <signal.h>
 #include "trace_helpers.h"
+#include "bpf.h"
 
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
