@@ -90,11 +90,9 @@ fn iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
 
     match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
-            // bpf_trace_printk!("`key' is encontered the first time. Create record in the map with count one.\n");
             bpf_map_update_elem(counts, key, 1, BPF_NOEXIST.into());
         }
         Some(val) => {
-            // bpf_trace_printk!("`key' is already in the map. Previous count is %llu. Update its count.\n", u64: val);
             bpf_map_update_elem(counts, key, val+1, BPF_EXIST.into());
         }
     }
