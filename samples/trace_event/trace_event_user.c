@@ -20,7 +20,7 @@
 
 #define EXE "./target/debug/trace_event_kern"
 
-#define SAMPLE_FREQ 3
+#define SAMPLE_FREQ 50
 
 static int pid;
 /* counts, stackmap */
@@ -145,10 +145,10 @@ static void print_stacks(void)
 		key = next_key;
 	}
 	printf("\n");
-	// if (!sys_read_seen || !sys_write_seen) {
-	// 	printf("BUG kernel stack doesn't contain sys_read() and sys_write()\n");
-	// 	err_exit(error);
-	// }
+	if (!sys_read_seen || !sys_write_seen) {
+		printf("BUG kernel stack doesn't contain sys_read() and sys_write()\n");
+		err_exit(error);
+	}
 
 	/* clear stack map */
 	while (bpf_map_get_next_key(stack_map, &stackid, &next_id) == 0) {
@@ -330,7 +330,7 @@ int main(void)
 
 	pid = fork();
 	if (pid == 0) {
-		read_trace_pipe();
+		// read_trace_pipe();
 		return 0;
 	} else if (pid == -1) {
 		printf("couldn't spawn process\n");
