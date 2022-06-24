@@ -263,28 +263,28 @@ static void test_bpf_perf_event(void) {
 	};
 
 	printf("Test HW_CPU_CYCLES\n");
-	// test_perf_event_all_cpu(&attr_type_hw); // Geust: "panic"
-	// test_perf_event_task(&attr_type_hw); // Geust: "panic"
+	// test_perf_event_all_cpu(&attr_type_hw);
+	// test_perf_event_task(&attr_type_hw);
 
 	printf("Test SW_CPU_CLOCK\n");
 	test_perf_event_all_cpu(&attr_type_sw);
 	test_perf_event_task(&attr_type_sw);
 
 	printf("Test HW_CACHE_L1D\n");
-	// test_perf_event_all_cpu(&attr_hw_cache_l1d); // Geust: "panic"
-	// test_perf_event_task(&attr_hw_cache_l1d); // Geust: "panic"
+	test_perf_event_all_cpu(&attr_hw_cache_l1d);
+	test_perf_event_task(&attr_hw_cache_l1d);
 
 	printf("Test HW_CACHE_BPU\n");
-	// test_perf_event_all_cpu(&attr_hw_cache_branch_miss); // Geust: "panic"
-	// test_perf_event_task(&attr_hw_cache_branch_miss); // Geust: "panic"
+	test_perf_event_all_cpu(&attr_hw_cache_branch_miss);
+	test_perf_event_task(&attr_hw_cache_branch_miss);
 
 	printf("Test Instruction Retired\n");
-	// test_perf_event_all_cpu(&attr_type_raw); // Geust: "panic" // Host: open perf event failed
-	// test_perf_event_task(&attr_type_raw); // Geust: "panic"
+	test_perf_event_all_cpu(&attr_type_raw);
+	test_perf_event_task(&attr_type_raw);
 
 	printf("Test Lock Load\n");
-	// test_perf_event_all_cpu(&attr_type_raw_lock_load); // Geust: open perf event failed // Host: create link failed
-	// test_perf_event_task(&attr_type_raw_lock_load); // Geust: open perf event failed // Host: create link failed
+	// test_perf_event_all_cpu(&attr_type_raw_lock_load);
+	// test_perf_event_task(&attr_type_raw_lock_load);
 
 	printf("*** PASS ***\n");
 }
