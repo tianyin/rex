@@ -160,7 +160,7 @@ int main(void)
 
 	iu_set_debug(1); // enable debug info
 
-	base_fd = iu_obj_load("./target/debug/tracex5");
+	base_fd = iu_obj_load("./target/release/tracex5");
 
 	if (base_fd < 0)
 		exit(1);

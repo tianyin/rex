@@ -11,6 +11,9 @@ rlibc = "1.0.0"
 [profile.dev]
 panic = "abort"
 
+[profile.release]
+panic = "abort"
+
 [inner_unikernel]
 helpers = [
     "bpf_map_lookup_elem",
