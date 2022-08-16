@@ -3,9 +3,11 @@ LINUX ?= $(HOME)/linux
 LINUX_INC = ${LINUX}/usr/include
 LIBIU_DIR = "../../libiu"
 
+NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
+
 RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
-		-A non_upper_case_globals -A non_snake_case
+		-A non_upper_case_globals -A non_snake_case ${NO_OPT} -C no-redzone
 
 all: target/debug/trace_event_kern trace_event
 
