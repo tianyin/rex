@@ -2,6 +2,7 @@
 name = "inner-unikernel-rt"
 version = "0.1.0"
 edition = "2021"
+build = "build.rs"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -15,3 +16,19 @@ panic = "abort"
 [profile.release]
 debug=0
 panic = "abort"
+
+[inner_unikernel]
+helpers = [
+    "bpf_perf_prog_read_value",
+    "bpf_get_smp_processor_id",
+    "bpf_get_stackid_pe",
+    "bpf_get_current_comm",
+    "bpf_map_lookup_elem",
+    "bpf_map_update_elem",
+    "bpf_trace_printk",
+    "bpf_get_current_pid_tgid"
+]
+
+headers = [
+    "linux/bpf.h",
+]

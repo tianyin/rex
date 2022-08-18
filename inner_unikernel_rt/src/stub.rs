@@ -1,8 +1,1 @@
-pub const STUB_BPF_PERF_PROG_READ_VALUE: u64 = 0xffffffff81201460;
-pub const STUB_BPF_GET_SMP_PROCESSOR_ID: u64 = 0xffffffff81235330;
-pub const STUB_BPF_GET_STACKID_PE: u64 = 0xffffffff81255f00;
-pub const STUB_BPF_GET_CURRENT_COMM: u64 = 0xffffffff81235450;
-pub const STUB_BPF_MAP_LOOKUP_ELEM: u64 = 0xffffffff812352b0;
-pub const STUB_BPF_MAP_UPDATE_ELEM: u64 = 0xffffffff812352c0;
-pub const STUB_BPF_TRACE_PRINTK: u64 = 0xffffffff81200790;
-pub const STUB_BPF_GET_CURRENT_PID_TGID: u64 = 0xffffffff812353d0;
+include!(concat!(env!("OUT_DIR"), "/stub.rs"));
