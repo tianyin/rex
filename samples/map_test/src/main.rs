@@ -15,11 +15,12 @@ use crate::helper::*;
 mod linux;
 use crate::linux::bpf::*;
 
+mod rt;
+use crate::rt::*;
+
 MAP_DEF!(map1, __map_1, i32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
 
-#[no_mangle]
-#[link_section = "tracepoint/"]
-fn iu_prog1() -> i32 {
+fn __iu_prog1(_: *const ()) -> i32 {
     let key: i32 = 0;
 
     match bpf_map_lookup_elem::<i32, i64>(map1, key) {
@@ -38,9 +39,11 @@ fn iu_prog1() -> i32 {
     return 0;
 }
 
+PROG_DEF!(__iu_prog1, iu_prog1, tracepoint, "tracepoint/");
+
 #[no_mangle]
-fn _start() -> i32 {
-    iu_prog1()
+fn _start(ctx: *const ()) -> i64 {
+    iu_prog1(ctx)
 }
 
 // This function is called on panic.
