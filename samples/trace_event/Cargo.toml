@@ -8,6 +8,9 @@ edition = "2021"
 [dependencies]
 rlibc = "1.0.0"
 
+[dependencies.inner_unikernel_rt]
+path = "../../inner_unikernel_rt"
+
 [profile.dev]
 panic = "abort"
 

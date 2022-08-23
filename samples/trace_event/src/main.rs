@@ -2,22 +2,16 @@
 #![no_main]
 
 extern crate rlibc;
+
+extern crate inner_unikernel_rt;
+
 use core::panic::PanicInfo;
 
-mod perf_event_kern;
-mod stub;
-
-mod map;
-use crate::map::*;
-
-mod helper;
-use crate::helper::*;
-
-mod linux;
-use crate::linux::bpf::*;
-
-mod rt;
-use crate::rt::{bpf_perf_event_data, perf_event, prog_type, pt_regs};
+use inner_unikernel_rt::linux::bpf::*;
+use inner_unikernel_rt::map::*;
+use inner_unikernel_rt::perf_event::*;
+use inner_unikernel_rt::prog_type::prog_type;
+use inner_unikernel_rt::{MAP_DEF, PROG_DEF};
 
 use core::mem::size_of;
 use core::mem::size_of_val;
@@ -61,26 +55,26 @@ fn __iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
     key.kernstack = bpf_get_stackid_pe(ctx, stackmap, KERN_STACKID_FLAGS) as u32;
     key.userstack = bpf_get_stackid_pe(ctx, stackmap, USER_STACKID_FLAGS) as u32;
     if ((key.kernstack as i32) < 0 && (key.userstack as i32) < 0) {
-        bpf_trace_printk!(
-            "CPU-%d period %lld ip %llx",
-            u32: cpu,
-            u64: (*ctx).sample_period,
-            u64: PT_REGS_IP(&((*ctx).regs))
-        );
+        //bpf_trace_printk!(
+        //    "CPU-%d period %lld ip %llx",
+        //    u32: cpu,
+        //    u64: (*ctx).sample_period,
+        //   u64: PT_REGS_IP(&((*ctx).regs))
+        //);
         return 0;
     }
 
     let ret: i32 =
         bpf_perf_prog_read_value(ctx, &value_buf, size_of::<bpf_perf_event_value>()) as i32;
-    if (ret == 0) {
-        bpf_trace_printk!("Time Enabled: %llu, Time Running: %llu", u64: value_buf.enabled, u64: value_buf.running);
-    } else {
-        bpf_trace_printk!("Get Time Failed, ErrCode: %d", i32: ret);
-    }
+    //if (ret == 0) {
+    //    bpf_trace_printk!("Time Enabled: %llu, Time Running: %llu", u64: value_buf.enabled, u64: value_buf.running);
+    //} else {
+    //    bpf_trace_printk!("Get Time Failed, ErrCode: %d", i32: ret);
+    //}
 
-    if ((*ctx).addr != 0) {
-        bpf_trace_printk!("Address recorded on event: %llx", u64: (*ctx).addr);
-    }
+    //if ((*ctx).addr != 0) {
+    //    bpf_trace_printk!("Address recorded on event: %llx", u64: (*ctx).addr);
+    //}
 
     match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
@@ -101,7 +95,7 @@ fn _start(ctx: *const ()) -> i64 {
 }
 
 // This function is called on panic.
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
+//#[panic_handler]
+//fn panic(_info: &PanicInfo) -> ! {
+//    loop {}
+//}

@@ -12,8 +12,8 @@ RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 all: target/debug/trace_event_kern trace_event
 
 target/debug/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
-	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
-		`realpath .`
+	#PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
+	#	`realpath .`
 	cargo rustc -vv -- ${RUST_FLAGS}
 
 trace_helpers.o: trace_helpers.c
