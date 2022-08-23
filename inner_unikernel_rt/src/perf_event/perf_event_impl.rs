@@ -45,7 +45,7 @@ impl prog_type for perf_event {
     }
 }
 
-pub fn __bpf_perf_prog_read_value(
+pub fn bpf_perf_prog_read_value(
     ctx: &bpf_perf_event_data,
     buf: &bpf_perf_event_value,
     buf_size: usize,
@@ -56,7 +56,7 @@ pub fn __bpf_perf_prog_read_value(
     khelper(ctx.kptr, buf, buf_size as u32)
 }
 
-pub fn __bpf_get_stackid_pe<T>(ctx: &bpf_perf_event_data, map: &T, flags: u64) -> i64 {
+pub fn bpf_get_stackid_pe<T>(ctx: &bpf_perf_event_data, map: &T, flags: u64) -> i64 {
     let ptr = stub::STUB_BPF_GET_STACKID_PE as *const ();
     let khelper: extern "C" fn(*const bpf_perf_event_data_kern, &T, u64) -> i64 =
         unsafe { core::mem::transmute(ptr) };
