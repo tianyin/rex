@@ -1,7 +1,7 @@
 FROM debian:bookworm-20211201
 
 RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential gcc-11
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y zlib1g-dev zlib1g 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y bpfcc-tools libbpfcc-dev libbpfcc
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libdw-dev libdwarf-dev
@@ -14,6 +14,5 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y clang clang-tools
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y pkg-config
 
 RUN DEBIAN_FRONTEND=noninteractive update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
-RUN DEBIAN_FRONTEND=noninteractive update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
 
 WORKDIR /libbpf-bootstrap/examples/c
