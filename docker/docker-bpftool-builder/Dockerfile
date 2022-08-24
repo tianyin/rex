@@ -1,4 +1,4 @@
-FROM debian:stable-20220822
+FROM debian:bookworm-20211201
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential
@@ -11,5 +11,8 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libdisasm-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y binutils-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y llvm-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y clang clang-tools
+
+RUN DEBIAN_FRONTEND=noninteractive update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+RUN DEBIAN_FRONTEND=noninteractive update-alternatives --install /usr/bin/g++ g++ /usr/bin/g++-11 11
 
 WORKDIR /linux/tools/bpf/bpftool
