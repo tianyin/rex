@@ -9,7 +9,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y bpfcc-tools libbpfcc-dev l
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y linux-headers-generic
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y clang
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libtinfo-dev
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libstdc++-9-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libstdc++-10-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y bc
 #RUN git clone https://github.com/acmel/dwarves.git
 #RUN cd dwarves && git checkout tags/v1.18 && mkdir build && cd build && cmake -D__LIB=lib -DBUILD_SHARED_LIBS=OFF .. && make install
