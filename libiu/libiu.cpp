@@ -557,6 +557,11 @@ class iu_obj {
 	Elf *elf;
 	Elf_Scn *symtab_scn;
 	Elf_Scn *maps_scn;
+
+	Elf_Scn *got_scn;
+	uint64_t got_addr;
+	uint64_t got_size;
+
 	size_t file_size;
 	unsigned char *file_map;
 	int prog_fd;
@@ -564,6 +569,7 @@ class iu_obj {
 	int parse_scns(struct bpf_object *);
 	int parse_maps(struct bpf_object *);
 	int parse_progs(struct bpf_object *);
+	int parse_got();
 
 public:
 	iu_obj() = delete;
@@ -826,10 +832,16 @@ int iu_obj::parse_scns(struct bpf_object *obj)
 			obj->efile.st_ops_shndx = idx;
 		else if (!(strcmp(name, ".bss")))
 			obj->efile.bss_shndx = idx;
+		else if (!strcmp(".got", name))
+			this->got_scn = scn;
 	}
 
 	if (!this->maps_scn && debug) {
 		std::clog << "section .maps not found" << std::endl;
+	}
+
+	if (!this->got_scn && debug) {
+		std::clog << "section .got not found" << std::endl;
 	}
 
 	return 0;
@@ -842,9 +854,8 @@ int iu_obj::parse_maps(struct bpf_object *obj)
 	size_t strtabidx;
 	Elf64_Addr maps_shaddr;
 
-	if (!this->maps_scn) {
+	if (!this->maps_scn)
 		return 0;
-	}
 
 	maps = elf_getdata(maps_scn, 0);
 	syms = elf_getdata(symtab_scn, 0);
@@ -987,6 +998,34 @@ int iu_obj::parse_progs(struct bpf_object *obj)
 	qsort(obj->programs, obj->nr_programs, sizeof(*obj->programs), cmp_progs);
 	return 0;
 };
+
+int iu_obj::parse_got()
+{
+	int ret;
+	Elf64_Shdr *got;
+
+	if (!this->got_scn)
+		return 0;
+
+	got = elf64_getshdr(got_scn);
+
+	if (!got) {
+		std::cerr << "elf: failed to get got section" << std::endl;
+		return -1;
+	}
+
+	got = elf64_getshdr(got_scn);
+	this->got_addr = got->sh_addr;
+	this->got_size = got->sh_size;
+
+	if (debug) {
+		std::clog << "got offset=" << std::hex << this->got_addr
+			<< ", got size=" << std::dec << this->got_size << std::endl;
+	}
+
+	return 0;
+}
+
 int iu_obj::parse_elf(struct bpf_object *obj)
 {
 	int ret;
@@ -998,7 +1037,8 @@ int iu_obj::parse_elf(struct bpf_object *obj)
 
 	ret = this->parse_scns(obj);
 	ret = ret < 0 ? : this->parse_maps(obj);
-	ret = ret < 0 ? : this->parse_progs(obj);
+	ret = ret < 0 ?: this->parse_progs(obj);
+	ret = ret < 0 ? : this->parse_got();
 
 	return ret;
 }
