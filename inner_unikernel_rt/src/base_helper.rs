@@ -19,43 +19,56 @@ pub fn bpf_get_smp_processor_id() -> u32 {
     code()
 }
 
+pub unsafe fn bpf_trace_printk_fn<T1, T2, T3>(
+    fmt: *const u8,
+    fmt_size: usize,
+    arg1: T1,
+    arg2: T2,
+    arg3: T3,
+) -> i32 {
+    let ptr = stub::STUB_BPF_TRACE_PRINTK as *const ();
+    let code: extern "C" fn(*const u8, u32, T1, T2, T3) -> i32 =
+        unsafe { core::mem::transmute(ptr) };
+
+    code(fmt, fmt_size as u32, arg1, arg2, arg3)
+}
+
+#[macro_export]
+macro_rules! terminate_str {
+    ($s:expr) => {{
+        let mut fmt_arr: [u8; $s.len() + 1] = [0; $s.len() + 1];
+
+        for (i, c) in $s.chars().enumerate() {
+            fmt_arr[i] = c as u8;
+        }
+
+        fmt_arr[$s.len()] = 0;
+        fmt_arr.as_ptr()
+    }};
+}
+pub use terminate_str;
+
 #[macro_export]
 macro_rules! bpf_trace_printk {
-    ($s:expr) => {
-        {
-            // Add the missing null terminator
-            let mut fmt_arr: [u8; $s.len() + 1] = [0; $s.len() + 1];
-            for (i, c) in $s.chars().enumerate() {
-                fmt_arr[i] = c as u8
-            }
-            fmt_arr[$s.len()] = 0;
-            let fmt_str = fmt_arr.as_ptr();
+    ($s:expr) => {{
+        let fmt_str = terminate_str!($s);
+        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, 0, 0, 0) }
+    }};
 
-            let ptr = stub::STUB_BPF_TRACE_PRINTK as *const ();
-            let code: extern "C" fn(*const u8, u32) -> i64 =
-                unsafe { core::mem::transmute(ptr) };
+    ($s:expr, $a1:expr) => {{
+        let fmt_str = terminate_str!($s);
+        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, $a1, 0, 0) }
+    }};
 
-            code(fmt_str, ($s.len() + 1) as u32)
-        }
-    };
+    ($s:expr, $a1:expr, $a2:expr) => {{
+        let fmt_str = terminate_str!($s);
+        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, $a1, $a2, 0) }
+    }};
 
-    ($s:expr,$($t:ty : $a:expr),*) => {
-        {
-            // Add the missing null terminator
-            let mut fmt_arr: [u8; $s.len() + 1] = [0; $s.len() + 1];
-            for (i, c) in $s.chars().enumerate() {
-                fmt_arr[i] = c as u8
-            }
-            fmt_arr[$s.len()] = 0;
-            let fmt_str = fmt_arr.as_ptr();
-
-            let ptr = stub::STUB_BPF_TRACE_PRINTK as *const ();
-            let code: extern "C" fn(*const u8, u32, $($t),*) -> i64 =
-                unsafe { core::mem::transmute(ptr) };
-
-            code(fmt_str, ($s.len() + 1) as u32, $($a),*)
-        }
-    };
+    ($s:expr, $a1:expr, $a2:expr, $a3:expr) => {{
+        let fmt_str = terminate_str!($s);
+        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, $a1, $a2, $a3) }
+    }};
 }
 pub use bpf_trace_printk;
 
@@ -89,7 +102,8 @@ macro_rules! reexport_base_helpers {
     () => {
         pub use crate::base_helper::{
             bpf_get_current_comm, bpf_get_current_pid_tgid, bpf_get_smp_processor_id,
-            bpf_map_lookup_elem, bpf_map_update_elem, bpf_trace_printk,
+            bpf_map_lookup_elem, bpf_map_update_elem, bpf_trace_printk, bpf_trace_printk_fn,
+            terminate_str,
         };
     };
 }
