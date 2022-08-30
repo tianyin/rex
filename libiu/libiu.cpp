@@ -1140,6 +1140,9 @@ int iu_obj::load(struct bpf_object *obj)
 	attr.map_offs = (__u64)arr.get();
 	attr.map_cnt = map_ptrs.size();
 
+	attr.got_off = got_addr;
+	attr.got_size = got_size;
+
 	ret = bpf(BPF_PROG_LOAD_IU_BASE, &attr, sizeof(attr));
 
 	if (ret < 0) {
