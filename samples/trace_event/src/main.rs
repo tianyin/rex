@@ -55,26 +55,30 @@ fn __iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
     key.kernstack = bpf_get_stackid_pe(ctx, stackmap, KERN_STACKID_FLAGS) as u32;
     key.userstack = bpf_get_stackid_pe(ctx, stackmap, USER_STACKID_FLAGS) as u32;
     if ((key.kernstack as i32) < 0 && (key.userstack as i32) < 0) {
-        //bpf_trace_printk!(
-        //    "CPU-%d period %lld ip %llx",
-        //    u32: cpu,
-        //    u64: (*ctx).sample_period,
-        //   u64: PT_REGS_IP(&((*ctx).regs))
-        //);
+        bpf_trace_printk!(
+            "CPU-%d period %lld ip %llx",
+            cpu,
+            (*ctx).sample_period,
+            PT_REGS_IP(&((*ctx).regs))
+        );
         return 0;
     }
 
     let ret: i32 =
         bpf_perf_prog_read_value(ctx, &value_buf, size_of::<bpf_perf_event_value>()) as i32;
-    //if (ret == 0) {
-    //    bpf_trace_printk!("Time Enabled: %llu, Time Running: %llu", u64: value_buf.enabled, u64: value_buf.running);
-    //} else {
-    //    bpf_trace_printk!("Get Time Failed, ErrCode: %d", i32: ret);
-    //}
+    if (ret == 0) {
+        bpf_trace_printk!(
+            "Time Enabled: %llu, Time Running: %llu",
+            value_buf.enabled,
+            value_buf.running
+        );
+    } else {
+        bpf_trace_printk!("Get Time Failed, ErrCode: %d", ret);
+    }
 
-    //if ((*ctx).addr != 0) {
-    //    bpf_trace_printk!("Address recorded on event: %llx", u64: (*ctx).addr);
-    //}
+    if ((*ctx).addr != 0) {
+        bpf_trace_printk!("Address recorded on event: %llx", (*ctx).addr);
+    }
 
     match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
@@ -93,9 +97,3 @@ PROG_DEF!(__iu_prog1, iu_prog1, perf_event);
 fn _start(ctx: *const ()) -> i64 {
     iu_prog1(ctx)
 }
-
-// This function is called on panic.
-//#[panic_handler]
-//fn panic(_info: &PanicInfo) -> ! {
-//    loop {}
-//}
