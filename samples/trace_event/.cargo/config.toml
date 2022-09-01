@@ -1,5 +1,5 @@
 [build]
-rustflags = ["-A", "unused", "-A", "non_camel_case_types",
-	"-A", "non_upper_case_globals", "-A", "non_snake_case", "-C", "no-redzone",
-	"-C",
-	"target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3",]
+rustflags = ["-Aunused", "-Anon_camel_case_types", "-Anon_upper_case_globals",
+	"-Anon_snake_case", "-Cno-redzone", "-Ccode-model=kernel",
+	"-Cforce-unwind-tables=n", "-Ztune-cpu=generic", "-C",
+	"target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3"]
