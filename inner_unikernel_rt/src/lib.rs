@@ -4,6 +4,7 @@ pub mod linux;
 pub mod map;
 pub mod perf_event;
 pub mod prog_type;
+pub mod tracepoint;
 
 mod base_helper;
 mod stub;
@@ -22,6 +23,10 @@ macro_rules! PROG_DEF {
             let new_ctx = <perf_event>::new().convert_ctx(ctx);
             $f(&new_ctx).into()
         }
+    };
+
+    ($f:ident, $n:ident, tracepoint, $t:ident) => {
+        TP_DEF!($f, $n, $t);
     };
 }
 
