@@ -24,7 +24,8 @@ DOCKERCONTEXT=\
 	rootfs/Dockerfile \
 	rootfs/vm-net-setup.service \
 	rootfs/vm-net-setup.sh \
-	rootfs/authorized_keys
+	rootfs/authorized_keys \
+	rootfs/fstab
 
 rootfs/.build-base: rootfs/Dockerfile rootfs/vm-net-setup.service rootfs/vm-net-setup.sh
 	rm -f ubuntu-ebpf.ext4
