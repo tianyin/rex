@@ -6,14 +6,13 @@ extern crate rlibc;
 
 use core::panic::PanicInfo;
 
-use inner_unikernel_rt::prog_type::prog_type;
 use inner_unikernel_rt::tracepoint::*;
-use inner_unikernel_rt::{MAP_DEF, PROG_DEF, TP_DEF};
+use inner_unikernel_rt::{bpf_trace_printk, bpf_trace_printk_fn, terminate_str};
 
-pub fn iu_prog1(ctx: &tp_ctx) -> i32 {
-    let pid = (bpf_get_current_pid_tgid() & 0xFFFFFFFF) as u32;
+pub fn iu_prog1(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
+    let pid = (obj.bpf_get_current_pid_tgid() & 0xFFFFFFFF) as u32;
     bpf_trace_printk!("Rust triggered from PID %u.\n", pid);
     return 0;
 }
 
-PROG_DEF!(iu_prog1, _start, tracepoint, Void);
+static PROG: tracepoint = tracepoint::new(tp_ctx::Void, iu_prog1);
