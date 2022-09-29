@@ -1,3 +1,4 @@
+use crate::map::*;
 use crate::prog_type::prog_type;
 
 pub enum tp_ctx {
@@ -22,6 +23,8 @@ impl tracepoint {
             tp_ctx::Void => tp_ctx::Void,
         }
     }
+
+    crate::base_helper::base_helper_defs!();
 }
 
 impl prog_type for tracepoint {
