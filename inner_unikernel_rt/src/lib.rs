@@ -2,7 +2,7 @@
 
 pub mod linux;
 pub mod map;
-pub mod perf_event;
+//pub mod perf_event; FIXME later
 pub mod prog_type;
 pub mod tracepoint;
 

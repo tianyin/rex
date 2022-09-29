@@ -1,4 +1,10 @@
-pub trait prog_type {
-    type ctx_ty;
-    fn convert_ctx(&mut self, ctx: *const ()) -> Self::ctx_ty;
+pub(crate) trait prog_type {
+    fn prog_run(&self, ctx: *const ()) -> u32;
+}
+
+fn entry<PT>(prog: &PT, ctx: *const ()) -> u32
+where
+    PT: prog_type,
+{
+    prog.prog_run(ctx)
 }
