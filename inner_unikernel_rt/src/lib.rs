@@ -9,8 +9,6 @@ pub mod tracepoint;
 mod base_helper;
 mod stub;
 
-pub use base_helper::bpf_trace_printk_fn;
-
 use core::panic::PanicInfo;
 
 #[macro_export]

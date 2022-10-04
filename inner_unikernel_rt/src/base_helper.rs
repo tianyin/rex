@@ -19,58 +19,13 @@ pub(crate) fn bpf_get_smp_processor_id() -> u32 {
     code()
 }
 
-pub unsafe fn bpf_trace_printk_fn<T1, T2, T3>(
-    fmt: *const u8,
-    fmt_size: usize,
-    arg1: T1,
-    arg2: T2,
-    arg3: T3,
-) -> i32 {
-    let ptr = stub::STUB_BPF_TRACE_PRINTK as *const ();
-    let code: extern "C" fn(*const u8, u32, T1, T2, T3) -> i32 =
+pub(crate) fn bpf_trace_printk(fmt: &str, arg1: u64, arg2: u64, arg3: u64) -> i32 {
+    let ptr = stub::STUB_BPF_TRACE_PRINTK_IU as *const ();
+    let code: extern "C" fn(*const u8, u32, u64, u64, u64) -> i32 =
         unsafe { core::mem::transmute(ptr) };
 
-    code(fmt, fmt_size as u32, arg1, arg2, arg3)
+    code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3)
 }
-
-#[macro_export]
-macro_rules! terminate_str {
-    ($s:expr) => {{
-        let mut fmt_arr: [u8; $s.len() + 1] = [0; $s.len() + 1];
-
-        for (i, c) in $s.chars().enumerate() {
-            fmt_arr[i] = c as u8;
-        }
-
-        fmt_arr[$s.len()] = 0;
-        fmt_arr.as_ptr()
-    }};
-}
-pub use terminate_str;
-
-#[macro_export]
-macro_rules! bpf_trace_printk {
-    ($s:expr) => {{
-        let fmt_str = terminate_str!($s);
-        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, 0, 0, 0) }
-    }};
-
-    ($s:expr, $a1:expr) => {{
-        let fmt_str = terminate_str!($s);
-        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, $a1, 0, 0) }
-    }};
-
-    ($s:expr, $a1:expr, $a2:expr) => {{
-        let fmt_str = terminate_str!($s);
-        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, $a1, $a2, 0) }
-    }};
-
-    ($s:expr, $a1:expr, $a2:expr, $a3:expr) => {{
-        let fmt_str = terminate_str!($s);
-        unsafe { bpf_trace_printk_fn(fmt_str, $s.len() + 1, $a1, $a2, $a3) }
-    }};
-}
-pub use bpf_trace_printk;
 
 pub(crate) fn bpf_map_lookup_elem<K, V>(map: &IUMap<K, V>, key: K) -> Option<V>
 where
@@ -109,6 +64,10 @@ macro_rules! base_helper_defs {
 
         pub fn bpf_get_smp_processor_id(&self) -> u32 {
             crate::base_helper::bpf_get_smp_processor_id()
+        }
+
+        pub fn bpf_trace_printk(&self, fmt: &str, arg1: u64, arg2: u64, arg3: u64) -> i32 {
+            crate::base_helper::bpf_trace_printk(fmt, arg1, arg2, arg3)
         }
 
         pub fn bpf_map_lookup_elem<K, V>(&self, map: &IUMap<K, V>, key: K) -> Option<V>
