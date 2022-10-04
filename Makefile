@@ -5,19 +5,24 @@ all: vmlinux fs examples
 
 docker: .ALWAYS
 	make -C docker/docker-linux-builder docker
-	make -C docker/docker-bpftool-builder docker
-	make -C docker/docker-example-builder docker
 
 bpftool: .ALWAYS docker
-	docker run --rm -v ~/linux:/linux bpftool-builder make bpftool
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -w /linux/tools/bpf/bpftool linux-builder make bpftool
 	scripts/get_bpftool.sh
 
+vmlinux-config: .ALWAYS docker
+	cp epf_tests.config ~/linux/.config
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make olddefconfig
+
 vmlinux: .ALWAYS docker
-	docker run --rm -v ~/linux:/linux linux-builder make -j32 bzImage
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make -j32 bzImage
 	scripts/get_linux.sh
 
+linux-clean:
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make distclean
+
 examples: .ALWAYS docker
-	docker run --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap libbpf-bootstrap-example-builder make
+	docker run --user $(shell id -u) --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap -w /libbpf-bootstrap/examples/c linux-builder make
 	scripts/get_examples.sh
 
 DOCKERCONTEXT=\
@@ -66,9 +71,6 @@ cpustat: .ALWAYS
 
 clean:
 	rm -f ubuntu-ebpf.ext4 rootfs/.build-base
-
-linux-clean:
-	docker run -v ~/linux:/linux linux-builder make clean
 
 shell:
 	ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
