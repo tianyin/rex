@@ -1,4 +1,4 @@
-FROM bpftool-builder
+FROM linux-builder
 
 RUN apt-get update
 
