@@ -1,4 +1,4 @@
-FROM debian:unstable-20211201
+FROM debian:stable-20220822
 
 RUN apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential

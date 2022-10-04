@@ -9,15 +9,22 @@ docker: .ALWAYS
 	make -C docker/docker-example-builder docker
 
 bpftool: .ALWAYS docker
-	docker run --rm -v ~/linux:/linux bpftool-builder make bpftool
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux bpftool-builder make bpftool
 	scripts/get_bpftool.sh
 
+vmlinux-config: .ALWAYS docker
+	cp q-script/.config ~/linux/.config
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux sayeed42/linux-builder make olddefconfig
+
 vmlinux: .ALWAYS docker
-	docker run --rm -v ~/linux:/linux linux-builder make -j32 bzImage
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux sayeed42/linux-builder make -j32 bzImage
 	scripts/get_linux.sh
 
+linux-clean:
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make distclean
+
 examples: .ALWAYS docker
-	docker run --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap libbpf-bootstrap-example-builder make
+	docker run --user $(shell id -u) --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap libbpf-bootstrap-example-builder make
 	scripts/get_examples.sh
 
 DOCKERCONTEXT=\
@@ -65,9 +72,6 @@ cpustat: .ALWAYS
 
 clean:
 	rm -f ubuntu-ebpf.ext4 rootfs/.build-base
-
-linux-clean:
-	docker run -v ~/linux:/linux linux-builder make clean
 
 shell:
 	ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
