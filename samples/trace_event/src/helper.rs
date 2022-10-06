@@ -1,7 +1,8 @@
-use crate::map::IUMap;
-use crate::stub;
-use crate::linux::bpf_perf_event::bpf_perf_event_data;
 use crate::linux::bpf::bpf_perf_event_value;
+use crate::map::IUMap;
+use crate::perf_event_kern::bpf_perf_event_data_kern;
+use crate::rt::{__bpf_get_stackid_pe, __bpf_perf_prog_read_value, bpf_perf_event_data};
+use crate::stub;
 
 pub fn bpf_get_current_pid_tgid() -> u64 {
     let ptr = stub::STUB_BPF_GET_CURRENT_PID_TGID as *const ();
@@ -12,35 +13,29 @@ pub fn bpf_get_current_pid_tgid() -> u64 {
 pub fn bpf_get_current_comm<T>(buf: &T, size_of_buf: usize) -> i64 {
     let ptr = stub::STUB_BPF_GET_CURRENT_COMM as *const ();
     let code: extern "C" fn(&T, u32) -> i64 = unsafe { core::mem::transmute(ptr) };
-    code(buf, size_of_buf as u32) 
+    code(buf, size_of_buf as u32)
 }
 
 // TODO hard to generalize
-pub fn bpf_get_stackid_pe<T1, T2>(ctx: &T1, map: &T2, flags: u64) -> i64 {
-    let ptr = stub::STUB_BPF_GET_STACKID_PE as *const ();
-    let code: extern "C" fn(&T1, &T2, u64) -> i64 = unsafe { core::mem::transmute(ptr) };
-    code(ctx, map, flags) 
-}
+//pub fn bpf_get_stackid_pe<T>(ctx: &bpf_perf_event_data, map: &T, flags: u64) -> i64 {
+//    __bpf_get_stackid_pe(ctx, map, flags)
+//}
+pub use crate::rt::__bpf_get_stackid_pe as bpf_get_stackid_pe;
 
 pub fn bpf_get_smp_processor_id() -> u32 {
     let ptr = stub::STUB_BPF_GET_SMP_PROCESSOR_ID as *const ();
     let code: extern "C" fn() -> u32 = unsafe { core::mem::transmute(ptr) };
-    code() 
+    code()
 }
 
-pub fn bpf_perf_prog_read_value(
-    ctx: &bpf_perf_event_data,
-    buf: &bpf_perf_event_value,
-    buf_size: usize
-) -> i64 {
-    let ptr = stub::STUB_BPF_PERF_PROG_READ_VALUE as *const ();
-    let code: extern "C" fn(
-        &bpf_perf_event_data,
-        &bpf_perf_event_value,
-        u32
-    ) -> i64 = unsafe { core::mem::transmute(ptr) };
-    code(ctx, buf, buf_size as u32) 
-}
+//pub fn bpf_perf_prog_read_value(
+//    ctx: &bpf_perf_event_data,
+//    buf: &bpf_perf_event_value,
+//    buf_size: usize,
+//) -> i64 {
+//    __bpf_perf_prog_read_value(ctx, buf, buf_size)
+//}
+pub use crate::rt::__bpf_perf_prog_read_value as bpf_perf_prog_read_value;
 
 #[macro_export]
 macro_rules! bpf_trace_printk {

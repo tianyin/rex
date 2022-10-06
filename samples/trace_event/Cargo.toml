@@ -25,5 +25,5 @@ helpers = [
 
 headers = [
     "linux/bpf.h",
-    "linux/bpf_perf_event.h",
+#    "linux/bpf_perf_event.h",
 ]
