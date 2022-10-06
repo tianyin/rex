@@ -39,7 +39,7 @@ fn __iu_prog1(_: *const ()) -> i32 {
     return 0;
 }
 
-PROG_DEF!(__iu_prog1, iu_prog1, tracepoint, "tracepoint/");
+PROG_DEF!(__iu_prog1, iu_prog1, tracepoint, "tracepoint/syscalls/sys_enter_dup");
 
 #[no_mangle]
 fn _start(ctx: *const ()) -> i64 {
