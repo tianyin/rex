@@ -1,6 +1,7 @@
 LINUX ?= $(HOME)/linux
 
 LINUX_INC = ${LINUX}/usr/include
+LIBBPF_DIR = ${LINUX}/tools/lib/bpf
 LIBIU_DIR = "../../libiu"
 
 NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
@@ -32,8 +33,8 @@ asm: ./src/*.rs prep_interface.py ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS} --emit asm
 
 loader: loader.c
-	clang -I${LINUX_INC} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBIU_DIR}\
-		-liu -o $@
+	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBIU_DIR} -L${LIBBPF_DIR}\
+		${LIBIU_DIR}/libiu.a ${LIBBPF_DIR}/libbpf.a -lelf -lz -lstdc++ -o $@
 
 event-trigger: event-trigger.c
 	clang -I${LINUX_INC} -g $< -o $@

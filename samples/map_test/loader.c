@@ -9,57 +9,37 @@
 #include <linux/unistd.h>
 
 #include "libiu.h"
+#include <libbpf.h>
 
 #define EXE "./target/release/map_test"
 
-static inline long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
-							int cpu, int  group_fd, unsigned long flags)
-{
-	return syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
-}
-
 int main(void)
 {
-	int base_fd, prog_fd, trace_id_fd, perf_event_fd, trace_pipe_fd;
-	char config_str[256];
-	struct perf_event_attr p_attr;
+	int trace_pipe_fd;
+	struct bpf_object *obj;
+	struct bpf_program *prog;
+	struct bpf_link *link = NULL;
 
 	iu_set_debug(1); // enable debug info
 
-	base_fd = iu_obj_load(EXE);
-
-	if (base_fd < 0)
-		exit(1);
-
-	prog_fd = iu_obj_get_prog(base_fd, "iu_prog1");
-
-	if (prog_fd < 0) {
-		fprintf(stderr, "iu_prog1 not found\n");
+	obj = iu_object__open(EXE);
+	if (!obj) {
+		fprintf(stderr, "Object could not be opened\n");
 		exit(1);
 	}
+		
+	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
+	if (!prog) {
+ 		fprintf(stderr, "Program not found\n");
+ 		exit(1);
+ 	}
 
-	trace_id_fd = openat(AT_FDCWD,
-		"/sys/kernel/debug/tracing/events/syscalls/sys_enter_dup/id", O_RDONLY);
-	if (trace_id_fd < 0) {
-		perror("openat(/sys/kernel/debug/tracing/events"
-			"/syscalls/sys_enter_dup/id)");
-		exit(1);
+	link = bpf_program__attach(prog);
+	if (libbpf_get_error(link)) {
+		fprintf(stderr, "ERROR: bpf_program__attach failed\n");
+		link = NULL;
+		goto cleanup;
 	}
-	read(trace_id_fd, config_str, 256);
-	close(trace_id_fd);
-
-	memset(&p_attr, 0, sizeof(p_attr));
-	p_attr.type = PERF_TYPE_TRACEPOINT;
-	p_attr.size = PERF_ATTR_SIZE_VER5;
-	p_attr.config = atoi(config_str);
-	perf_event_fd = perf_event_open(&p_attr, -1, 0, -1, PERF_FLAG_FD_CLOEXEC);
-	if (perf_event_fd < 0) {
-		perror("perf_event_open");
-		exit(1);
-	}
-
-	ioctl(perf_event_fd, PERF_EVENT_IOC_SET_BPF, prog_fd);
-	ioctl(perf_event_fd, PERF_EVENT_IOC_ENABLE, 0);
 
 	trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe",
 		O_RDONLY);
@@ -70,5 +50,8 @@ int main(void)
             putchar(c);
     }
 
+cleanup:
+	bpf_link__destroy(link);
+	bpf_object__close(obj);
 	return 0;
 }

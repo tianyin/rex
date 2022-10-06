@@ -18,7 +18,7 @@ use crate::linux::bpf::*;
 MAP_DEF!(map1, __map_1, i32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
 
 #[no_mangle]
-#[link_section = "tracepoint/"]
+#[link_section = "tracepoint/syscalls/sys_enter_dup"]
 fn iu_prog1() -> i32 {
     let key: i32 = 0;
 

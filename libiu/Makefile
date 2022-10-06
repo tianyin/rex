@@ -1,8 +1,8 @@
 LINUX ?= $(HOME)/linux
 
 CXX = clang++
-CXXFLAGS = -g -pipe -std=c++17 -fPIC -I${LINUX}/usr/include
-LDFLAGS = -Wl,--as-needed
+CXXFLAGS = -g -pipe -std=c++17 -fPIC -I${LINUX}/tools/lib -I${LINUX}/tools/include -I${LINUX}/tools/include/uapi -I${LINUX}/usr/include
+LDFLAGS = -Wl,--as-needed -L${LINUX}/tools/lib/bpf -lbpf
 LD = clang++
 AR = llvm-ar
 
