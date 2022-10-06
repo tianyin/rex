@@ -1,5 +1,4 @@
 #include <type_traits>
-#include "compiler.h"
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
@@ -16,6 +15,7 @@
 #include <sys/stat.h>
 #include <unistd.h>
 
+#include "compiler.h"
 #include "bpf.h"
 #include <linux/unistd.h>
 
@@ -28,8 +28,19 @@
 #include <sys/utsname.h>
 #include "libiu.h"
 
+#ifdef ARRAY_SIZE
+// Kernel ARRAY_SIZE generates compiler errors
+# undef ARRAY_SIZE
+#endif
+
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
+
 #define BPF_INSN_SZ (sizeof(struct bpf_insn))
+
+// https://elixir.bootlin.com/linux/v5.15/source/tools/lib/bpf/libbpf.c
+#ifndef zfree
+# define zfree(ptr) ({ free(*ptr); *ptr = NULL; })
+#endif
 
 // https://elixir.bootlin.com/linux/v5.15/source/tools/lib/bpf/libbpf.c#L224
 struct bpf_sec_def;
@@ -620,14 +631,14 @@ static void iu_program__exit(struct bpf_program *prog)
 			close(prog->instances.fds[i]);
 	}
 	prog->instances.nr = -1;
-	free(&prog->instances.fds);
-	free(&prog->func_info);
-	free(&prog->line_info);
-	free(&prog->name);
-	free(&prog->sec_name);
-	free(&prog->pin_name);
-	free(&prog->insns);
-	free(&prog->reloc_desc);
+	zfree(&prog->instances.fds);
+	zfree(&prog->func_info);
+	zfree(&prog->line_info);
+	zfree(&prog->name);
+	zfree(&prog->sec_name);
+	zfree(&prog->pin_name);
+	zfree(&prog->insns);
+	zfree(&prog->reloc_desc);
 
 	prog->nr_reloc = 0;
 	prog->insns_cnt = 0;
@@ -722,7 +733,7 @@ static int cmp_progs(const void *_a, const void *_b)
 	return a->sec_insn_off < b->sec_insn_off ? -1 : 1;
 }
 
-iu_obj::iu_obj(const char *c_path, struct bpf_object *bpf_obj) : map_defs(), 
+iu_obj::iu_obj(const char *c_path, struct bpf_object *bpf_obj) : map_defs(),
 	map_ptrs(), symtab_scn(nullptr), maps_scn(nullptr), prog_fd(-1)
 {
 	int fd = open(c_path, 0, O_RDONLY);
@@ -730,7 +741,7 @@ iu_obj::iu_obj(const char *c_path, struct bpf_object *bpf_obj) : map_defs(),
 	this->elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
 	bpf_obj->efile.elf = this->elf;
 	file_size = get_file_size(fd);
-	
+
 	// MAP_PRIVATE ensures the changes are not carried through to the backing
 	// file
 	// reference: `man 2 mmap`
@@ -1244,15 +1255,15 @@ struct bpf_object *iu_object__open(char *path)
 		return NULL;
 	obj->kern_version = (((major) << 16) + ((minor) << 8) + ((patch) > 255 ? 255 : (patch)));
 
-	
+
 	base_fd = iu_obj_load(path, obj);
 	iu_object__elf_finish(obj);
-	
+
 	if (base_fd < 0){
 		bpf_object__close(obj);
 		return NULL;
 	}
-	
+
 	return obj;
 }
 
