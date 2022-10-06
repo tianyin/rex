@@ -1,3 +1,4 @@
+use crate::linux::bpf::BPF_PROG_TYPE_TRACEPOINT;
 use crate::map::*;
 use crate::prog_type::prog_type;
 
@@ -5,14 +6,17 @@ pub enum tp_ctx {
     Void,
 }
 
+#[repr(C)]
 pub struct tracepoint {
-    tp_type: tp_ctx, // not sure if we really need this
+    rtti: u32,
+    tp_type: tp_ctx,
     prog: fn(&Self, &tp_ctx) -> u32,
 }
 
 impl tracepoint {
     pub const fn new(tp_ty: tp_ctx, f: fn(&Self, &tp_ctx) -> u32) -> Self {
         Self {
+            rtti: BPF_PROG_TYPE_TRACEPOINT,
             tp_type: tp_ty,
             prog: f,
         }
