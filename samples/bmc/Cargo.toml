@@ -22,6 +22,7 @@ panic = "abort"
 
 helpers = [
     "bpf_map_lookup_elem",
+    "bpf_map_update_elem",
     "bpf_spin_lock",
     "bpf_spin_unlock",
     "bpf_xdp_adjust_head",

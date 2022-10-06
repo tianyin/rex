@@ -2,13 +2,21 @@
 #![no_main]
 
 extern crate rlibc;
+use core::panic::PanicInfo;
+
+mod stub;
+
+mod map;
+use crate::map::*;
+
+mod helper;
+use crate::helper::*;
+
+mod linux;
+use crate::linux::bpf::*;
 
 mod bmc_common;
-mod helpers;
-mod linux;
-mod stub;
-use crate::helpers::*;
-use core::panic::PanicInfo;
+use crate::bmc_common::*;
 
 #[no_mangle]
 pub extern "C" fn _start() -> i32 {

@@ -55,6 +55,14 @@ where
     }
 }
 
+pub fn bpf_map_update_elem<K, V>(map: &IUMap<K, V>, key: K, value: V, flags: u64) -> i64 {
+    let f_ptr = stub::STUB_BPF_MAP_UPDATE_ELEM as *const ();
+    let helper: extern "C" fn(&IUMap<K, V>, *const K, *const V, u64) -> i64 =
+        unsafe { core::mem::transmute(f_ptr) };
+
+    helper(map, &key, &value, flags)
+}
+
 fn bpf_spin_lock(lock: &bpf_spin_lock) -> i64 {
     let f_ptr = stub::STUB_BPF_SPIN_LOCK as *const ();
     let helper: extern "C" fn(*const bpf_spin_lock) -> i64 = unsafe { core::mem::transmute(f_ptr) };
