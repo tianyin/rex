@@ -23,8 +23,8 @@ target/release/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv --release -- ${RUST_FLAGS}
 
 loader: loader.c
-	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBIU_DIR} -L${LIBBPF_DIR}\
-		${LIBIU_DIR}/libiu.a ${LIBBPF_DIR}/libbpf.a -lelf -lz -lstdc++ -o $@
+	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBBPF_DIR} -L${LIBIU_DIR}\
+		-lbpf -lelf -liu -o $@
 
 event-trigger: event-trigger.c
 	clang -I${LINUX_INC} -g $< -o $@
