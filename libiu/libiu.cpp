@@ -276,6 +276,8 @@ enum libbpf_map_type {
 	LIBBPF_MAP_KCONFIG,
 };
 
+static LIST_HEAD(bpf_objects_list);
+
 struct bpf_object {
 	char name[BPF_OBJ_NAME_LEN];
 	char license[64];
@@ -1255,6 +1257,8 @@ struct bpf_object *iu_object__open(char *path)
 		return NULL;
 	obj->kern_version = (((major) << 16) + ((minor) << 8) + ((patch) > 255 ? 255 : (patch)));
 
+	INIT_LIST_HEAD(&obj->list);
+	list_add(&obj->list, &bpf_objects_list);
 
 	base_fd = iu_obj_load(path, obj);
 	iu_object__elf_finish(obj);
