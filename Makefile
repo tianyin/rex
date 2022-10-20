@@ -44,7 +44,7 @@ DOCKERCONTEXT=\
 	rootfs/authorized_keys \
 	rootfs/fstab
 
-rootfs/.build-base: rootfs/Dockerfile rootfs/vm-net-setup.service rootfs/vm-net-setup.sh
+rootfs/.build-base: $(DOCKERCONTEXT)
 	rm -f ubuntu-ebpf.ext4
 	cp ~/.ssh/id_rsa.pub rootfs/authorized_keys
 	tar zc ${DOCKERCONTEXT} | docker build -f rootfs/Dockerfile -t ubuntu-ebpf -
@@ -52,17 +52,12 @@ rootfs/.build-base: rootfs/Dockerfile rootfs/vm-net-setup.service rootfs/vm-net-
 	rootfs/image2rootfs.sh ubuntu-ebpf latest ext4 2>&1 > /dev/null
 	touch rootfs/.build-base
 
-rootfs/.build-guest: $(shell find rootfs/guest) rootfs/.build-base
-	rootfs/update_guest_files.sh ubuntu-ebpf.ext4
-
-fs: rootfs/.build-guest
-
 run:
 	make -C user-framework vm
 	rootfs/update_guest_files.sh ubuntu-ebpf.ext4
 	./firecracker-run-new.sh vmlinux ubuntu-ebpf.ext4
 
-runq: rootfs/.build-guest
+runq: rootfs/.build-base
 	./qemu-run.sh bzImage ubuntu-ebpf.ext4
 
 THISDIR=$(shell pwd)
@@ -85,4 +80,4 @@ clean:
 	rm -f ubuntu-ebpf.ext4 rootfs/.build-base
 
 shell:
-	ssh -t root@192.168.111.2 "cd /guest; /bin/bash --login"
+	ssh -t root@192.168.111.2 "cd /host/inner_unikernels/rootfs/guest; /bin/bash --login"
