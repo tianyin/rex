@@ -46,7 +46,8 @@ DOCKERCONTEXT=\
 	rootfs/vm-net-setup.service \
 	rootfs/vm-net-setup.sh \
 	rootfs/authorized_keys \
-	rootfs/fstab
+	rootfs/fstab \
+	rootfs/bash_profile
 
 rootfs/.build-base: $(DOCKERCONTEXT)
 	rm -f ubuntu-ebpf.ext4

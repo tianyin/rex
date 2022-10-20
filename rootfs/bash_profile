@@ -1,0 +1,11 @@
+# ~/.profile: executed by Bourne-compatible login shells.
+
+if [ "$BASH" ]; then
+  if [ -f ~/.bashrc ]; then
+    . ~/.bashrc
+  fi
+fi
+
+mesg n 2> /dev/null || true
+export LD_LIBRARY_PATH='/host/inner_unikernels/libiu:/host/linux/tools/lib/bpf'
+export PATH=$PATH:'/host/linux/tools/bpf/bpftool'
