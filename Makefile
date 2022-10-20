@@ -19,6 +19,9 @@ vmlinux: .ALWAYS docker
 	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make headers
 	scripts/get_linux.sh
 
+samples: .ALWAYS docker vmlinux
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -w /linux/samples/bpf linux-builder make
+
 linux-clean:
 	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make distclean
 
