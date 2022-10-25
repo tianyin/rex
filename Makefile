@@ -33,9 +33,9 @@ iu-clean:
 	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/libiu linux-builder make clean
 
 iu-examples: .ALWAYS docker iu
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/samples/hello linux-builder make
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/samples/map_test linux-builder make
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/samples/syscall_tp linux-builder make
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/hello linux-builder make
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/map_test linux-builder make
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/syscall_tp linux-builder make
 
 examples: .ALWAYS docker
 	docker run --user $(shell id -u) --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap -w /libbpf-bootstrap/examples/c linux-builder make
