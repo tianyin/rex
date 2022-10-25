@@ -57,11 +57,6 @@ rootfs/.build-base: $(DOCKERCONTEXT)
 	rootfs/image2rootfs.sh ubuntu-ebpf latest ext4 2>&1 > /dev/null
 	touch rootfs/.build-base
 
-run:
-	make -C user-framework vm
-	rootfs/update_guest_files.sh ubuntu-ebpf.ext4
-	./firecracker-run-new.sh vmlinux ubuntu-ebpf.ext4
-
 runq: rootfs/.build-base
 	./qemu-run.sh bzImage ubuntu-ebpf.ext4
 
