@@ -92,12 +92,6 @@ containers can be built with:
 
 *** VMM
 
-We are using firecracker as our VMM, which we have obtained via
-Firecracker's binary distribution.  
-
-    curl -Lo firecracker https://github.com/firecracker-microvm/firecracker/releases/download/v0.16.0/firecracker-v0.16.0
-    curl -Lo firectl https://firectl-release.s3.amazonaws.com/firectl-v0.1.0
-
 For using QEMU:
 
     sudo apt update
