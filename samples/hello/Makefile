@@ -8,14 +8,24 @@ NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-s
 
 RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
-		-A non_upper_case_globals -A non_snake_case ${NO_OPT}
+		-A non_upper_case_globals -A non_snake_case ${NO_OPT} -C iu-playground
 
-all: target/debug/hello loader event-trigger
+all: target/debug/hello loader event-trigger llvm-ir mir
 
 target/debug/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
 		`realpath .`
 	cargo rustc -vv -- ${RUST_FLAGS}
+
+mir:
+	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
+		`realpath .`
+	cargo rustc -vv -- ${RUST_FLAGS} --emit=mir
+
+llvm-ir:
+	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
+        `realpath .`
+	cargo rustc -vv -- ${RUST_FLAGS} --emit=llvm-ir
 
 target/release/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
