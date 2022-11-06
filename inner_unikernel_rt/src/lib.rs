@@ -9,6 +9,7 @@ pub mod tracepoint;
 mod base_helper;
 mod stub;
 
+use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;
 
 #[macro_export]
@@ -26,6 +27,11 @@ macro_rules! PROG_DEF {
     ($f:ident, $n:ident, tracepoint, $t:ident) => {
         TP_DEF!($f, $n, $t);
     };
+}
+
+#[no_mangle]
+fn __iu_entry_tracepoint(prog: &tracepoint::tracepoint, ctx: *const ()) -> u32 {
+    prog.prog_run(ctx)
 }
 
 // This function is called on panic.
