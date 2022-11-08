@@ -15,4 +15,4 @@ pub fn iu_prog1(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
 }
 
 #[link_section = "tracepoint"]
-static PROG: tracepoint = tracepoint::new(iu_prog1, "_start", tp_ctx::Void);
+static PROG: tracepoint = tracepoint::new(iu_prog1, "start", tp_ctx::Void);
