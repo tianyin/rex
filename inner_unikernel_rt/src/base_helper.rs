@@ -67,11 +67,8 @@ macro_rules! base_helper_defs {
             crate::base_helper::bpf_trace_printk(fmt, arg1, arg2, arg3)
         }
 
-        pub fn bpf_map_lookup_elem<'b, K, V>(
-            &'b self,
-            map: &'b IUMap<K, V>,
-            key: K,
-        ) -> Option<&mut V> {
+        // Self should already have impl<'a>
+        pub fn bpf_map_lookup_elem<K, V>(&self, map: &'a IUMap<K, V>, key: K) -> Option<&mut V> {
             crate::base_helper::bpf_map_lookup_elem::<K, V>(map, key)
         }
 
