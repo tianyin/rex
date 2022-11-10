@@ -27,10 +27,7 @@ pub(crate) fn bpf_trace_printk(fmt: &str, arg1: u64, arg2: u64, arg3: u64) -> i3
     code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3)
 }
 
-pub(crate) fn bpf_map_lookup_elem<K, V>(map: &IUMap<K, V>, key: K) -> Option<V>
-where
-    V: Copy,
-{
+pub(crate) fn bpf_map_lookup_elem<K, V>(map: &IUMap<K, V>, key: K) -> Option<&mut V> {
     let f_ptr = stub::STUB_BPF_MAP_LOOKUP_ELEM as *const ();
     let helper: extern "C" fn(&IUMap<K, V>, *const K) -> *const V =
         unsafe { core::mem::transmute(f_ptr) };
@@ -40,7 +37,7 @@ where
     if value.is_null() {
         None
     } else {
-        Some(unsafe { *value })
+        Some(unsafe { &mut *value })
     }
 }
 
@@ -70,10 +67,11 @@ macro_rules! base_helper_defs {
             crate::base_helper::bpf_trace_printk(fmt, arg1, arg2, arg3)
         }
 
-        pub fn bpf_map_lookup_elem<K, V>(&self, map: &IUMap<K, V>, key: K) -> Option<V>
-        where
-            V: Copy,
-        {
+        pub fn bpf_map_lookup_elem<'b, K, V>(
+            &'b self,
+            map: &'b IUMap<K, V>,
+            key: K,
+        ) -> Option<&mut V> {
             crate::base_helper::bpf_map_lookup_elem::<K, V>(map, key)
         }
 
