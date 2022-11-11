@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 #include "compiler.h"
-#include "bpf.h"
+#include <linux/bpf.h>
 #include <linux/unistd.h>
 
 #include <libelf.h>
