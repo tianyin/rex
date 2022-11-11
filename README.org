@@ -10,6 +10,8 @@ Relevant github repos:
 - [[https://github.com/djwillia/inner_unikernels]]
 - [[https://github.com/djwillia/linux/tree/inner_unikernels]]
 - [[https://github.com/djwillia/inner_unikernels_paper]]
+- [[https://github.com/xlab-uiuc/llvm-rust]]
+- [[https://github.com/xlab-uiuc/rust]]
 
 Current colloborators:
 - Dan Williams (Virginia Tech)

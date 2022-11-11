@@ -11,7 +11,7 @@
 #include "libiu.h"
 #include <libbpf.h>
 
-#define EXE "./target/release/hello"
+#define EXE "./target/debug/hello"
 
 int main(void)
 {
@@ -27,8 +27,8 @@ int main(void)
 		fprintf(stderr, "Object could not be opened\n");
 		exit(1);
 	}
-		
-	prog = bpf_object__find_program_by_name(obj, "_start");
+
+	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
 	if (!prog) {
  		fprintf(stderr, "_start not found\n");
  		exit(1);
@@ -49,7 +49,7 @@ int main(void)
         if (read(trace_pipe_fd, &c, 1) == 1)
             putchar(c);
     }
-	
+
 cleanup:
 	bpf_link__destroy(link);
 	bpf_object__close(obj);

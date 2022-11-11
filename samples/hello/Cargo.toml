@@ -8,17 +8,11 @@ edition = "2021"
 [dependencies]
 rlibc = "1.0.0"
 
+[dependencies.inner_unikernel_rt]
+path = "../../inner_unikernel_rt"
+
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
-
-[inner_unikernel]
-helpers = [
-    "bpf_trace_printk",
-    "bpf_get_current_pid_tgid"
-]
-
-# Also define this if any kernel uapi headers are required
-# headers = []

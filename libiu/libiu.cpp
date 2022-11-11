@@ -1,4 +1,4 @@
-#include <type_traits>
+#include <cassert> // FIXME remove after devel
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
@@ -16,7 +16,7 @@
 #include <unistd.h>
 
 #include "compiler.h"
-#include "bpf.h"
+#include <linux/bpf.h>
 #include <linux/unistd.h>
 
 #include <libelf.h>
@@ -60,16 +60,16 @@ struct bpf_sec_def {
 	attach_fn_t attach_fn;
 };
 
-#define BPF_PROG_SEC_IMPL(string, ptype, eatype, eatype_optional,	    \
-			  attachable, attach_btf)			    \
-	{								    \
-		.sec = string,						    \
-		.len = sizeof(string) - 1,				    \
-		.prog_type = ptype,					    \
-		.expected_attach_type = (enum bpf_attach_type) eatype,				   \
-		.is_exp_attach_type_optional = eatype_optional,		    \
-		.is_attachable = attachable,				    \
-		.is_attach_btf = attach_btf,				    \
+#define BPF_PROG_SEC_IMPL(string, ptype, eatype, eatype_optional,	\
+			  attachable, attach_btf)								\
+	{																\
+		.sec = string,												\
+		.len = sizeof(string) - 1,									\
+		.prog_type = ptype,											\
+		.expected_attach_type = (enum bpf_attach_type) eatype,		\
+		.is_exp_attach_type_optional = eatype_optional,				\
+		.is_attachable = attachable,								\
+		.is_attach_btf = attach_btf,								\
 	}
 
 /* Programs that can NOT be attached. */
@@ -92,11 +92,11 @@ struct bpf_sec_def {
  */
 #define BPF_APROG_COMPAT(string, ptype) BPF_PROG_SEC(string, ptype)
 
-#define SEC_DEF(sec_pfx, ptype, ...) {					    \
-	.sec = sec_pfx,							    \
-	.len = sizeof(sec_pfx) - 1,					    \
-	.prog_type = BPF_PROG_TYPE_##ptype,				    \
-	__VA_ARGS__							    \
+#define SEC_DEF(sec_pfx, ptype, ...) {	\
+	.sec = sec_pfx,						\
+	.len = sizeof(sec_pfx) - 1,			\
+	.prog_type = BPF_PROG_TYPE_##ptype,	\
+	__VA_ARGS__							\
 }
 
 extern "C"{
@@ -557,6 +557,17 @@ class iu_obj {
 	Elf *elf;
 	Elf_Scn *symtab_scn;
 	Elf_Scn *maps_scn;
+
+	// Global Offset Table for PIE
+	Elf_Scn *got_scn;
+	uint64_t got_addr;
+	uint64_t got_size;
+
+	// Dynamic relocation for PIE
+	Elf_Scn *rela_dyn_scn;
+	std::unique_ptr<iu_rela_dyn[]> dyn_relas;
+	uint64_t nr_dyn_relas;
+
 	size_t file_size;
 	unsigned char *file_map;
 	int prog_fd;
@@ -564,6 +575,8 @@ class iu_obj {
 	int parse_scns(struct bpf_object *);
 	int parse_maps(struct bpf_object *);
 	int parse_progs(struct bpf_object *);
+	int parse_got();
+	int parse_rela_dyn();
 
 public:
 	iu_obj() = delete;
@@ -826,11 +839,20 @@ int iu_obj::parse_scns(struct bpf_object *obj)
 			obj->efile.st_ops_shndx = idx;
 		else if (!(strcmp(name, ".bss")))
 			obj->efile.bss_shndx = idx;
+		else if (!strcmp(".got", name))
+			this->got_scn = scn;
+		else if (sh->sh_type == SHT_RELA && !strcmp(".rela.dyn", name))
+			this->rela_dyn_scn = scn;
 	}
 
-	if (!this->maps_scn && debug) {
+	if (!this->maps_scn && debug)
 		std::clog << "section .maps not found" << std::endl;
-	}
+
+	if (!this->got_scn && debug)
+		std::clog << "section .got not found" << std::endl;
+
+	if (!this->rela_dyn_scn && debug)
+		std::clog << "section .rela.dyn not found" << std::endl;
 
 	return 0;
 }
@@ -842,9 +864,8 @@ int iu_obj::parse_maps(struct bpf_object *obj)
 	size_t strtabidx;
 	Elf64_Addr maps_shaddr;
 
-	if (!this->maps_scn) {
+	if (!this->maps_scn)
 		return 0;
-	}
 
 	maps = elf_getdata(maps_scn, 0);
 	syms = elf_getdata(symtab_scn, 0);
@@ -953,6 +974,11 @@ int iu_obj::parse_progs(struct bpf_object *obj)
 
 		scn_name = elf_strptr(this->elf, shstrndx,
 				elf64_getshdr(scn)->sh_name);
+		sym_name = elf_strptr(elf, strtabidx, sym->st_name);
+		if (debug) {
+			std::clog << "section: \"" << scn_name << "\"" << std::endl;
+			std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
+		}
 
 		data = elf_getdata(scn, 0);
 
@@ -962,12 +988,6 @@ int iu_obj::parse_progs(struct bpf_object *obj)
 		int prog_type = sec_def->prog_type;
 
 		sym_name = elf_strptr(elf, strtabidx, sym->st_name);
-
-		if (debug) {
-			std::clog << "section: " << scn_name << std::endl;
-			std::clog << "symbol: " << sym_name << std::endl;
-		}
-
 		progs.try_emplace(sym_name, sym_name, prog_type, sym->st_value);
 
 		bpf_progs = (struct bpf_program *) realloc(bpf_progs, (nr_progs + 1)*sizeof(*bpf_progs));
@@ -987,6 +1007,78 @@ int iu_obj::parse_progs(struct bpf_object *obj)
 	qsort(obj->programs, obj->nr_programs, sizeof(*obj->programs), cmp_progs);
 	return 0;
 };
+
+int iu_obj::parse_got()
+{
+	int ret;
+	Elf64_Shdr *got;
+
+	if (!this->got_scn)
+		return 0;
+
+	got = elf64_getshdr(got_scn);
+
+	if (!got) {
+		std::cerr << "elf: failed to get .got section" << std::endl;
+		return -1;
+	}
+
+	this->got_addr = got->sh_addr;
+	this->got_size = got->sh_size;
+
+	if (debug) {
+		std::clog << ".got offset=" << std::hex << this->got_addr
+			<< ", .got size=" << std::dec << this->got_size << std::endl;
+	}
+
+	return 0;
+}
+
+int iu_obj::parse_rela_dyn() {
+	int ret;
+	Elf64_Shdr *rela_dyn;
+	void *rela_dyn_data;
+	uint64_t rela_dyn_addr, rela_dyn_size;
+
+	if (!this->rela_dyn_scn)
+		return 0;
+
+	rela_dyn = elf64_getshdr(rela_dyn_scn);
+
+	if (!rela_dyn) {
+		std::cerr << "elf: failed to get .rela.dyn section" << std::endl;
+		return -1;
+	}
+
+	rela_dyn_data = elf_getdata(rela_dyn_scn, 0)->d_buf;
+	rela_dyn_addr = rela_dyn->sh_addr;
+	rela_dyn_size = rela_dyn->sh_size;
+
+	if (debug) {
+		std::clog << ".rela.dyn offset=" << std::hex << rela_dyn_addr
+			<< ", .rela.dyn size=" << std::dec << rela_dyn_size << std::endl;
+	}
+
+	assert(!(rela_dyn_size % sizeof(iu_rela_dyn)));
+
+	nr_dyn_relas = rela_dyn_size / sizeof(iu_rela_dyn);
+	dyn_relas = std::make_unique<iu_rela_dyn[]>(3);
+
+	memcpy(dyn_relas.get(), rela_dyn_data, rela_dyn_size);
+
+	if (debug) {
+		std::cerr << ".rela.dyn: " << std::hex << std::endl;
+		for (int i = 0; i < nr_dyn_relas; i++) {
+			std::cerr << "0x" << dyn_relas[i].addr << ", 0x"
+				<< dyn_relas[i].type << ", 0x" << dyn_relas[i].value
+				<< std::endl;
+		}
+		std::cerr << std::dec;
+	}
+
+	return 0;
+}
+
 int iu_obj::parse_elf(struct bpf_object *obj)
 {
 	int ret;
@@ -998,7 +1090,9 @@ int iu_obj::parse_elf(struct bpf_object *obj)
 
 	ret = this->parse_scns(obj);
 	ret = ret < 0 ? : this->parse_maps(obj);
-	ret = ret < 0 ? : this->parse_progs(obj);
+	ret = ret < 0 ?: this->parse_progs(obj);
+	ret = ret < 0 ? : this->parse_got();
+	ret = ret < 0 ? : this->parse_rela_dyn();
 
 	return ret;
 }
@@ -1095,10 +1189,17 @@ int iu_obj::load(struct bpf_object *obj)
 	attr.prog_type = BPF_PROG_TYPE_IU_BASE;
 	memcpy(attr.prog_name, "map_test", sizeof("map_test"));
 	attr.rustfd = fd;
-	attr.license = (__u64)"GPL";
+	attr.license = reinterpret_cast<__u64>("GPL");
 
-	attr.map_offs = (__u64)arr.get();
+	attr.map_offs = reinterpret_cast<__u64>(arr.get());
 	attr.map_cnt = map_ptrs.size();
+
+	attr.got_off = got_addr;
+	attr.got_size = got_size;
+
+	attr.dyn_relas = reinterpret_cast<__u64>(dyn_relas.get());
+	attr.nr_dyn_relas = nr_dyn_relas;
+
 
 	ret = bpf(BPF_PROG_LOAD_IU_BASE, &attr, sizeof(attr));
 
