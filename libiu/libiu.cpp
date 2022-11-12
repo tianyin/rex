@@ -1062,7 +1062,7 @@ int iu_obj::parse_rela_dyn() {
 	assert(!(rela_dyn_size % sizeof(iu_rela_dyn)));
 
 	nr_dyn_relas = rela_dyn_size / sizeof(iu_rela_dyn);
-	dyn_relas = std::make_unique<iu_rela_dyn[]>(3);
+	dyn_relas = std::make_unique<iu_rela_dyn[]>(nr_dyn_relas);
 
 	memcpy(dyn_relas.get(), rela_dyn_data, rela_dyn_size);
 
