@@ -1,53 +1,34 @@
 #![no_std]
 #![no_main]
 
+extern crate inner_unikernel_rt;
 extern crate rlibc;
-use core::panic::PanicInfo;
 
-mod stub;
-
-mod map;
-use crate::map::*;
-
-mod helper;
-use crate::helper::*;
-
-mod linux;
-use crate::linux::bpf::*;
-
-mod rt;
-use crate::rt::*;
+use inner_unikernel_rt::tracepoint::*;
+use inner_unikernel_rt::map::IUMap;
+use inner_unikernel_rt::linux::bpf::{BPF_MAP_TYPE_HASH, BPF_ANY};
+use inner_unikernel_rt::MAP_DEF;
 
 MAP_DEF!(map1, __map_1, i32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
 
-fn __iu_prog1(_: *const ()) -> i32 {
+fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
     let key: i32 = 0;
 
-    match bpf_map_lookup_elem::<i32, i64>(map1, key) {
+    match obj.bpf_map_lookup_elem::<i32, i64>(map1, key) {
         None => {
-            bpf_trace_printk!("Not found.\n");
+            obj.bpf_trace_printk("Not found.\n", 0, 0, 0);
         }
         Some(val) => {
-            bpf_trace_printk!("Val=%llu.\n", i64: val);
+            obj.bpf_trace_printk("Val=%llu.\n", *val as u64, 0, 0);
         }
     }
 
-    let pid = (bpf_get_current_pid_tgid() & 0xFFFFFFFF) as u32;
-    bpf_trace_printk!("Rust program triggered from PID %u.\n", u32: pid);
+    let pid = (obj.bpf_get_current_pid_tgid() & 0xFFFFFFFF) as u32;
+    obj.bpf_trace_printk("Rust program triggered from PID %u.\n", pid.into(), 0, 0);
+    obj.bpf_map_update_elem(map1, key, pid as i64, BPF_ANY.into());
 
-    bpf_map_update_elem(map1, key, pid as i64, BPF_ANY.into());
     return 0;
 }
 
-PROG_DEF!(__iu_prog1, iu_prog1, tracepoint, "tracepoint/syscalls/sys_enter_dup");
-
-#[no_mangle]
-fn _start(ctx: *const ()) -> i64 {
-    iu_prog1(ctx)
-}
-
-// This function is called on panic.
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
-}
+#[link_section = "tracepoint/syscalls/sys_enter_dup"]
+static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_ctx::Void);

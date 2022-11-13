@@ -3,9 +3,14 @@
 version = 3
 
 [[package]]
+name = "inner_unikernel_rt"
+version = "0.1.0"
+
+[[package]]
 name = "map_test"
 version = "0.1.0"
 dependencies = [
+ "inner_unikernel_rt",
  "rlibc",
 ]
 

@@ -8,18 +8,14 @@ NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-s
 
 RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
-		-A non_upper_case_globals -A non_snake_case ${NO_OPT}
+		-A non_upper_case_globals -A non_snake_case ${NO_OPT} -C iu-playground
 
-all: target/release/map_test target/debug/map_test loader event-trigger
+all: target/debug/map_test loader event-trigger
 
 target/debug/map_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
-	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
-		`realpath .`
 	cargo rustc -vv -- ${RUST_FLAGS}
 
 target/release/map_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
-	PYTHONDONTWRITEBYTECODE=1 python3 ../../scripts/prep_interface.py ${LINUX}\
-		`realpath .`
 	cargo rustc -vv --release -- ${RUST_FLAGS}
 
 
@@ -33,8 +29,8 @@ asm: ./src/*.rs prep_interface.py ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS} --emit asm
 
 loader: loader.c
-	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBIU_DIR} -L${LIBBPF_DIR}\
-		${LIBIU_DIR}/libiu.a ${LIBBPF_DIR}/libbpf.a -lelf -lz -lstdc++ -o $@
+	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBBPF_DIR} -L${LIBIU_DIR}\
+		-lbpf -lelf -liu -o $@
 
 event-trigger: event-trigger.c
 	clang -I${LINUX_INC} -g $< -o $@

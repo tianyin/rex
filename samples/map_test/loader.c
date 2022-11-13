@@ -11,7 +11,7 @@
 #include "libiu.h"
 #include <libbpf.h>
 
-#define EXE "./target/release/map_test"
+#define EXE "./target/debug/map_test"
 
 int main(void)
 {
@@ -27,7 +27,7 @@ int main(void)
 		fprintf(stderr, "Object could not be opened\n");
 		exit(1);
 	}
-		
+
 	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
 	if (!prog) {
  		fprintf(stderr, "Program not found\n");
