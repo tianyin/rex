@@ -1,4 +1,3 @@
-#include <cassert> // FIXME remove after devel
 #include <cstring>
 #include <cstdint>
 #include <cstdlib>
@@ -1037,8 +1036,9 @@ int iu_obj::parse_got()
 int iu_obj::parse_rela_dyn() {
 	int ret;
 	Elf64_Shdr *rela_dyn;
-	void *rela_dyn_data;
+	iu_rela_dyn *rela_dyn_data;
 	uint64_t rela_dyn_addr, rela_dyn_size;
+	int idx, cnt;
 
 	if (!this->rela_dyn_scn)
 		return 0;
@@ -1050,7 +1050,7 @@ int iu_obj::parse_rela_dyn() {
 		return -1;
 	}
 
-	rela_dyn_data = elf_getdata(rela_dyn_scn, 0)->d_buf;
+	rela_dyn_data = reinterpret_cast<iu_rela_dyn *>(elf_getdata(rela_dyn_scn, 0)->d_buf);
 	rela_dyn_addr = rela_dyn->sh_addr;
 	rela_dyn_size = rela_dyn->sh_size;
 
@@ -1059,12 +1059,28 @@ int iu_obj::parse_rela_dyn() {
 			<< ", .rela.dyn size=" << std::dec << rela_dyn_size << std::endl;
 	}
 
-	assert(!(rela_dyn_size % sizeof(iu_rela_dyn)));
+	if (rela_dyn_size % sizeof(iu_rela_dyn)) {
+		std::cerr << "elf: ill-formed .rela.dyn section" << std::endl;
+		return -1;
+	}
 
+	// Get the number of relocs in the section
 	nr_dyn_relas = rela_dyn_size / sizeof(iu_rela_dyn);
-	dyn_relas = std::make_unique<iu_rela_dyn[]>(nr_dyn_relas);
 
-	memcpy(dyn_relas.get(), rela_dyn_data, rela_dyn_size);
+	// Need to skip the map relocs, these are handled differently in the kernel
+	for (idx = 0, cnt = 0; idx < nr_dyn_relas; idx++) {
+		if (map_defs.find(rela_dyn_data[idx].value) == map_defs.end())
+			cnt++;
+	}
+
+	dyn_relas = std::make_unique<iu_rela_dyn[]>(cnt);
+	for (idx = 0, cnt = 0; idx < nr_dyn_relas; idx++) {
+		if (map_defs.find(rela_dyn_data[idx].value) == map_defs.end())
+			dyn_relas[cnt++] = rela_dyn_data[idx];
+	}
+
+	// set the correct number of relocs, excluding maps
+	nr_dyn_relas = cnt;
 
 	if (debug) {
 		std::cerr << ".rela.dyn: " << std::hex << std::endl;
@@ -1090,7 +1106,7 @@ int iu_obj::parse_elf(struct bpf_object *obj)
 
 	ret = this->parse_scns(obj);
 	ret = ret < 0 ? : this->parse_maps(obj);
-	ret = ret < 0 ?: this->parse_progs(obj);
+	ret = ret < 0 ? : this->parse_progs(obj);
 	ret = ret < 0 ? : this->parse_got();
 	ret = ret < 0 ? : this->parse_rela_dyn();
 
