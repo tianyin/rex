@@ -56,7 +56,22 @@ pub fn func_sys_read(obj: &kprobe, ctx: &pt_regs) -> u32 {
 }
 
 pub fn func_sys_mmap(obj: &kprobe, ctx: &pt_regs) -> u32 {
-    obj.bpf_trace_printk("mmap\n", 0, 0, 0);
+    let sd: seccomp_data = seccomp_data {
+        nr: 0,
+        arch: 0,
+        instruction_pointer: 0,
+        args: [0; 6],
+    };
+    let unsafe_ptr = ctx.rsi as *const ();
+    obj.bpf_trace_printk("seccomp_data addr: 0x%lx", ctx.rsi, 0, 0);
+    obj.bpf_probe_read_kernel(&sd, unsafe_ptr);
+
+    obj.bpf_trace_printk(
+        "mmap(addr=0x%lx, len=%ld, prot=%ld...)\n",
+        sd.args[0],
+        sd.args[1],
+        sd.args[2],
+    );
     return 0;
 }
 
