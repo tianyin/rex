@@ -7,10 +7,14 @@ pub(crate) fn bpf_get_current_pid_tgid() -> u64 {
     code()
 }
 
-pub(crate) fn bpf_get_current_comm<T>(buf: &T, size_of_buf: usize) -> i64 {
+// Design decision: the original BPF interface does not have type safety,
+// since buf is just a buffer. But in Rust we can use const generics to
+// restrict it to only [u8; N] given that comm is a cstring. This also
+// automatically achieves size check, since N is a constexpr.
+pub(crate) fn bpf_get_current_comm<const N: usize>(buf: &[u8; N]) -> i64 {
     let ptr = stub::STUB_BPF_GET_CURRENT_COMM as *const ();
-    let code: extern "C" fn(&T, u32) -> i64 = unsafe { core::mem::transmute(ptr) };
-    code(buf, size_of_buf as u32)
+    let code: extern "C" fn(*const u8, u32) -> i64 = unsafe { core::mem::transmute(ptr) };
+    code(buf.as_ptr(), N as u32)
 }
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
@@ -49,10 +53,25 @@ pub(crate) fn bpf_map_update_elem<K, V>(map: &IUMap<K, V>, key: K, value: V, fla
     helper(map, &key, &value, flags)
 }
 
+// Design decision: Make the destination a generic type so that probe read
+// kernel can directly fill in variables of certain type. This also achieves
+// size checking, since T is known at compile time for monomorphization
+pub(crate) fn bpf_probe_read_kernel<T>(dst: &T, unsafe_ptr: *const ()) -> i64 {
+    let f_ptr = stub::STUB_BPF_PROBE_READ_KERNEL as *const ();
+    let helper: extern "C" fn(*const (), u32, *const ()) -> i64 =
+        unsafe { core::mem::transmute(f_ptr) };
+
+    helper(
+        dst as *const T as *const (),
+        core::mem::size_of::<T>() as u32,
+        unsafe_ptr,
+    )
+}
+
 macro_rules! base_helper_defs {
     () => {
-        pub fn bpf_get_current_comm<T>(&self, buf: &T, size_of_buf: usize) -> i64 {
-            crate::base_helper::bpf_get_current_comm::<T>(buf, size_of_buf)
+        pub fn bpf_get_current_comm<const N: usize>(&self, buf: &[u8; N]) -> i64 {
+            crate::base_helper::bpf_get_current_comm::<N>(buf)
         }
 
         pub fn bpf_get_current_pid_tgid(&self) -> u64 {
@@ -80,6 +99,10 @@ macro_rules! base_helper_defs {
             flags: u64,
         ) -> i64 {
             crate::base_helper::bpf_map_update_elem::<K, V>(map, key, value, flags)
+        }
+
+        pub fn bpf_probe_read_kernel<T>(&self, dst: &T, unsafe_ptr: *const ()) -> i64 {
+            crate::base_helper::bpf_probe_read_kernel::<T>(dst, unsafe_ptr)
         }
     };
 }

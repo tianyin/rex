@@ -5,6 +5,7 @@ pub mod map;
 //pub mod perf_event; FIXME later
 pub mod prog_type;
 pub mod tracepoint;
+pub mod kprobe;
 
 mod base_helper;
 mod stub;
@@ -31,6 +32,11 @@ macro_rules! PROG_DEF {
 
 #[no_mangle]
 fn __iu_entry_tracepoint(prog: &tracepoint::tracepoint, ctx: *const ()) -> u32 {
+    prog.prog_run(ctx)
+}
+
+#[no_mangle]
+fn __iu_entry_kprobe(prog: &kprobe::kprobe, ctx: *const ()) -> u32 {
     prog.prog_run(ctx)
 }
 
