@@ -8,26 +8,11 @@ edition = "2021"
 [dependencies]
 rlibc = "1.0.0"
 
-#[dependencies.compiler_builtins]
-#version = "0.1.66"
-#git = "https://github.com/rust-lang/compiler-builtins"
-#features = ["mem"]
+[dependencies.inner_unikernel_rt]
+path = "../../inner_unikernel_rt"
 
 [profile.dev]
 panic = "abort"
 
 [profile.release]
 panic = "abort"
-
-[inner_unikernel]
-helpers = [
-    "bpf_probe_read_kernel",
-    "bpf_trace_printk",
-]
-
-headers = [
-    "linux/ptrace.h",
-    "linux/unistd.h",
-    "linux/errno.h",
-    "linux/seccomp.h",
-]

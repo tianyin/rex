@@ -16,6 +16,9 @@
 #include <unistd.h>
 
 #include "libiu.h"
+#include <libbpf.h>
+
+#define EXE "./target/debug/tracex5"
 
 /* install fake seccomp program to enable seccomp code path inside the kernel,
  * so that our kprobe attached to seccomp_phase1() can be triggered
@@ -155,31 +158,30 @@ static void read_trace_pipe(void)
 
 int main(void)
 {
-	int prog_fd, base_fd;
+	struct bpf_object *obj;
+	struct bpf_program *prog;
+	struct bpf_link *link = NULL;
 	FILE *f;
 
 	iu_set_debug(1); // enable debug info
 
-	base_fd = iu_obj_load("./target/release/tracex5");
-
-	if (base_fd < 0)
+	obj = iu_object__open(EXE);
+	if (!obj) {
+		fprintf(stderr, "Object could not be opened\n");
 		exit(1);
+	}
 
-	prog_fd = iu_obj_get_prog(base_fd, "_start");
-
- 	if (prog_fd < 0) {
- 		fprintf(stderr, "_start not found\n");
+	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
+	if (!prog) {
+ 		fprintf(stderr, "Program not found\n");
  		exit(1);
  	}
 
-	if (prog_fd < 0) {
-		perror("bpf");
-		goto out_err;
-	}
-
-	if (kprobe_attach(prog_fd, "__seccomp_filter") < 0) {
-		perror("kprobe_attach");
-		goto out_err;
+	link = bpf_program__attach(prog);
+	if (libbpf_get_error(link)) {
+		fprintf(stderr, "ERROR: bpf_program__attach failed\n");
+		link = NULL;
+		goto cleanup;
 	}
 
 	install_accept_all_seccomp();
@@ -189,8 +191,8 @@ int main(void)
 
 	read_trace_pipe();
 
-	return EXIT_SUCCESS;
-
-out_err:
-	return EXIT_FAILURE;
+cleanup:
+	bpf_link__destroy(link);
+	bpf_object__close(obj);
+	return 0;
 }
