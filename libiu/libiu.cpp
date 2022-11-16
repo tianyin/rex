@@ -974,10 +974,10 @@ int iu_obj::parse_progs(struct bpf_object *obj)
 		scn_name = elf_strptr(this->elf, shstrndx,
 				elf64_getshdr(scn)->sh_name);
 		sym_name = elf_strptr(elf, strtabidx, sym->st_name);
-		if (debug) {
+		/*if (debug) {
 			std::clog << "section: \"" << scn_name << "\"" << std::endl;
 			std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
-		}
+		}*/
 
 		data = elf_getdata(scn, 0);
 
@@ -1107,7 +1107,7 @@ int iu_obj::parse_elf(struct bpf_object *obj)
 	ret = this->parse_scns(obj);
 	ret = ret < 0 ? : this->parse_maps(obj);
 	ret = ret < 0 ? : this->parse_progs(obj);
-	ret = ret < 0 ? : this->parse_got();
+	//ret = ret < 0 ? : this->parse_got();
 	ret = ret < 0 ? : this->parse_rela_dyn();
 
 	return ret;
