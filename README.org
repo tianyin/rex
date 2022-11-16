@@ -111,10 +111,10 @@ it's easiest to use a container.  Run:
 cd
 git clone https://github.com/djwillia/linux.git
 cd linux/
-git checkout djw-ebpf-5.15
-cp <path_to_inner_unikernels>/ebpf_tests.config .config
+git checkout inner_unikernels
 cd <path_to_inner_unikernels>
-make vmlinux
+make vmlinux-config
+make
 #+END_SRC
 
 It will build and copy over the kernel vmlinux file and its config so
@@ -136,24 +136,6 @@ linux tree is at `~/linux` run:
 
 It will put the bpftool into the `rootfs/guest` directory where it
 will be used by the guest.
-
-*** examples
-
-There's a project called libbpf-bootstrap, which has some minimal bpf
-examples.  We have a builder container for that too. Run:
-
-#+BEGIN_SRC bash
-cd
-git clone https://github.com/libbpf/libbpf-bootstrap.git
-cd libbpf-bootstrap/
-git submodule update --init --recursive
-cd <path_to_inner_unikernels>
-make examples
-#+END_SRC
-
-It will put the `minimal` example into the `rootfs/guest` directory
-where it will be used by the guest.
-
 
 *** rootfs
 
@@ -180,7 +162,7 @@ directly because it's a dependency of `make run`.
 We modified some of the Lupine scripts for a single point of
 invocation into a guest shell.
 
-    make run
+    make runq
 
 At this point it gives us a root SSH shell.  To get more shells to do
 stuff with, type:

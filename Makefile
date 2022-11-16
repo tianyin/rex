@@ -1,7 +1,7 @@
 
 .ALWAYS:
 
-all: vmlinux fs examples
+all: vmlinux fs samples
 
 docker: .ALWAYS
 	make -C docker/docker-linux-builder docker
@@ -56,6 +56,8 @@ rootfs/.build-base: $(DOCKERCONTEXT)
 	@echo "preparing rootfs"
 	rootfs/image2rootfs.sh ubuntu-ebpf latest ext4 2>&1 > /dev/null
 	touch rootfs/.build-base
+
+fs: rootfs/.build-base
 
 runq: rootfs/.build-base
 	./qemu-run.sh bzImage ubuntu-ebpf.ext4
