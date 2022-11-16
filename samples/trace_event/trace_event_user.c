@@ -1,28 +1,27 @@
+#include <errno.h>
 #include <fcntl.h>
+#include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
-#include <sys/ioctl.h>
 #include <unistd.h>
-#include <errno.h>
-#include <stdbool.h>
-#include <signal.h>
-#include "trace_helpers.h"
-#include "bpf.h"
 
-#include <linux/perf_event.h>
 #include <linux/unistd.h>
+#include <linux/perf_event.h>
 
+#include "trace_helpers.h"
 #include "libiu.h"
+#include <libbpf.h>
+#include <bpf.h>
 
-#define EXE "./target/debug/trace_event_kern"
+#define EXE "target/debug/trace_event_kern"
 
 #define SAMPLE_FREQ 50
 
 static int pid;
 /* counts, stackmap */
 static int map_fd[2];
-static int prog_fd;
+struct bpf_program *prog;
 static bool sys_read_seen, sys_write_seen;
 
 static inline long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
@@ -113,18 +112,9 @@ static void print_stack(struct key_t *key, __u64 count)
 
 static void err_exit(int err)
 {
-	kill(pid, SIGKILL);
+	if (pid)
+		kill(pid, SIGKILL);
 	exit(err);
-}
-
-static inline int generate_load(void)
-{
-	if (system("dd if=/dev/zero of=/dev/null count=5000k status=none") < 0) {
-		printf("failed to generate some load with dd: %s\n", strerror(errno));
-		return -1;
-	}
-
-	return 0;
 }
 
 static void print_stacks(void)
@@ -154,10 +144,26 @@ static void print_stacks(void)
 	}
 }
 
+static inline int generate_load(void)
+{
+	if (system("dd if=/dev/zero of=/dev/null count=5000k status=none") < 0) {
+		printf("failed to generate some load with dd: %s\n", strerror(errno));
+		return -1;
+	}
+
+	return 0;
+}
+
 static void test_perf_event_all_cpu(struct perf_event_attr *attr)
 {
 	int nr_cpus = sysconf(_SC_NPROCESSORS_ONLN);
+	struct bpf_link **links = calloc(nr_cpus, sizeof(struct bpf_link *));
 	int i, pmu_fd, error = 1;
+
+	if (!links) {
+		printf("malloc of links failed\n");
+		goto err;
+	}
 
 	/* system wide perf event, no need to inherit */
 	attr->inherit = 0;
@@ -166,12 +172,16 @@ static void test_perf_event_all_cpu(struct perf_event_attr *attr)
 	for (i = 0; i < nr_cpus; i++) {
 		pmu_fd = perf_event_open(attr, -1, i, -1, 0);
 		if (pmu_fd < 0) {
-			printf("sys_perf_event_open failed\n");
+			printf("perf_event_open failed\n");
 			goto all_cpu_err;
 		}
-		// TODO no need to store links?
-		ioctl(pmu_fd, PERF_EVENT_IOC_SET_BPF, prog_fd);
-		ioctl(pmu_fd, PERF_EVENT_IOC_ENABLE, 0);
+		links[i] = bpf_program__attach_perf_event(prog, pmu_fd);
+		if (libbpf_get_error(links[i])) {
+			printf("bpf_program__attach_perf_event failed\n");
+			links[i] = NULL;
+			close(pmu_fd);
+			goto all_cpu_err;
+		}
 	}
 
 	if (generate_load() < 0)
@@ -180,12 +190,17 @@ static void test_perf_event_all_cpu(struct perf_event_attr *attr)
 	print_stacks();
 	error = 0;
 all_cpu_err:
+	for (i--; i >= 0; i--)
+		bpf_link__destroy(links[i]);
+err:
+	free(links);
 	if (error)
 		err_exit(error);
 }
 
 static void test_perf_event_task(struct perf_event_attr *attr)
 {
+	struct bpf_link *link = NULL;
 	int pmu_fd, error = 1;
 
 	/* per task perf event, enable inherit so the "dd ..." command can be traced properly.
@@ -196,11 +211,16 @@ static void test_perf_event_task(struct perf_event_attr *attr)
 	/* open task bound event */
 	pmu_fd = perf_event_open(attr, 0, -1, -1, 0);
 	if (pmu_fd < 0) {
-		printf("sys_perf_event_open failed\n");
+		printf("perf_event_open failed\n");
 		goto err;
 	}
-	ioctl(pmu_fd, PERF_EVENT_IOC_SET_BPF, prog_fd);
-	ioctl(pmu_fd, PERF_EVENT_IOC_ENABLE, 0);
+	link = bpf_program__attach_perf_event(prog, pmu_fd);
+	if (libbpf_get_error(link)) {
+		printf("bpf_program__attach_perf_event failed\n");
+		link = NULL;
+		close(pmu_fd);
+		goto err;
+	}
 
 	if (generate_load() < 0)
 		goto err;
@@ -208,11 +228,13 @@ static void test_perf_event_task(struct perf_event_attr *attr)
 	print_stacks();
 	error = 0;
 err:
+	bpf_link__destroy(link);
 	if (error)
 		err_exit(error);
 }
 
-static void test_bpf_perf_event(void) {
+static void test_bpf_perf_event(void)
+{
 	struct perf_event_attr attr_type_hw = {
 		.sample_freq = SAMPLE_FREQ,
 		.freq = 1,
@@ -250,17 +272,6 @@ static void test_bpf_perf_event(void) {
 		/* Intel Instruction Retired */
 		.config = 0xc0,
 	};
-	struct perf_event_attr attr_type_raw_lock_load = {
-		.sample_freq = SAMPLE_FREQ,
-		.freq = 1,
-		.type = PERF_TYPE_RAW,
-		/* Intel MEM_UOPS_RETIRED.LOCK_LOADS */
-		.config = 0x21d0,
-		/* Request to record lock address from PEBS */
-		.sample_type = PERF_SAMPLE_ADDR,
-		/* Record address value requires precise event */
-		.precise_ip = 2,
-	};
 
 	printf("Test HW_CPU_CYCLES\n");
 	test_perf_event_all_cpu(&attr_type_hw);
@@ -282,45 +293,42 @@ static void test_bpf_perf_event(void) {
 	test_perf_event_all_cpu(&attr_type_raw);
 	test_perf_event_task(&attr_type_raw);
 
-	// Not working even for the original eBPF program
-	// printf("Test Lock Load\n");
-	// test_perf_event_all_cpu(&attr_type_raw_lock_load);
-	// test_perf_event_task(&attr_type_raw_lock_load);
-
 	printf("*** PASS ***\n");
 }
 
-int main(void)
+int main(int argc, char **argv)
 {
-	int base_fd;
+	struct bpf_object *obj = NULL;
+	char filename[256];
 	int error = 1;
+
+	iu_set_debug(1); // enable debug info
+
+	snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
 
 	signal(SIGINT, err_exit);
 	signal(SIGTERM, err_exit);
-
-	iu_set_debug(1); // enable debug info
 
 	if (load_kallsyms()) {
 		printf("failed to process /proc/kallsyms\n");
 		goto cleanup;
 	}
 
-	base_fd = iu_obj_load(EXE);
-
-	if (base_fd < 0) {
-		printf("couldn't load the base inner-unikernels program\n");
+	obj = iu_object__open(EXE);
+	if (libbpf_get_error(obj)) {
+		printf("opening BPF object file failed\n");
+		obj = NULL;
 		goto cleanup;
 	}
 
-	prog_fd = iu_obj_get_prog(base_fd, "iu_prog1");
-
-	if (prog_fd < 0) {
-		printf("couldn't find inner-unikernels program `iu_prog1'\n");
+	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
+	if (!prog) {
+		printf("finding a prog in obj file failed\n");
 		goto cleanup;
 	}
 
-	map_fd[0] = iu_obj_get_map(base_fd, "counts");
-	map_fd[1] = iu_obj_get_map(base_fd, "stackmap");
+	map_fd[0] = bpf_object__find_map_fd_by_name(obj, "__counts");
+	map_fd[1] = bpf_object__find_map_fd_by_name(obj, "__stackmap");
 	if (map_fd[0] < 0 || map_fd[1] < 0) {
 		printf("finding a counts/stackmap map in obj file failed\n");
 		goto cleanup;
@@ -328,7 +336,7 @@ int main(void)
 
 	pid = fork();
 	if (pid == 0) {
-		// read_trace_pipe();
+		read_trace_pipe();
 		return 0;
 	} else if (pid == -1) {
 		printf("couldn't spawn process\n");
@@ -338,7 +346,7 @@ int main(void)
 	test_bpf_perf_event();
 	error = 0;
 
-cleanup: // TODO
-	// bpf_object__close(obj); // TODO
+cleanup:
+	bpf_object__close(obj);
 	err_exit(error);
 }

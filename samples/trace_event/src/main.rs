@@ -2,19 +2,24 @@
 #![no_main]
 
 extern crate rlibc;
-
 extern crate inner_unikernel_rt;
 
-use core::panic::PanicInfo;
-
 use inner_unikernel_rt::linux::bpf::*;
-use inner_unikernel_rt::map::*;
 use inner_unikernel_rt::perf_event::*;
-use inner_unikernel_rt::prog_type::prog_type;
-use inner_unikernel_rt::{MAP_DEF, PROG_DEF};
+use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
+use inner_unikernel_rt::map::*;
+use inner_unikernel_rt::MAP_DEF;
 
-use core::mem::size_of;
-use core::mem::size_of_val;
+pub const TASK_COMM_LEN: usize = 16;
+
+// What if user does not use repr(C)?
+#[repr(C)]
+#[derive(Copy, Clone)]
+pub struct key_t {
+    pub comm: [u8; TASK_COMM_LEN],
+    pub kernstack: u32,
+    pub userstack: u32,
+}
 
 MAP_DEF!(counts, __counts, key_t, u64, BPF_MAP_TYPE_HASH, 10000, 0);
 
@@ -22,7 +27,7 @@ MAP_DEF!(
     stackmap,
     __stackmap,
     u32,
-    [u64; PERF_MAX_STACK_DEPTH],
+    [u64; PERF_MAX_STACK_DEPTH as usize],
     BPF_MAP_TYPE_STACK_TRACE,
     10000,
     0
@@ -31,12 +36,13 @@ MAP_DEF!(
 pub const KERN_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP) as u64;
 pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
+#[inline]
 fn PT_REGS_IP(x: &pt_regs) -> u64 {
-    return (*x).ip;
+    return x.ip;
 }
 
-fn __iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
-    let cpu: u32 = bpf_get_smp_processor_id();
+fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
+    let cpu: u32 = obj.bpf_get_smp_processor_id();
     let value_buf: bpf_perf_event_value = bpf_perf_event_value {
         counter: 0,
         enabled: 0,
@@ -47,53 +53,51 @@ fn __iu_prog1(ctx: &bpf_perf_event_data) -> i32 {
         kernstack: 0,
         userstack: 0,
     };
-
-    if ((*ctx).sample_period < 10000) {
+    if ctx.sample_period < 10000 {
         return 0;
     }
-    bpf_get_current_comm::<i8>(&key.comm[0], size_of_val(&key.comm));
-    key.kernstack = bpf_get_stackid_pe(ctx, stackmap, KERN_STACKID_FLAGS) as u32;
-    key.userstack = bpf_get_stackid_pe(ctx, stackmap, USER_STACKID_FLAGS) as u32;
-    if ((key.kernstack as i32) < 0 && (key.userstack as i32) < 0) {
-        bpf_trace_printk!(
+
+    obj.bpf_get_current_comm(&key.comm);
+    key.kernstack = obj.bpf_get_stackid_pe(ctx, stackmap, KERN_STACKID_FLAGS) as u32;
+    key.userstack = obj.bpf_get_stackid_pe(ctx, stackmap, USER_STACKID_FLAGS) as u32;
+
+    if (key.kernstack as i32) < 0 && (key.userstack as i32) < 0 {
+        obj.bpf_trace_printk(
             "CPU-%d period %lld ip %llx",
-            cpu,
-            (*ctx).sample_period,
-            PT_REGS_IP(&((*ctx).regs))
+            cpu as u64,
+            ctx.sample_period,
+            PT_REGS_IP(&ctx.regs)
         );
         return 0;
     }
 
-    let ret: i32 =
-        bpf_perf_prog_read_value(ctx, &value_buf, size_of::<bpf_perf_event_value>()) as i32;
-    if (ret == 0) {
-        bpf_trace_printk!(
+    let ret = obj.bpf_perf_prog_read_value(ctx, &value_buf);
+
+    if ret == 0 {
+        obj.bpf_trace_printk(
             "Time Enabled: %llu, Time Running: %llu",
             value_buf.enabled,
-            value_buf.running
+            value_buf.running,
+            0
         );
     } else {
-        bpf_trace_printk!("Get Time Failed, ErrCode: %d", ret);
+        obj.bpf_trace_printk("Get Time Failed, ErrCode: %d", ret as u64, 0, 0);
     }
 
-    if ((*ctx).addr != 0) {
-        bpf_trace_printk!("Address recorded on event: %llx", (*ctx).addr);
+    if ctx.addr != 0 {
+        obj.bpf_trace_printk("Address recorded on event: %llx", ctx.addr, 0, 0);
     }
 
-    match bpf_map_lookup_elem::<key_t, u64>(counts, key) {
+    match obj.bpf_map_lookup_elem::<key_t, u64>(counts, key) {
         None => {
-            bpf_map_update_elem(counts, key, 1, BPF_NOEXIST.into());
+            obj.bpf_map_update_elem(counts, key, 1, BPF_NOEXIST as u64);
         }
         Some(val) => {
-            bpf_map_update_elem(counts, key, val + 1, BPF_EXIST.into());
+            *val += 1;
         }
     }
     return 0;
 }
 
-PROG_DEF!(__iu_prog1, iu_prog1, perf_event);
-
-#[no_mangle]
-fn _start(ctx: *const ()) -> i64 {
-    iu_prog1(ctx)
-}
+#[link_section = "perf_event"]
+static PROG: perf_event = perf_event::new(iu_prog1_fn, "iu_prog1");
