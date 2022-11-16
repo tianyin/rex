@@ -1,6 +1,7 @@
 use super::binding::{bpf_perf_event_data_kern, bpf_user_pt_regs_t, perf_sample_data};
-use crate::linux::bpf::bpf_perf_event_value;
-use crate::prog_type::prog_type;
+use crate::linux::bpf::{bpf_perf_event_value, BPF_PROG_TYPE_PERF_EVENT};
+use crate::prog_type::iu_prog;
+use crate::map::*;
 use crate::stub;
 
 pub type pt_regs = super::binding::pt_regs;
@@ -13,22 +14,37 @@ pub struct bpf_perf_event_data {
     kptr: *const bpf_perf_event_data_kern,
 }
 
-pub struct perf_event {
-    placeholder: u64, // not sure if we really need this
+// First 3 fields should always be rtti, prog_fn, and name
+//
+// rtti should be u64, therefore after compiling the
+// packed struct type rustc generates for LLVM does
+// not additional padding after rtti
+//
+// prog_fn should have &Self as its first argument
+//
+// name is a &str
+#[repr(C)]
+pub struct perf_event<'a> {
+    rtti: u64,
+    prog: fn(&Self, &bpf_perf_event_data) -> u32,
+    name: &'a str,
 }
 
-impl perf_event {
-    pub const fn new() -> Self {
-        Self { placeholder: 0 }
+impl<'a> perf_event<'a> {
+    pub const fn new(
+        f: fn(&perf_event<'a>, &bpf_perf_event_data) -> u32,
+        nm: &'a str,
+    ) -> perf_event<'a> {
+        Self {
+            rtti: BPF_PROG_TYPE_PERF_EVENT as u64,
+            prog: f,
+            name: nm,
+        }
     }
-}
 
-impl prog_type for perf_event {
-    type ctx_ty = bpf_perf_event_data;
-    fn convert_ctx(&mut self, ctx: *const ()) -> Self::ctx_ty {
+    fn convert_ctx(&self, ctx: *const ()) -> bpf_perf_event_data {
         let kern_ctx: &bpf_perf_event_data_kern = unsafe {
-            let _kern_ctx: *const bpf_perf_event_data_kern = core::mem::transmute(ctx);
-            &*_kern_ctx
+            &*core::mem::transmute::<*const (), *const bpf_perf_event_data_kern>(ctx)
         };
 
         let regs = unsafe { *kern_ctx.regs };
@@ -43,22 +59,38 @@ impl prog_type for perf_event {
             kptr: kern_ctx,
         }
     }
+
+    crate::base_helper::base_helper_defs!();
+
+    pub fn bpf_perf_prog_read_value(
+        &self,
+        ctx: &bpf_perf_event_data,
+        buf: &bpf_perf_event_value,
+    ) -> i64 {
+        let ptr = stub::STUB_BPF_PERF_PROG_READ_VALUE as *const ();
+        let helper: extern "C" fn(*const bpf_perf_event_data_kern, &bpf_perf_event_value, u32) -> i64 =
+            unsafe { core::mem::transmute(ptr) };
+        let size = core::mem::size_of::<bpf_perf_event_value>() as u32;
+        helper(ctx.kptr, buf, size)
+    }
+
+    // TODO: needs to restrict the map to only BPF_MAP_TYPE_STACK_TRACE
+    pub fn bpf_get_stackid_pe<K, V>(
+        &self,
+        ctx: &bpf_perf_event_data,
+        map: &'a IUMap<K, V>,
+        flags: u64
+    ) -> i64 {
+        let ptr = stub::STUB_BPF_GET_STACKID_PE as *const ();
+        let helper: extern "C" fn(*const bpf_perf_event_data_kern, &'a IUMap<K, V>, u64) -> i64 =
+            unsafe { core::mem::transmute(ptr) };
+        helper(ctx.kptr, map, flags)
+    }
 }
 
-pub fn bpf_perf_prog_read_value(
-    ctx: &bpf_perf_event_data,
-    buf: &bpf_perf_event_value,
-    buf_size: usize,
-) -> i64 {
-    let ptr = stub::STUB_BPF_PERF_PROG_READ_VALUE as *const ();
-    let khelper: extern "C" fn(*const bpf_perf_event_data_kern, &bpf_perf_event_value, u32) -> i64 =
-        unsafe { core::mem::transmute(ptr) };
-    khelper(ctx.kptr, buf, buf_size as u32)
-}
-
-pub fn bpf_get_stackid_pe<T>(ctx: &bpf_perf_event_data, map: &T, flags: u64) -> i64 {
-    let ptr = stub::STUB_BPF_GET_STACKID_PE as *const ();
-    let khelper: extern "C" fn(*const bpf_perf_event_data_kern, &T, u64) -> i64 =
-        unsafe { core::mem::transmute(ptr) };
-    khelper(ctx.kptr, map, flags)
+impl iu_prog for perf_event<'_> {
+    fn prog_run(&self, ctx: *const ()) -> u32 {
+        let mut newctx = self.convert_ctx(ctx);
+        (self.prog)(self, &newctx)
+    }
 }
