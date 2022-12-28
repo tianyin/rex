@@ -1,0 +1,8 @@
+[submodule "linux"]
+	path = linux
+	url = git@github.com:djwillia/linux.git
+	branch = inner_unikernels
+[submodule "rust"]
+	path = rust
+	url = git@github.com:xlab-uiuc/rust.git
+	branch = inner-unikernel-dev
