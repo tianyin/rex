@@ -25,17 +25,18 @@ samples: .ALWAYS docker vmlinux
 linux-clean:
 	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make distclean
 
-iu: .ALWAYS docker 
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -w /linux/tools/lib/bpf linux-builder make libbpf.a
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/libiu linux-builder make -j32
+# Might not be needed anymore
+#iu: .ALWAYS docker 
+#	docker run --user $(shell id -u) --rm -v ~/linux:/linux -w /linux/tools/lib/bpf linux-builder make libbpf.a
+#	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/libiu linux-builder make -j32
 
 iu-clean: 
 	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/libiu linux-builder make clean
 
-iu-examples: .ALWAYS docker iu
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/hello linux-builder make
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/map_test linux-builder make
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/syscall_tp linux-builder make
+iu-examples: .ALWAYS docker
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/hello -e LINUX=/inner_unikernels/linux linux-builder make
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/map_test -e LINUX=/inner_unikernels/linux linux-builder make
+	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/syscall_tp -e LINUX=/inner_unikernels/linux linux-builder make
 
 examples: .ALWAYS docker
 	docker run --user $(shell id -u) --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap -w /libbpf-bootstrap/examples/c linux-builder make

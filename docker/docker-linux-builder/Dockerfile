@@ -17,31 +17,40 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libtinfo-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libstdc++-10-dev
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y bc
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y flex bison
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y rsync
 
 RUN DEBIAN_FRONTEND=noninteractive update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libcap-dev llvm-dev libdisasm-dev binutils-dev
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libcap-dev llvm-dev libdisasm-dev binutils-dev unzip
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y pkg-config
 
 # Rust samples
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3-toml bindgen
-RUN set -eux; \
-    dpkgArch="$(dpkg --print-architecture)"; \
-    case "${dpkgArch##*-}" in \
-        amd64) rustArch='x86_64-unknown-linux-gnu' ;; \
-        arm64) rustArch='aarch64-unknown-linux-gnu' ;; \
-        *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
-    esac; \
-    \
-    url="https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"; \
-    wget "$url"; \
-    chmod +x rustup-init; \
-    ./rustup-init -y --no-modify-path --default-toolchain nightly; \
-    rm rustup-init; \
-    chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
-    rustup --version; \
-    cargo --version; \
-    rustc --version;
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3-toml bindgen libssl-dev pkg-config curl ninja-build git
+RUN DEBIAN_FRONTEND=noninteractive git clone https://github.com/xlab-uiuc/rust --recursive
+
+WORKDIR "/rust"
+RUN cp inner-unikernels-config.toml config.toml
+RUN python3 x.py build; \
+	python3 x.py install;
+RUN python3 x.py install cargo
+
+#RUN set -eux; \
+#    dpkgArch="$(dpkg --print-architecture)"; \
+#    case "${dpkgArch##*-}" in \
+#        amd64) rustArch='x86_64-unknown-linux-gnu' ;; \
+#        arm64) rustArch='aarch64-unknown-linux-gnu' ;; \
+#        *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
+#    esac; \
+#    \
+#    url="https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"; \
+#    wget "$url"; \
+#    chmod +x rustup-init; \
+#    ./rustup-init -y --no-modify-path --default-toolchain nightly; \
+#    rm rustup-init; \
+#    chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
+#    rustup --version; \
+#    cargo --version; \
+#    rustc --version;
 
 WORKDIR /linux
 
