@@ -11,9 +11,9 @@ pub(crate) fn bpf_get_current_pid_tgid() -> u64 {
 // since buf is just a buffer. But in Rust we can use const generics to
 // restrict it to only [u8; N] given that comm is a cstring. This also
 // automatically achieves size check, since N is a constexpr.
-pub(crate) fn bpf_get_current_comm<const N: usize>(buf: &[u8; N]) -> i64 {
+pub(crate) fn bpf_get_current_comm<const N: usize>(buf: &mut [u8; N]) -> i64 {
     let ptr = stub::STUB_BPF_GET_CURRENT_COMM as *const ();
-    let code: extern "C" fn(*const u8, u32) -> i64 = unsafe { core::mem::transmute(ptr) };
+    let code: extern "C" fn(*mut u8, u32) -> i64 = unsafe { core::mem::transmute(ptr) };
     code(buf.as_ptr(), N as u32)
 }
 
@@ -56,13 +56,13 @@ pub(crate) fn bpf_map_update_elem<K, V>(map: &IUMap<K, V>, key: K, value: V, fla
 // Design decision: Make the destination a generic type so that probe read
 // kernel can directly fill in variables of certain type. This also achieves
 // size checking, since T is known at compile time for monomorphization
-pub(crate) fn bpf_probe_read_kernel<T>(dst: &T, unsafe_ptr: *const ()) -> i64 {
+pub(crate) fn bpf_probe_read_kernel<T>(dst: &mut T, unsafe_ptr: *const ()) -> i64 {
     let f_ptr = stub::STUB_BPF_PROBE_READ_KERNEL as *const ();
-    let helper: extern "C" fn(*const (), u32, *const ()) -> i64 =
+    let helper: extern "C" fn(*mut (), u32, *const ()) -> i64 =
         unsafe { core::mem::transmute(f_ptr) };
 
     helper(
-        dst as *const T as *const (),
+        dst as *mut T as *mut (),
         core::mem::size_of::<T>() as u32,
         unsafe_ptr,
     )
@@ -70,7 +70,7 @@ pub(crate) fn bpf_probe_read_kernel<T>(dst: &T, unsafe_ptr: *const ()) -> i64 {
 
 macro_rules! base_helper_defs {
     () => {
-        pub fn bpf_get_current_comm<const N: usize>(&self, buf: &[u8; N]) -> i64 {
+        pub fn bpf_get_current_comm<const N: usize>(&self, buf: &mut [u8; N]) -> i64 {
             crate::base_helper::bpf_get_current_comm::<N>(buf)
         }
 
@@ -101,7 +101,7 @@ macro_rules! base_helper_defs {
             crate::base_helper::bpf_map_update_elem::<K, V>(map, key, value, flags)
         }
 
-        pub fn bpf_probe_read_kernel<T>(&self, dst: &T, unsafe_ptr: *const ()) -> i64 {
+        pub fn bpf_probe_read_kernel<T>(&self, dst: &mut T, unsafe_ptr: *const ()) -> i64 {
             crate::base_helper::bpf_probe_read_kernel::<T>(dst, unsafe_ptr)
         }
     };
