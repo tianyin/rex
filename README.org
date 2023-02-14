@@ -50,6 +50,101 @@ programs, demonstrating there is no need to split programs or limit their
 processing data size.
 
 
+* SETUP (version 20230214)
+
+** Dependencies:
+The following tools/libraries are required. Older versions are not guaranteed
+to (or guaranteed not to) work. This list does not include standard kernel
+build dependencies.
+- binutils >= 2.38
+- clang+LLVM >= 14.0.0
+- elfutils
+- pahole
+- python toml package (might move to builtin ~toml~ module in python 3.11)
+- cmake
+- ninja
+- QEMU
+
+** Repo setup and build
+
+Clone this repo and its submodules:
+#+BEGIN_SRC bash
+git clone https://github.com/djwillia/inner_unikernels.git
+cd inner_unikernels
+git submodule update --init --recursive --progress
+#+END_SRC
+
+The Linux directory now hosts the kernel repo, checked out at the pre-set
+commit. To build the kernel, do:
+#+BEGIN_SRC bash
+cd linux
+cp ./q-script/.config .config
+make oldconfig LLVM=1
+make -j`nproc` LLVM=1
+cd -
+#+END_SRC
+Note: The default configuration in this repo (~q-script/.config~) uses the LLVM
+toolchain (i.e. ~clang~, ~llvm-ar~, ~lld~, etc). If desired, the GNU toolchain
+(i.e. ~gcc~, ~ld.bfd~) can be used by removing the ~LLVM=1~ environment
+variable setup.
+
+Since ~libiu~ loader library depends on the ~libbpf~ shipped with the kernel,
+~libbpf~ needs to be built first:
+#+BEGIN_SRC bash
+cd linux/tools/lib/bpf
+make -j`nproc` LLVM=1
+cd -
+#+END_SRC
+
+Then bootstrap Rust:
+#+BEGIN_SRC bash
+cd rust
+./x.py build --config=inner-unikernels-config.toml
+./x.py install --config=inner-unikernels-config.toml
+cd -
+#+END_SRC
+The Rust artifacts are installed under ~rust/dist~.
+
+With the linux and Rust setup, add them to the environment:
+#+BEGIN_SRC bash
+source env.sh
+#+END_SRC
+
+Finally build libiu:
+#+BEGIN_SRC bash
+cd libiu
+make -j`nproc`
+cd -
+#+END_SRC
+
+** Run ~hello~ example
+
+First build the source
+#+BEGIN_SRC bash
+cd samples/hello
+make
+cd -
+#+END_SRC
+
+Then boot the VM:
+#+BEGIN_SRC bash
+cd linux
+../q-script/yifei-q
+#+END_SRC
+
+Inside the VM:
+#+BEGIN_SRC bash
+cd ..
+export LD_LIBRARY_PATH=`realpath ./libiu`:`realpath linux/tools/lib/bpf`:$LD_LIBRARY_PATH
+cd samples/hello
+./hello
+#+END_SRC
+
+The following output should be printed out:
+#+BEGIN_EXAMPLE
+<...>-245     [002] d...1    18.417331: bpf_trace_printk: Rust triggered from PID 245.
+#+END_EXAMPLE
+
 * OLD STUFF
 
 We have a userspace setup to practice loading self-contained programs
@@ -64,7 +159,7 @@ we have a virtual machine setup to run on a modified Linux kernel.
    - [ ] Implement the BPF programs in standalone C/Rust
    - [ ] Figure out why kernel memory is not allocated as executable
    - [ ] Watchdog timer for infinite loop
-   - [ ] Fuzz test 
+   - [ ] Fuzz test
 
 
 ** Userspace setup
@@ -80,10 +175,10 @@ that showed how to create a freestanding Rust binary.
 
 *** Docker build containers
 
-At first, make sure you have docker engine installed on your machine. 
-You can check that using `docker --version`. If not installed, follow 
+At first, make sure you have docker engine installed on your machine.
+You can check that using `docker --version`. If not installed, follow
 instructions from [[https://docs.docker.com/engine/install/ubuntu/][here]].
-There are options for other distros as well. After installing, follow 
+There are options for other distros as well. After installing, follow
 these [[https://docs.docker.com/engine/install/linux-postinstall/][post-installation steps]].
 
 We have a lot of build environments in the form of Docker containers.
@@ -98,7 +193,7 @@ For using QEMU:
 
     sudo apt update
     sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
-    
+
 *** kernel
 
 We are using a small kernel config based off the firecracker microvm
@@ -145,8 +240,8 @@ distro we are using is from some scripts adapted from Lupine Linux.
 Lupine's scripts create a rootfs from a Docker image.  We put our
 stuff in there (based on ubuntu at this point because we needed a
 glibc-based system).  The `rootfs/Dockerfile` contains the build-time
-stuff to go in the rootfs. Before building this, make sure you have a 
-generated public key for ssh. If not, run `ssh-keygen -t rsa -b 2048 
+stuff to go in the rootfs. Before building this, make sure you have a
+generated public key for ssh. If not, run `ssh-keygen -t rsa -b 2048
 -C "<comment>"` and save the key in the default directory.
 
 Then the root filesystem is best built from the top level with:
@@ -169,37 +264,37 @@ stuff with, type:
 
     make shell
 
-Another more convenient way to run QEMU can be to run from the 
-q-script directory. In this way the whole filesystem can be used 
-inside the VM, instead of only the rootfs/guest directory. To do 
-this, first, q-script/.config is needed to be copied into your Linux 
-kernel directory (sudo might be necessary). Then the kernel needs to 
-be recompiled either by `make` inside the kernel directory, or doing 
-`make vmlinux` in this directory. After this one-time action, the VM 
+Another more convenient way to run QEMU can be to run from the
+q-script directory. In this way the whole filesystem can be used
+inside the VM, instead of only the rootfs/guest directory. To do
+this, first, q-script/.config is needed to be copied into your Linux
+kernel directory (sudo might be necessary). Then the kernel needs to
+be recompiled either by `make` inside the kernel directory, or doing
+`make vmlinux` in this directory. After this one-time action, the VM
 can be started by:
 
     make qscript
 
 ** Samples
 
-We are currently in the process of writing samples applications. They 
+We are currently in the process of writing samples applications. They
 can be run according to the following:
 
 *** Hello World!
 
     make hello
 
-Then the vm can be started using `make run`, `make runq`, or `make 
+Then the vm can be started using `make run`, `make runq`, or `make
 qscript`.
 
-TODO: The linker script is needed to be added, right now the 
+TODO: The linker script is needed to be added, right now the
 interface addresses are updated manually.
 
 *** Simple map application
 
     make map
 
-The vm can be started using `make run`, `make runq`, or `make 
+The vm can be started using `make run`, `make runq`, or `make
 qscript`.
 
 *** tracex5
@@ -212,13 +307,13 @@ In this case, it is only supported by `make qscript`.
 
     make tracex5
 
-Like tracex5, it is only supported by `make qscript`. Right now, the 
-programs can be loaded inside the kernel successfully, which is just 
-enough for our context, they don't run, as sclaing cpu frequency 
-inside the VM might not be possible. This needs to be further 
+Like tracex5, it is only supported by `make qscript`. Right now, the
+programs can be loaded inside the kernel successfully, which is just
+enough for our context, they don't run, as sclaing cpu frequency
+inside the VM might not be possible. This needs to be further
 investigated.
 
-TODO: The linker script is needed to be added, right now the 
+TODO: The linker script is needed to be added, right now the
 interface addresses are updated manually.
 
 *** status

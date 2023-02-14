@@ -44,29 +44,14 @@ host() {
 	cmdline+=" console=ttyS0,115200"
 	cmdline+=" kgdboc=ttyS1,115200"
 
-TAP=tap100
-
-# clean up old tap
-sudo ip link del $TAP
-# create new tap
-if ! ip link show $TAP &> /dev/null; then
-    sudo ip tuntap add mode tap $TAP
-    sudo ip addr add 192.168.111.1/24 dev $TAP
-    sudo ip link set $TAP up
-    echo 1 | sudo tee /proc/sys/net/ipv4/ip_forward >/dev/null
-    sudo iptables -t nat -A POSTROUTING -o bond1 -j MASQUERADE
-    sudo iptables -I FORWARD 1 -i $TAP -j ACCEPT
-    sudo iptables -I FORWARD 1 -o $TAP -m state --state RELATED,ESTABLISHED -j ACCEPT
-fi
-
 	local net
-	# if [ "$SSH" = "y" ]; then
-	# 	net+=" -netdev user,id=virtual,hostfwd=tcp:127.0.0.1:52222-:22"
-	# else
-	# 	net+=" -netdev user,id=virtual"
-	# fi
-	# net+=" -device virtio-net-pci,netdev=virtual"
-	net+=" -device virtio-net-pci,netdev=n0,mac=AA:FC:00:00:00:01 -netdev tap,id=n0,ifname=$TAP,script=no,downscript=no "
+	if [ "$SSH" = "y" ]; then
+		net+=" -netdev user,id=virtual,hostfwd=tcp:127.0.0.1:52222-:22"
+	else
+		net+=" -netdev user,id=virtual"
+	fi
+	net+=" -device virtio-net-pci,netdev=virtual"
+
 	local opts
 	[ "$MODULES" = "y" ] && opts+=" -m"
 	[ "$SSH" = "y" ] && opts+=" -s"
@@ -82,7 +67,7 @@ fi
 		-nodefaults \
 		-no-reboot \
 		-machine accel=kvm:tcg \
-		-watchdog i6300esb \
+		-device i6300esb \
 		-device virtio-rng-pci \
 		-cpu host \
 		-smp $NRCPU \
@@ -257,7 +242,6 @@ export KERNEL=$KERNEL
 export PATH=\$HOME/local/bin:\$PATH
 export PATH=\$KERNEL/tools/bpf/bpftool:\$PATH
 export PATH=\$KERNEL/tools/perf:\$PATH
-export LD_LIBRARY_PATH=\$LD_LIBRARY_PATH:\$HOME/inner_unikernels/libiu:\$KERNEL/tools/lib/bpf
 EOF
 
 	cat << EOF >> $HOME/.bashrc
@@ -271,12 +255,6 @@ source $KERNEL/tools/bpf/bpftool/bash-completion/bpftool
 
 eval \$(resize)
 EOF
-
-	ip addr add 192.168.111.2/24 dev eth0
-	ip addr add 127.0.0.1/24 dev lo
-	ip link set eth0 up
-	ip link set lo up
-	ip route add default via 192.168.111.1 dev eth0
 
 	cd $KERNEL
 
