@@ -14,7 +14,7 @@ pub(crate) fn bpf_get_current_pid_tgid() -> u64 {
 pub(crate) fn bpf_get_current_comm<const N: usize>(buf: &mut [u8; N]) -> i64 {
     let ptr = stub::STUB_BPF_GET_CURRENT_COMM as *const ();
     let code: extern "C" fn(*mut u8, u32) -> i64 = unsafe { core::mem::transmute(ptr) };
-    code(buf.as_ptr(), N as u32)
+    code(buf.as_mut_ptr(), N as u32)
 }
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
@@ -70,27 +70,33 @@ pub(crate) fn bpf_probe_read_kernel<T>(dst: &mut T, unsafe_ptr: *const ()) -> i6
 
 macro_rules! base_helper_defs {
     () => {
+        #[inline(always)]
         pub fn bpf_get_current_comm<const N: usize>(&self, buf: &mut [u8; N]) -> i64 {
             crate::base_helper::bpf_get_current_comm::<N>(buf)
         }
 
+        #[inline(always)]
         pub fn bpf_get_current_pid_tgid(&self) -> u64 {
             crate::base_helper::bpf_get_current_pid_tgid()
         }
 
+        #[inline(always)]
         pub fn bpf_get_smp_processor_id(&self) -> u32 {
             crate::base_helper::bpf_get_smp_processor_id()
         }
 
+        #[inline(always)]
         pub fn bpf_trace_printk(&self, fmt: &str, arg1: u64, arg2: u64, arg3: u64) -> i32 {
             crate::base_helper::bpf_trace_printk(fmt, arg1, arg2, arg3)
         }
 
         // Self should already have impl<'a>
+        #[inline(always)]
         pub fn bpf_map_lookup_elem<K, V>(&self, map: &'a IUMap<K, V>, key: K) -> Option<&mut V> {
             crate::base_helper::bpf_map_lookup_elem::<K, V>(map, key)
         }
 
+        #[inline(always)]
         pub fn bpf_map_update_elem<K, V>(
             &self,
             map: &IUMap<K, V>,
@@ -101,6 +107,7 @@ macro_rules! base_helper_defs {
             crate::base_helper::bpf_map_update_elem::<K, V>(map, key, value, flags)
         }
 
+        #[inline(always)]
         pub fn bpf_probe_read_kernel<T>(&self, dst: &mut T, unsafe_ptr: *const ()) -> i64 {
             crate::base_helper::bpf_probe_read_kernel::<T>(dst, unsafe_ptr)
         }
