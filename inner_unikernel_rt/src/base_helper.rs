@@ -68,6 +68,66 @@ pub(crate) fn bpf_probe_read_kernel<T>(dst: &mut T, unsafe_ptr: *const ()) -> i6
     )
 }
 
+pub(crate) fn bpf_strcmp(s1: &str, s2: &str) -> i32 {
+    let mut cs1 = s1.chars();
+    let mut cs2 = s2.chars();
+
+    loop {
+        let rc1 = cs1.next();
+        let rc2 = cs2.next();
+
+        match (rc1, rc2) {
+            (Some(c1), Some(c2)) => {
+                if c1 == c2 {
+                    continue;
+                }
+                return if c1 < c2 { -1 } else { 1 };
+            }
+            (None, Some(_)) => {
+                return -1;
+            }
+            (Some(_), None) => {
+                return 1;
+            }
+            (None, None) => {
+                break;
+            }
+        };
+    }
+    return 0;
+}
+
+pub(crate) fn bpf_strncmp(s1: &str, s2: &str, cnt: usize) -> i32 {
+    let mut cs1 = s1.chars();
+    let mut cs2 = s2.chars();
+    let mut idx = 0;
+
+    while idx < cnt {
+        let rc1 = cs1.next();
+        let rc2 = cs2.next();
+        idx += 1;
+
+        match (rc1, rc2) {
+            (Some(c1), Some(c2)) => {
+                if c1 == c2 {
+                    continue;
+                }
+                return if c1 < c2 { -1 } else { 1 };
+            }
+            (None, Some(_)) => {
+                return -1;
+            }
+            (Some(_), None) => {
+                return 1;
+            }
+            (None, None) => {
+                break;
+            }
+        };
+    }
+    return 0;
+}
+
 macro_rules! base_helper_defs {
     () => {
         #[inline(always)]
