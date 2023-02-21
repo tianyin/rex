@@ -13,7 +13,7 @@ pub const PERF_MAX_STACK_DEPTH: usize = 127;
 //     u32 userstack;
 // };
 
-#[repr(C)] 
+#[repr(C)]
 #[derive(Copy, Clone)]
 pub struct key_t {
     pub comm: [i8; TASK_COMM_LEN],

@@ -24,6 +24,8 @@ pub struct tracepoint<'a> {
 }
 
 impl<'a> tracepoint<'a> {
+    crate::base_helper::base_helper_defs!();
+
     pub const fn new(
         f: fn(&tracepoint<'a>, &tp_ctx) -> u32,
         nm: &'a str,
@@ -42,8 +44,6 @@ impl<'a> tracepoint<'a> {
             tp_ctx::Void => tp_ctx::Void,
         }
     }
-
-    crate::base_helper::base_helper_defs!();
 }
 
 impl iu_prog for tracepoint<'_> {

@@ -1,0 +1,4 @@
+max_width = 80
+binop_separator = "back"
+reorder_impl_items = true
+wrap_comments = true

@@ -1,11 +1,11 @@
 #![no_std]
 
+pub mod kprobe;
 pub mod linux;
 pub mod map;
+pub mod perf_event;
 pub mod prog_type;
 pub mod tracepoint;
-pub mod kprobe;
-pub mod perf_event;
 
 mod base_helper;
 mod stub;
@@ -27,7 +27,6 @@ fn __iu_entry_kprobe(prog: &kprobe::kprobe, ctx: *const ()) -> u32 {
 fn __iu_entry_perf_event(prog: &perf_event::perf_event, ctx: *const ()) -> u32 {
     prog.prog_run(ctx)
 }
-
 
 // This function is called on panic.
 #[panic_handler]

@@ -32,6 +32,7 @@ where
         let mask = 1 << bit_index;
         byte & mask == mask
     }
+
     #[inline]
     pub fn set_bit(&mut self, index: usize, val: bool) {
         debug_assert!(index / 8 < self.storage.as_ref().len());
@@ -49,11 +50,15 @@ where
             *byte &= !mask;
         }
     }
+
     #[inline]
     pub fn get(&self, bit_offset: usize, bit_width: u8) -> u64 {
         debug_assert!(bit_width <= 64);
         debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
-        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len());
+        debug_assert!(
+            (bit_offset + (bit_width as usize)) / 8 <=
+                self.storage.as_ref().len()
+        );
         let mut val = 0;
         for i in 0..(bit_width as usize) {
             if self.get_bit(i + bit_offset) {
@@ -67,11 +72,15 @@ where
         }
         val
     }
+
     #[inline]
     pub fn set(&mut self, bit_offset: usize, bit_width: u8, val: u64) {
         debug_assert!(bit_width <= 64);
         debug_assert!(bit_offset / 8 < self.storage.as_ref().len());
-        debug_assert!((bit_offset + (bit_width as usize)) / 8 <= self.storage.as_ref().len());
+        debug_assert!(
+            (bit_offset + (bit_width as usize)) / 8 <=
+                self.storage.as_ref().len()
+        );
         for i in 0..(bit_width as usize) {
             let mask = 1 << i;
             let val_bit_is_set = val & mask == mask;
@@ -93,18 +102,22 @@ impl<T> __IncompleteArrayField<T> {
     pub const fn new() -> Self {
         __IncompleteArrayField(::core::marker::PhantomData, [])
     }
+
     #[inline]
     pub fn as_ptr(&self) -> *const T {
         self as *const _ as *const T
     }
+
     #[inline]
     pub fn as_mut_ptr(&mut self) -> *mut T {
         self as *mut _ as *mut T
     }
+
     #[inline]
     pub unsafe fn as_slice(&self, len: usize) -> &[T] {
         ::core::slice::from_raw_parts(self.as_ptr(), len)
     }
+
     #[inline]
     pub unsafe fn as_mut_slice(&mut self, len: usize) -> &mut [T] {
         ::core::slice::from_raw_parts_mut(self.as_mut_ptr(), len)
@@ -187,8 +200,11 @@ pub struct perf_branch_entry {
 impl perf_branch_entry {
     #[inline]
     pub fn mispred(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(0usize, 1u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mispred(&mut self, val: __u64) {
         unsafe {
@@ -196,10 +212,14 @@ impl perf_branch_entry {
             self._bitfield_1.set(0usize, 1u8, val as u64)
         }
     }
+
     #[inline]
     pub fn predicted(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(1usize, 1u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_predicted(&mut self, val: __u64) {
         unsafe {
@@ -207,10 +227,14 @@ impl perf_branch_entry {
             self._bitfield_1.set(1usize, 1u8, val as u64)
         }
     }
+
     #[inline]
     pub fn in_tx(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(2usize, 1u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_in_tx(&mut self, val: __u64) {
         unsafe {
@@ -218,10 +242,14 @@ impl perf_branch_entry {
             self._bitfield_1.set(2usize, 1u8, val as u64)
         }
     }
+
     #[inline]
     pub fn abort(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(3usize, 1u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_abort(&mut self, val: __u64) {
         unsafe {
@@ -229,10 +257,14 @@ impl perf_branch_entry {
             self._bitfield_1.set(3usize, 1u8, val as u64)
         }
     }
+
     #[inline]
     pub fn cycles(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(4usize, 16u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(4usize, 16u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_cycles(&mut self, val: __u64) {
         unsafe {
@@ -240,10 +272,14 @@ impl perf_branch_entry {
             self._bitfield_1.set(4usize, 16u8, val as u64)
         }
     }
+
     #[inline]
     pub fn type_(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(20usize, 4u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(20usize, 4u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_type(&mut self, val: __u64) {
         unsafe {
@@ -251,10 +287,14 @@ impl perf_branch_entry {
             self._bitfield_1.set(20usize, 4u8, val as u64)
         }
     }
+
     #[inline]
     pub fn reserved(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(24usize, 40u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(24usize, 40u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_reserved(&mut self, val: __u64) {
         unsafe {
@@ -262,6 +302,7 @@ impl perf_branch_entry {
             self._bitfield_1.set(24usize, 40u8, val as u64)
         }
     }
+
     #[inline]
     pub fn new_bitfield_1(
         mispred: __u64,
@@ -272,7 +313,8 @@ impl perf_branch_entry {
         type_: __u64,
         reserved: __u64,
     ) -> __BindgenBitfieldUnit<[u8; 8usize]> {
-        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 8usize]> = Default::default();
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 8usize]> =
+            Default::default();
         __bindgen_bitfield_unit.set(0usize, 1u8, {
             let mispred: u64 = unsafe { ::core::mem::transmute(mispred) };
             mispred as u64
@@ -343,8 +385,11 @@ pub struct perf_mem_data_src__bindgen_ty_1 {
 impl perf_mem_data_src__bindgen_ty_1 {
     #[inline]
     pub fn mem_op(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(0usize, 5u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(0usize, 5u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_op(&mut self, val: __u64) {
         unsafe {
@@ -352,10 +397,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(0usize, 5u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_lvl(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(5usize, 14u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(5usize, 14u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_lvl(&mut self, val: __u64) {
         unsafe {
@@ -363,10 +412,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(5usize, 14u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_snoop(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(19usize, 5u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(19usize, 5u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_snoop(&mut self, val: __u64) {
         unsafe {
@@ -374,10 +427,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(19usize, 5u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_lock(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(24usize, 2u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(24usize, 2u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_lock(&mut self, val: __u64) {
         unsafe {
@@ -385,10 +442,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(24usize, 2u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_dtlb(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(26usize, 7u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(26usize, 7u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_dtlb(&mut self, val: __u64) {
         unsafe {
@@ -396,10 +457,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(26usize, 7u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_lvl_num(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(33usize, 4u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(33usize, 4u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_lvl_num(&mut self, val: __u64) {
         unsafe {
@@ -407,10 +472,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(33usize, 4u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_remote(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(37usize, 1u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(37usize, 1u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_remote(&mut self, val: __u64) {
         unsafe {
@@ -418,10 +487,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(37usize, 1u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_snoopx(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(38usize, 2u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(38usize, 2u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_snoopx(&mut self, val: __u64) {
         unsafe {
@@ -429,10 +502,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(38usize, 2u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_blk(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(40usize, 3u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(40usize, 3u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_blk(&mut self, val: __u64) {
         unsafe {
@@ -440,10 +517,14 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(40usize, 3u8, val as u64)
         }
     }
+
     #[inline]
     pub fn mem_rsvd(&self) -> __u64 {
-        unsafe { ::core::mem::transmute(self._bitfield_1.get(43usize, 21u8) as u64) }
+        unsafe {
+            ::core::mem::transmute(self._bitfield_1.get(43usize, 21u8) as u64)
+        }
     }
+
     #[inline]
     pub fn set_mem_rsvd(&mut self, val: __u64) {
         unsafe {
@@ -451,6 +532,7 @@ impl perf_mem_data_src__bindgen_ty_1 {
             self._bitfield_1.set(43usize, 21u8, val as u64)
         }
     }
+
     #[inline]
     pub fn new_bitfield_1(
         mem_op: __u64,
@@ -464,7 +546,8 @@ impl perf_mem_data_src__bindgen_ty_1 {
         mem_blk: __u64,
         mem_rsvd: __u64,
     ) -> __BindgenBitfieldUnit<[u8; 8usize]> {
-        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 8usize]> = Default::default();
+        let mut __bindgen_bitfield_unit: __BindgenBitfieldUnit<[u8; 8usize]> =
+            Default::default();
         __bindgen_bitfield_unit.set(0usize, 5u8, {
             let mem_op: u64 = unsafe { ::core::mem::transmute(mem_op) };
             mem_op as u64
@@ -486,7 +569,8 @@ impl perf_mem_data_src__bindgen_ty_1 {
             mem_dtlb as u64
         });
         __bindgen_bitfield_unit.set(33usize, 4u8, {
-            let mem_lvl_num: u64 = unsafe { ::core::mem::transmute(mem_lvl_num) };
+            let mem_lvl_num: u64 =
+                unsafe { ::core::mem::transmute(mem_lvl_num) };
             mem_lvl_num as u64
         });
         __bindgen_bitfield_unit.set(37usize, 1u8, {

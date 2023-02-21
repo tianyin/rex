@@ -20,6 +20,8 @@ pub struct kprobe<'a> {
 }
 
 impl<'a> kprobe<'a> {
+    crate::base_helper::base_helper_defs!();
+
     pub const fn new(
         f: fn(&kprobe<'a>, &pt_regs) -> u32,
         nm: &'a str,
@@ -34,8 +36,6 @@ impl<'a> kprobe<'a> {
     fn convert_ctx(&self, ctx: *const ()) -> &pt_regs {
         unsafe { &*core::mem::transmute::<*const (), *const pt_regs>(ctx) }
     }
-
-    crate::base_helper::base_helper_defs!();
 }
 
 impl iu_prog for kprobe<'_> {
