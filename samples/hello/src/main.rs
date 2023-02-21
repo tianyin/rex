@@ -4,11 +4,12 @@
 extern crate inner_unikernel_rt;
 extern crate rlibc;
 
+use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::tracepoint::*;
 
 fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
     let pid = (obj.bpf_get_current_pid_tgid() & 0xFFFFFFFF) as u32;
-    obj.bpf_trace_printk("Rust triggered from PID %u.\n", pid as u64, 0, 0);
+    bpf_printk!(obj, "Rust triggered from PID %u.\n", pid as u64);
     return 0;
 }
 

@@ -210,4 +210,24 @@ macro_rules! base_helper_defs {
     };
 }
 
+#[macro_export]
+macro_rules! bpf_printk {
+    ($obj:expr, $fmt:expr) => {
+        $obj.bpf_trace_printk($fmt, 0, 0, 0)
+    };
+
+    ($obj:expr, $fmt:expr, $arg1:expr) => {
+        $obj.bpf_trace_printk($fmt, $arg1, 0, 0)
+    };
+
+    ($obj:expr, $fmt:expr, $arg1:expr, $arg2:expr) => {
+        $obj.bpf_trace_printk($fmt, $arg1, $arg2, 0)
+    };
+
+    ($obj:expr, $fmt:expr, $arg1:expr, $arg2:expr, $arg3:expr) => {
+        $obj.bpf_trace_printk($fmt, $arg1, $arg2, $arg3)
+    };
+}
+
 pub(crate) use base_helper_defs;
+pub use bpf_printk;
