@@ -1,7 +1,9 @@
 use crate::linux::bpf::BPF_PROG_TYPE_KPROBE;
-use crate::linux::ptrace::pt_regs;
 use crate::map::*;
 use crate::prog_type::iu_prog;
+use crate::stub;
+
+pub type pt_regs = super::binding::pt_regs;
 
 // First 3 fields should always be rtti, prog_fn, and name
 //
@@ -15,7 +17,7 @@ use crate::prog_type::iu_prog;
 #[repr(C)]
 pub struct kprobe<'a> {
     rtti: u64,
-    prog: fn(&Self, &pt_regs) -> u32,
+    prog: fn(&Self, &mut pt_regs) -> u32,
     name: &'a str,
 }
 
@@ -23,7 +25,7 @@ impl<'a> kprobe<'a> {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&kprobe<'a>, &pt_regs) -> u32,
+        f: fn(&kprobe<'a>, &mut pt_regs) -> u32,
         nm: &'a str,
     ) -> kprobe<'a> {
         Self {
@@ -33,8 +35,21 @@ impl<'a> kprobe<'a> {
         }
     }
 
-    fn convert_ctx(&self, ctx: *const ()) -> &pt_regs {
-        unsafe { &*core::mem::transmute::<*const (), *const pt_regs>(ctx) }
+    // Now returns a mutable ref, but since every reg is private the user prog
+    // cannot change reg contents. The user should not be able to directly
+    // assign this reference a new value either, given that they will not able
+    // to create another instance of pt_regs (private fields, no pub ctor)
+    fn convert_ctx(&self, ctx: *const ()) -> &mut pt_regs {
+        let mut_ctx_ptr = ctx as *const pt_regs as *mut pt_regs;
+        unsafe { &mut *mut_ctx_ptr }
+    }
+
+    // Not usable for now, this function requires a mutation ref, which is
+    // not safe to expose to the user progs
+    pub fn bpf_override_return(&self, regs: &mut pt_regs, rc: u64) -> i32 {
+        regs.rax = rc;
+        regs.rip = unsafe { stub::just_return_func_addr() };
+        return 0;
     }
 }
 

@@ -6,7 +6,7 @@ import toml
 # https://github.com/rust-lang/rust-bindgen
 bindgen_cmd = 'bindgen --size_t-is-usize --use-core --no-doc-comments '\
         '--translate-enum-integer-types --no-layout-tests '\
-        '--no-prepend-enum-name'.split()
+        '--no-prepend-enum-name --blocklist-type pt_regs'.split()
 
 stub_skel = """#[inline(always)]
 pub(crate) const unsafe fn %s_addr() -> u64 {
