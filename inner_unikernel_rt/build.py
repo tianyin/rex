@@ -3,27 +3,16 @@ import subprocess
 import sys
 import toml
 
-# TODO: this is not configured automatically, fix this on your machine first
-types = {
-    '::std::os::raw::c_char': 'i8',
-    '::std::os::raw::c_double': 'f64',
-    '::std::os::raw::c_float': 'f32',
-    '::std::os::raw::c_int': 'i32',
-    '::std::os::raw::c_longlong': 'i64',
-    '::std::os::raw::c_long': 'i64',
-    '::std::os::raw::c_schar': 'i8',
-    '::std::os::raw::c_short': 'i16',
-    '::std::os::raw::c_uchar': 'u8',
-    '::std::os::raw::c_uint': 'u32',
-    '::std::os::raw::c_ulonglong': 'u64',
-    '::std::os::raw::c_ulong': 'u64',
-    '::std::os::raw::c_ushort': 'u16'
-}
-
 # https://github.com/rust-lang/rust-bindgen
 bindgen_cmd = 'bindgen --size_t-is-usize --use-core --no-doc-comments '\
         '--translate-enum-integer-types --no-layout-tests '\
         '--no-prepend-enum-name'.split()
+
+stub_skel = """#[inline(always)]
+pub(crate) const unsafe fn %s_addr() -> u64 {
+    0x%%s
+}
+"""
 
 # These 2 functions are from the old fixup_addrs.py
 def filter_text(nm_line):
@@ -42,8 +31,7 @@ def gen_stubs(vmlinux, helpers, out_dir):
     # Construct a func -> addr map
     text_syms = dict(map(lambda l: (l[2], l[0]),
                          filter(filter_text, get_symbols(vmlinux))))
-    stubs = '\n'.join(map(lambda h: 'pub const STUB_%s: u64 = 0x%%s;' %\
-            h.upper(), helpers))
+    stubs = '\n'.join(map(lambda h: stub_skel % h.lower(), helpers))
     output = stubs % tuple(map(lambda f: text_syms[f], helpers))
     with open(os.path.join(out_dir, 'stub.rs'), 'w') as stub_f:
         stub_f.write(output)
@@ -52,8 +40,6 @@ def gen_stubs(vmlinux, helpers, out_dir):
 def bindgen(header):
     p = subprocess.run([*bindgen_cmd, header], check=True, capture_output=True)
     output = p.stdout.decode('utf-8')
-    for ctype, rtype in types.items():
-        output = output.replace(ctype, rtype)
     assert 'std::' not in output # sanity check
     return output
 
@@ -74,7 +60,7 @@ def prep_headers(usr_include, headers, out_dir):
 
 def parse_config(cargo_toml):
     config = toml.load(cargo_toml)
-    
+
     if not 'inner_unikernel' in config:
         return [], []
 

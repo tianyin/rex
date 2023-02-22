@@ -2,7 +2,7 @@ use crate::map::IUMap;
 use crate::stub;
 
 pub(crate) fn bpf_get_current_pid_tgid() -> u64 {
-    let ptr = stub::STUB_BPF_GET_CURRENT_PID_TGID as *const ();
+    let ptr = unsafe { stub::bpf_get_current_pid_tgid_addr() } as *const ();
     let code: extern "C" fn() -> u64 = unsafe { core::mem::transmute(ptr) };
     code()
 }
@@ -12,14 +12,14 @@ pub(crate) fn bpf_get_current_pid_tgid() -> u64 {
 // restrict it to only [u8; N] given that comm is a cstring. This also
 // automatically achieves size check, since N is a constexpr.
 pub(crate) fn bpf_get_current_comm<const N: usize>(buf: &mut [u8; N]) -> i64 {
-    let ptr = stub::STUB_BPF_GET_CURRENT_COMM as *const ();
+    let ptr = unsafe { stub::bpf_get_current_comm_addr() } as *const ();
     let code: extern "C" fn(*mut u8, u32) -> i64 =
         unsafe { core::mem::transmute(ptr) };
     code(buf.as_mut_ptr(), N as u32)
 }
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
-    let ptr = stub::STUB_BPF_GET_SMP_PROCESSOR_ID as *const ();
+    let ptr = unsafe { stub::bpf_get_smp_processor_id_addr() } as *const ();
     let code: extern "C" fn() -> u32 = unsafe { core::mem::transmute(ptr) };
     code()
 }
@@ -30,7 +30,7 @@ pub(crate) fn bpf_trace_printk(
     arg2: u64,
     arg3: u64,
 ) -> i32 {
-    let ptr = stub::STUB_BPF_TRACE_PRINTK_IU as *const ();
+    let ptr = unsafe { stub::bpf_trace_printk_iu_addr() } as *const ();
     let code: extern "C" fn(*const u8, u32, u64, u64, u64) -> i32 =
         unsafe { core::mem::transmute(ptr) };
 
@@ -41,7 +41,7 @@ pub(crate) fn bpf_map_lookup_elem<K, V>(
     map: &IUMap<K, V>,
     key: K,
 ) -> Option<&mut V> {
-    let f_ptr = stub::STUB_BPF_MAP_LOOKUP_ELEM as *const ();
+    let f_ptr = unsafe { stub::bpf_map_lookup_elem_addr() } as *const ();
     let helper: extern "C" fn(&IUMap<K, V>, *const K) -> *const V =
         unsafe { core::mem::transmute(f_ptr) };
 
@@ -60,7 +60,7 @@ pub(crate) fn bpf_map_update_elem<K, V>(
     value: V,
     flags: u64,
 ) -> i64 {
-    let f_ptr = stub::STUB_BPF_MAP_UPDATE_ELEM as *const ();
+    let f_ptr = unsafe { stub::bpf_map_update_elem_addr() } as *const ();
     let helper: extern "C" fn(&IUMap<K, V>, *const K, *const V, u64) -> i64 =
         unsafe { core::mem::transmute(f_ptr) };
 
@@ -74,7 +74,7 @@ pub(crate) fn bpf_probe_read_kernel<T>(
     dst: &mut T,
     unsafe_ptr: *const (),
 ) -> i64 {
-    let f_ptr = stub::STUB_BPF_PROBE_READ_KERNEL as *const ();
+    let f_ptr = unsafe { stub::bpf_probe_read_kernel_addr() } as *const ();
     let helper: extern "C" fn(*mut (), u32, *const ()) -> i64 =
         unsafe { core::mem::transmute(f_ptr) };
 

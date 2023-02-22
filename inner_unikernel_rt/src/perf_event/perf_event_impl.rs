@@ -71,7 +71,7 @@ impl<'a> perf_event<'a> {
         ctx: &bpf_perf_event_data,
         buf: &bpf_perf_event_value,
     ) -> i64 {
-        let ptr = stub::STUB_BPF_PERF_PROG_READ_VALUE as *const ();
+        let ptr = unsafe { stub::bpf_perf_prog_read_value_addr() } as *const ();
         let helper: extern "C" fn(
             *const bpf_perf_event_data_kern,
             &bpf_perf_event_value,
@@ -88,7 +88,7 @@ impl<'a> perf_event<'a> {
         map: &'a IUMap<K, V>,
         flags: u64,
     ) -> i64 {
-        let ptr = stub::STUB_BPF_GET_STACKID_PE as *const ();
+        let ptr = unsafe { stub::bpf_get_stackid_pe_addr() } as *const ();
         let helper: extern "C" fn(
             *const bpf_perf_event_data_kern,
             &'a IUMap<K, V>,
