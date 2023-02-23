@@ -1,3 +1,4 @@
+use crate::linux::bpf::bpf_map_type;
 use crate::map::IUMap;
 use crate::stub;
 
@@ -37,12 +38,12 @@ pub(crate) fn bpf_trace_printk(
     code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3)
 }
 
-pub(crate) fn bpf_map_lookup_elem<K, V>(
-    map: &IUMap<K, V>,
+pub(crate) fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
+    map: &IUMap<MT, K, V>,
     key: K,
 ) -> Option<&mut V> {
     let f_ptr = unsafe { stub::bpf_map_lookup_elem_addr() } as *const ();
-    let helper: extern "C" fn(&IUMap<K, V>, *const K) -> *const V =
+    let helper: extern "C" fn(&IUMap<MT, K, V>, *const K) -> *const V =
         unsafe { core::mem::transmute(f_ptr) };
 
     let value = helper(map, &key) as *mut V;
@@ -54,15 +55,19 @@ pub(crate) fn bpf_map_lookup_elem<K, V>(
     }
 }
 
-pub(crate) fn bpf_map_update_elem<K, V>(
-    map: &IUMap<K, V>,
+pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
+    map: &IUMap<MT, K, V>,
     key: K,
     value: V,
     flags: u64,
 ) -> i64 {
     let f_ptr = unsafe { stub::bpf_map_update_elem_addr() } as *const ();
-    let helper: extern "C" fn(&IUMap<K, V>, *const K, *const V, u64) -> i64 =
-        unsafe { core::mem::transmute(f_ptr) };
+    let helper: extern "C" fn(
+        &IUMap<MT, K, V>,
+        *const K,
+        *const V,
+        u64,
+    ) -> i64 = unsafe { core::mem::transmute(f_ptr) };
 
     helper(map, &key, &value, flags)
 }
@@ -152,7 +157,7 @@ macro_rules! base_helper_defs {
             &self,
             buf: &mut [u8; N],
         ) -> i64 {
-            crate::base_helper::bpf_get_current_comm::<N>(buf)
+            crate::base_helper::bpf_get_current_comm(buf)
         }
 
         #[inline(always)]
@@ -178,25 +183,23 @@ macro_rules! base_helper_defs {
 
         // Self should already have impl<'a>
         #[inline(always)]
-        pub fn bpf_map_lookup_elem<K, V>(
+        pub fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'a IUMap<K, V>,
+            map: &'a IUMap<MT, K, V>,
             key: K,
         ) -> Option<&mut V> {
-            crate::base_helper::bpf_map_lookup_elem::<K, V>(map, key)
+            crate::base_helper::bpf_map_lookup_elem(map, key)
         }
 
         #[inline(always)]
-        pub fn bpf_map_update_elem<K, V>(
+        pub fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &IUMap<K, V>,
+            map: &IUMap<MT, K, V>,
             key: K,
             value: V,
             flags: u64,
         ) -> i64 {
-            crate::base_helper::bpf_map_update_elem::<K, V>(
-                map, key, value, flags,
-            )
+            crate::base_helper::bpf_map_update_elem(map, key, value, flags)
         }
 
         #[inline(always)]
@@ -205,7 +208,7 @@ macro_rules! base_helper_defs {
             dst: &mut T,
             unsafe_ptr: *const (),
         ) -> i64 {
-            crate::base_helper::bpf_probe_read_kernel::<T>(dst, unsafe_ptr)
+            crate::base_helper::bpf_probe_read_kernel(dst, unsafe_ptr)
         }
     };
 }

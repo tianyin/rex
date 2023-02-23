@@ -1,7 +1,10 @@
 use super::binding::{
     bpf_perf_event_data_kern, bpf_user_pt_regs_t, perf_sample_data,
 };
-use crate::linux::bpf::{bpf_perf_event_value, BPF_PROG_TYPE_PERF_EVENT};
+use crate::linux::bpf::{
+    bpf_map_type, bpf_perf_event_value, BPF_MAP_TYPE_STACK_TRACE,
+    BPF_PROG_TYPE_PERF_EVENT,
+};
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
@@ -85,13 +88,13 @@ impl<'a> perf_event<'a> {
     pub fn bpf_get_stackid_pe<K, V>(
         &self,
         ctx: &bpf_perf_event_data,
-        map: &'a IUMap<K, V>,
+        map: &'a IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
         flags: u64,
     ) -> i64 {
         let ptr = unsafe { stub::bpf_get_stackid_pe_addr() } as *const ();
         let helper: extern "C" fn(
             *const bpf_perf_event_data_kern,
-            &'a IUMap<K, V>,
+            &'a IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
             u64,
         ) -> i64 = unsafe { core::mem::transmute(ptr) };
         helper(ctx.kptr, map, flags)

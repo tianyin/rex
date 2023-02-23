@@ -1,4 +1,4 @@
-use crate::linux::bpf::BPF_PROG_TYPE_TRACEPOINT;
+use crate::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_TRACEPOINT};
 use crate::map::*;
 use crate::prog_type::iu_prog;
 
