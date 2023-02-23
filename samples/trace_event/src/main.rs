@@ -88,7 +88,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         obj.bpf_trace_printk("Address recorded on event: %llx", ctx.addr, 0, 0);
     }
 
-    match obj.bpf_map_lookup_elem::<key_t, u64>(counts, key) {
+    match obj.bpf_map_lookup_elem(counts, key) {
         None => {
             obj.bpf_map_update_elem(counts, key, 1, BPF_NOEXIST as u64);
         }
