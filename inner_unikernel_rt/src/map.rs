@@ -1,26 +1,6 @@
 use core::marker::PhantomData;
 use core::mem::size_of;
 
-// #define TASK_COMM_LEN 16
-// #define PERF_MAX_STACK_DEPTH 127
-
-pub const TASK_COMM_LEN: usize = 16;
-pub const PERF_MAX_STACK_DEPTH: usize = 127;
-
-// struct key_t {
-//     char comm[TASK_COMM_LEN];
-//     u32 kernstack;
-//     u32 userstack;
-// };
-
-#[repr(C)]
-#[derive(Copy, Clone)]
-pub struct key_t {
-    pub comm: [i8; TASK_COMM_LEN],
-    pub kernstack: u32,
-    pub userstack: u32,
-}
-
 #[repr(C)]
 pub struct IUMap<K, V> {
     map_type: u32,

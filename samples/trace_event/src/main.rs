@@ -1,13 +1,13 @@
 #![no_std]
 #![no_main]
 
-extern crate rlibc;
 extern crate inner_unikernel_rt;
+extern crate rlibc;
 
 use inner_unikernel_rt::linux::bpf::*;
-use inner_unikernel_rt::perf_event::*;
 use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use inner_unikernel_rt::map::*;
+use inner_unikernel_rt::perf_event::*;
 use inner_unikernel_rt::MAP_DEF;
 
 pub const TASK_COMM_LEN: usize = 16;
@@ -57,7 +57,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         return 0;
     }
 
-    obj.bpf_get_current_comm(&key.comm);
+    obj.bpf_get_current_comm(&mut key.comm);
     key.kernstack = obj.bpf_get_stackid_pe(ctx, stackmap, KERN_STACKID_FLAGS) as u32;
     key.userstack = obj.bpf_get_stackid_pe(ctx, stackmap, USER_STACKID_FLAGS) as u32;
 
@@ -66,7 +66,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
             "CPU-%d period %lld ip %llx",
             cpu as u64,
             ctx.sample_period,
-            PT_REGS_IP(&ctx.regs)
+            PT_REGS_IP(&ctx.regs),
         );
         return 0;
     }
@@ -78,7 +78,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
             "Time Enabled: %llu, Time Running: %llu",
             value_buf.enabled,
             value_buf.running,
-            0
+            0,
         );
     } else {
         obj.bpf_trace_printk("Get Time Failed, ErrCode: %d", ret as u64, 0, 0);
