@@ -1,5 +1,5 @@
 #[repr(C)]
-#[derive(Debug, Copy, Clone)]
+#[derive(Debug)]
 pub struct pt_regs {
     pub(super) r15: ::core::ffi::c_ulong,
     pub(super) r14: ::core::ffi::c_ulong,
