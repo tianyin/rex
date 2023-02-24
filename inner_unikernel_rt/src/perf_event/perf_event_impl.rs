@@ -74,29 +74,31 @@ impl<'a> perf_event<'a> {
         ctx: &bpf_perf_event_data,
         buf: &bpf_perf_event_value,
     ) -> i64 {
-        let ptr = unsafe { stub::bpf_perf_prog_read_value_addr() } as *const ();
+        let size = core::mem::size_of::<bpf_perf_event_value>() as u32;
+
         let helper: extern "C" fn(
             *const bpf_perf_event_data_kern,
             &bpf_perf_event_value,
             u32,
-        ) -> i64 = unsafe { core::mem::transmute(ptr) };
-        let size = core::mem::size_of::<bpf_perf_event_value>() as u32;
+        ) -> i64 = unsafe {
+            core::mem::transmute(stub::bpf_perf_prog_read_value_addr())
+        };
         helper(ctx.kptr, buf, size)
     }
 
-    // TODO: needs to restrict the map to only BPF_MAP_TYPE_STACK_TRACE
     pub fn bpf_get_stackid_pe<K, V>(
         &self,
         ctx: &bpf_perf_event_data,
         map: &'a IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
         flags: u64,
     ) -> i64 {
-        let ptr = unsafe { stub::bpf_get_stackid_pe_addr() } as *const ();
         let helper: extern "C" fn(
             *const bpf_perf_event_data_kern,
             &'a IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
             u64,
-        ) -> i64 = unsafe { core::mem::transmute(ptr) };
+        ) -> i64 = unsafe {
+            core::mem::transmute(stub::bpf_get_stackid_pe_addr())
+        };
         helper(ctx.kptr, map, flags)
     }
 }
