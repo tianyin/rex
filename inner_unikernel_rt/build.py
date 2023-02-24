@@ -71,18 +71,22 @@ def parse_config(cargo_toml):
     if not 'inner_unikernel' in config:
         return [], []
 
-    helpers = config['inner_unikernel'].get('helpers', [])
-    headers = config['inner_unikernel'].get('headers', [])
+    ksyms = config['inner_unikernel'].get('ksyms', [])
+    uheaders = config['inner_unikernel'].get('uheaders', [])
+    kheaders = config['inner_unikernel'].get('kheaders', [])
 
-    return helpers, headers
+    return ksyms, uheaders, kheaders
 
 def main(argv):
     linux_path = argv[1]
     out_dir = argv[2]
     target_path = os.getcwd()
-    helpers, headers = parse_config(os.path.join(target_path, 'Cargo.toml'))
-    gen_stubs(os.path.join(linux_path, 'vmlinux'), helpers, out_dir)
-    prep_headers(os.path.join(linux_path, 'usr/include'), headers, out_dir)
+    result = parse_config(os.path.join(target_path, 'Cargo.toml'))
+    ksyms, uheaders, kheaders = result
+    gen_stubs(os.path.join(linux_path, 'vmlinux'), ksyms, out_dir)
+    u_out_dir = os.path.join(out_dir, 'uapi')
+    prep_headers(os.path.join(linux_path, 'usr/include'), uheaders, u_out_dir)
+    prep_headers(os.path.join(linux_path, 'include'), kheaders, out_dir)
     return 0
 
 if __name__ == '__main__':

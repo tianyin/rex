@@ -2,13 +2,13 @@
 #![feature(const_mut_refs)]
 
 pub mod kprobe;
-pub mod linux;
 pub mod map;
 pub mod perf_event;
 pub mod prog_type;
 pub mod tracepoint;
 
 mod base_helper;
+mod bindings;
 mod stub;
 
 use crate::prog_type::iu_prog;
@@ -34,3 +34,5 @@ fn __iu_entry_perf_event(prog: &perf_event::perf_event, ctx: *const ()) -> u32 {
 fn panic(_info: &PanicInfo) -> ! {
     loop {}
 }
+
+pub use bindings::uapi::*;

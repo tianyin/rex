@@ -1,4 +1,4 @@
-use crate::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_KPROBE};
+use crate::bindings::uapi::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_KPROBE};
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;

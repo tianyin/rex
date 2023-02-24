@@ -1,7 +1,7 @@
 use super::binding::{
     bpf_perf_event_data_kern, bpf_user_pt_regs_t, perf_sample_data,
 };
-use crate::linux::bpf::{
+use crate::bindings::uapi::linux::bpf::{
     bpf_map_type, bpf_perf_event_value, BPF_MAP_TYPE_STACK_TRACE,
     BPF_PROG_TYPE_PERF_EVENT,
 };

@@ -18,7 +18,7 @@ debug=0
 panic = "abort"
 
 [inner_unikernel]
-helpers = [
+ksyms = [
     'bpf_get_current_comm',
     'bpf_get_current_pid_tgid',
     'bpf_get_smp_processor_id',
@@ -29,12 +29,18 @@ helpers = [
     'bpf_probe_read_kernel',
     'bpf_trace_printk_iu',
     'just_return_func',
+    'iu_task_storage_lock',
+    'iu_task_storage_unlock',
 ]
 
-headers = [
+uheaders = [
     "linux/bpf.h",
     "linux/perf_event.h",
     "linux/ptrace.h",
     "linux/seccomp.h",
     "linux/unistd.h",
+]
+
+kheaders = [
+    "linux/gfp_types.h",
 ]
