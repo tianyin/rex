@@ -13,16 +13,19 @@ Relevant github repos:
 - [[https://github.com/xlab-uiuc/llvm-rust]]
 - [[https://github.com/xlab-uiuc/rust]]
 
-Current colloborators:
+Current colloborators (update needed):
 - Dan Williams (Virginia Tech)
 - Sayeed Islam (Virginia Tech)
 - Tianyin Xu (UIUC)
 - Jinghao Jia (UIUC)
 
+[[./image/poster.jpg]]
+
 Check out the [[minutes.org][meeting minutes]].
 
 [[https://docs.google.com/document/d/1mQyJhhM25mEy63UYRi1JGvph67hJp8Qr8hAR0rJ5YQY/edit#heading=h.yds2twr4pha3][Onboarding task]]
 for new students.
+
 
 * ABSTRACT
 
