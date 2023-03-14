@@ -29,8 +29,9 @@ ksyms = [
     'bpf_probe_read_kernel',
     'bpf_trace_printk_iu',
     'just_return_func',
-    'iu_task_storage_lock',
-    'iu_task_storage_unlock',
+  #   'iu_task_storage_lock',
+  #   'iu_task_storage_unlock',
+    'jiffies',
 ]
 
 uheaders = [

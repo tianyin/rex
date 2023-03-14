@@ -21,9 +21,13 @@ pub(crate) const unsafe fn %s_addr() -> u64 {
 """
 
 # These 2 functions are from the old fixup_addrs.py
-def filter_text(nm_line):
+def filter_symbol(nm_line):
     # T/t means text(code) symbol
-    return len(nm_line) == 3 and nm_line[1].lower() == 't'
+    # D/d means data
+    if len(nm_line) != 3:
+        return False;
+    sym_ty = nm_line[1].lower()
+    return sym_ty == 't' or sym_ty == 'd'
 
 def get_symbols(vmlinux):
     result = subprocess.run(['nm', vmlinux], check=True, capture_output=True)
@@ -36,7 +40,7 @@ def gen_stubs(vmlinux, helpers, out_dir):
 
     # Construct a func -> addr map
     text_syms = dict(map(lambda l: (l[2], l[0]),
-                         filter(filter_text, get_symbols(vmlinux))))
+                         filter(filter_symbol, get_symbols(vmlinux))))
     stubs = '\n'.join(map(lambda h: stub_skel % h.lower(), helpers))
     output = stubs % tuple(map(lambda f: text_syms[f], helpers))
     with open(os.path.join(out_dir, 'stub.rs'), 'w') as stub_f:

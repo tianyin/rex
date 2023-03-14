@@ -149,6 +149,12 @@ pub(crate) fn bpf_strncmp(s1: &str, s2: &str, cnt: usize) -> i32 {
     return 0;
 }
 
+pub(crate) fn bpf_jiffies64() -> u64 {
+    unsafe {
+        core::ptr::read_volatile(stub::jiffies_addr() as *const u64)
+    }
+}
+
 macro_rules! base_helper_defs {
     () => {
         #[inline(always)]
