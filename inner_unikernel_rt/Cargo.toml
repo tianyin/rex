@@ -21,7 +21,6 @@ panic = "abort"
 ksyms = [
     'bpf_get_current_comm',
     'bpf_get_current_pid_tgid',
-    'bpf_get_smp_processor_id',
     'bpf_get_stackid_pe',
     'bpf_map_lookup_elem',
     'bpf_map_update_elem',
@@ -32,6 +31,9 @@ ksyms = [
   #   'iu_task_storage_lock',
   #   'iu_task_storage_unlock',
     'jiffies',
+    'current_task',
+    'cpu_number',
+    'numa_node',
 ]
 
 uheaders = [

@@ -10,6 +10,8 @@ use inner_unikernel_rt::tracepoint::*;
 fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
     let pid = (obj.bpf_get_current_pid_tgid() & 0xFFFFFFFF) as u32;
     bpf_printk!(obj, "Rust triggered from PID %u.\n", pid as u64);
+    let task = obj.bpf_get_current_task();
+    bpf_printk!(obj, "task=0x%llx", task);
     return 0;
 }
 

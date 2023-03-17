@@ -21,10 +21,15 @@ pub(crate) fn bpf_get_current_comm<const N: usize>(buf: &mut [u8; N]) -> i64 {
 }
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
-    let code: extern "C" fn() -> u32 = unsafe {
-        core::mem::transmute(stub::bpf_get_smp_processor_id_addr())
-    };
-    code()
+    unsafe {
+        let mut cpu: u64;
+        core::arch::asm!(
+            "mov {}, gs:[rcx]",
+            out(reg) cpu,
+            in("rcx") stub::cpu_number_addr(),
+        );
+        cpu as u32
+    }
 }
 
 pub(crate) fn bpf_trace_printk(
@@ -155,6 +160,32 @@ pub(crate) fn bpf_jiffies64() -> u64 {
     }
 }
 
+/// Currently returns u64 until `task_struct` binding is generated
+pub(crate) fn bpf_get_current_task() -> u64 {
+    unsafe {
+        let mut current: u64;
+        core::arch::asm!(
+            "mov {}, gs:[rcx]",
+            out(reg) current,
+            in("rcx") stub::current_task_addr(),
+        );
+        current
+    }
+}
+
+/// Assumes `CONFIG_USE_PERCPU_NUMA_NODE_ID`
+pub(crate) fn bpf_get_numa_node_id() -> i64 {
+    unsafe {
+        let mut numa_id: i64;
+        core::arch::asm!(
+            "mov {}, gs:[rcx]",
+            out(reg) numa_id,
+            in("rcx") stub::numa_node_addr(),
+        );
+        numa_id
+    }
+}
+
 macro_rules! base_helper_defs {
     () => {
         #[inline(always)]
@@ -214,6 +245,16 @@ macro_rules! base_helper_defs {
             unsafe_ptr: *const (),
         ) -> i64 {
             crate::base_helper::bpf_probe_read_kernel(dst, unsafe_ptr)
+        }
+
+        #[inline(always)]
+        pub fn bpf_get_current_task(&self) -> u64 {
+            crate::base_helper::bpf_get_current_task()
+        }
+
+        #[inline(always)]
+        pub fn bpf_get_numa_node_id(&self) -> i64 {
+            crate::base_helper::bpf_get_numa_node_id()
         }
     };
 }
