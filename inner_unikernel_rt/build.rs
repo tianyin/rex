@@ -7,8 +7,8 @@ fn main() {
 
     Command::new("python3")
         .arg("build.py")
-        .arg(&format!("{}", linux_dir))
-        .arg(&format!("{}", out_dir))
+        .arg(&linux_dir)
+        .arg(&out_dir)
         .status()
         .unwrap();
 

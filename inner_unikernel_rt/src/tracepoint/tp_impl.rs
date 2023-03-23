@@ -3,6 +3,7 @@ use crate::bindings::uapi::linux::bpf::{
 };
 use crate::map::*;
 use crate::prog_type::iu_prog;
+use crate::task_struct::TaskStruct;
 
 pub enum tp_ctx {
     Void,
@@ -45,6 +46,10 @@ impl<'a> tracepoint<'a> {
         match self.tp_type {
             tp_ctx::Void => tp_ctx::Void,
         }
+    }
+
+    pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {
+        TaskStruct::get_current_task()
     }
 }
 

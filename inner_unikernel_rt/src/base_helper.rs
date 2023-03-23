@@ -2,24 +2,6 @@ use crate::linux::bpf::bpf_map_type;
 use crate::map::IUMap;
 use crate::stub;
 
-pub(crate) fn bpf_get_current_pid_tgid() -> u64 {
-    let code: extern "C" fn() -> u64 = unsafe {
-        core::mem::transmute(stub::bpf_get_current_pid_tgid_addr())
-    };
-    code()
-}
-
-// Design decision: the original BPF interface does not have type safety,
-// since buf is just a buffer. But in Rust we can use const generics to
-// restrict it to only [u8; N] given that comm is a cstring. This also
-// automatically achieves size check, since N is a constexpr.
-pub(crate) fn bpf_get_current_comm<const N: usize>(buf: &mut [u8; N]) -> i64 {
-    let code: extern "C" fn(*mut u8, u32) -> i64 = unsafe {
-        core::mem::transmute(stub::bpf_get_current_comm_addr())
-    };
-    code(buf.as_mut_ptr(), N as u32)
-}
-
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
     unsafe {
         let mut cpu: u64;
@@ -151,25 +133,12 @@ pub(crate) fn bpf_strncmp(s1: &str, s2: &str, cnt: usize) -> i32 {
             }
         };
     }
-    return 0;
+    0
 }
 
 pub(crate) fn bpf_jiffies64() -> u64 {
     unsafe {
         core::ptr::read_volatile(stub::jiffies_addr() as *const u64)
-    }
-}
-
-/// Currently returns u64 until `task_struct` binding is generated
-pub(crate) fn bpf_get_current_task() -> u64 {
-    unsafe {
-        let mut current: u64;
-        core::arch::asm!(
-            "mov {}, gs:[rcx]",
-            out(reg) current,
-            in("rcx") stub::current_task_addr(),
-        );
-        current
     }
 }
 
@@ -188,19 +157,6 @@ pub(crate) fn bpf_get_numa_node_id() -> i64 {
 
 macro_rules! base_helper_defs {
     () => {
-        #[inline(always)]
-        pub fn bpf_get_current_comm<const N: usize>(
-            &self,
-            buf: &mut [u8; N],
-        ) -> i64 {
-            crate::base_helper::bpf_get_current_comm(buf)
-        }
-
-        #[inline(always)]
-        pub fn bpf_get_current_pid_tgid(&self) -> u64 {
-            crate::base_helper::bpf_get_current_pid_tgid()
-        }
-
         #[inline(always)]
         pub fn bpf_get_smp_processor_id(&self) -> u32 {
             crate::base_helper::bpf_get_smp_processor_id()
@@ -245,11 +201,6 @@ macro_rules! base_helper_defs {
             unsafe_ptr: *const (),
         ) -> i64 {
             crate::base_helper::bpf_probe_read_kernel(dst, unsafe_ptr)
-        }
-
-        #[inline(always)]
-        pub fn bpf_get_current_task(&self) -> u64 {
-            crate::base_helper::bpf_get_current_task()
         }
 
         #[inline(always)]

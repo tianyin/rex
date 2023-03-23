@@ -20,6 +20,47 @@ pub(crate) const unsafe fn %s_addr() -> u64 {
 }
 """
 
+bindgen_kernel_cmd = '''bindgen %s --allowlist-type="task_struct"
+--allowlist-var="___GFP.*" --opaque-type xregs_state --opaque-type desc_struct
+--opaque-type arch_lbr_state --opaque-type local_apic --opaque-type alt_instr
+--opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
+--opaque-type kunit_try_catch --opaque-type spinlock --no-doc-comments
+--use-core --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
+--no-debug '.*' --size_t-is-usize -o %s --
+-nostdinc -I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
+-I$LINUX/include -I$LINUX/arch/x86/include/uapi
+-I$LINUX/arch/x86/include/generated/uapi -I$LINUX/include/uapi
+-I$LINUX/include/generated/uapi
+-include $LINUX/include/linux/compiler-version.h
+-include $LINUX/include/linux/kconfig.h
+-include $LINUX/include/linux/compiler_types.h -D__KERNEL__
+-Wall -Wundef -Werror=strict-prototypes -Wno-trigraphs
+-fno-strict-aliasing -fno-common -fshort-wchar -fno-PIE
+-Werror=implicit-function-declaration -Werror=implicit-int
+-Werror=return-type -Wno-format-security -funsigned-char -std=gnu11
+--target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option
+-Werror=ignored-optimization-argument -Werror=option-ignored
+-Werror=unused-command-line-argument -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
+-mno-avx -fcf-protection=none -m64 -falign-loops=1 -mno-80387
+-mno-fp-ret-in-387 -mstack-alignment=8 -mskip-rax-setup -mtune=generic
+-mno-red-zone -mcmodel=kernel -Wno-sign-compare -fno-asynchronous-unwind-tables
+-mretpoline-external-thunk -mfunction-return=thunk-extern
+-fno-delete-null-pointer-checks -Wno-frame-address
+-Wno-address-of-packed-member -O2 -Wframe-larger-than=2048
+-fstack-protector-strong -Wno-gnu -Wno-unused-but-set-variable
+-Wno-unused-const-variable -fomit-frame-pointer -fno-stack-clash-protection
+-fno-lto -falign-functions=16 -Wdeclaration-after-statement -Wvla
+-Wno-pointer-sign -Wcast-function-type -Wimplicit-fallthrough
+-fno-strict-overflow -fno-stack-check -Werror=date-time
+-Werror=incompatible-pointer-types -Wno-initializer-overrides -Wno-format
+-Wformat-extra-args -Wformat-invalid-specifier -Wformat-zero-length -Wnonnull
+-Wformat-insufficient-args -Wno-sign-compare -Wno-pointer-to-enum-cast
+-Wno-tautological-constant-out-of-range-compare -Wno-unaligned-access -g
+-D__BINDGEN__ -DMODULE'''
+
+def gen_inc_directive(header):
+    return '#include <%s>\n' % header
+
 # These 2 functions are from the old fixup_addrs.py
 def filter_symbol(nm_line):
     # T/t means text(code) symbol
@@ -54,9 +95,6 @@ def bindgen(header):
     return output
 
 def prep_headers(usr_include, headers, out_dir):
-    if len(headers) == 0:
-        return
-
     for h in headers:
         output = bindgen(os.path.join(usr_include, h))
 
@@ -81,6 +119,20 @@ def parse_config(cargo_toml):
 
     return ksyms, uheaders, kheaders
 
+def prep_kernel_headers(headers, linux_path, out_dir):
+    bindings_h = os.path.join(out_dir, 'bindings.h')
+    out_subdir = os.path.join(out_dir, 'linux')
+    if not os.path.exists(out_subdir):
+        os.makedirs(out_subdir)
+    kernel_rs = os.path.join(out_subdir, 'kernel.rs')
+
+    with open(bindings_h, 'w') as bindings:
+        for h in headers:
+            bindings.write(gen_inc_directive(h))
+
+    cmd = bindgen_kernel_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
+    subprocess.run((cmd % (bindings_h, kernel_rs)), check=True, shell=True)
+
 def main(argv):
     linux_path = argv[1]
     out_dir = argv[2]
@@ -90,7 +142,7 @@ def main(argv):
     gen_stubs(os.path.join(linux_path, 'vmlinux'), ksyms, out_dir)
     u_out_dir = os.path.join(out_dir, 'uapi')
     prep_headers(os.path.join(linux_path, 'usr/include'), uheaders, u_out_dir)
-    prep_headers(os.path.join(linux_path, 'include'), kheaders, out_dir)
+    prep_kernel_headers(kheaders, linux_path, out_dir)
     return 0
 
 if __name__ == '__main__':

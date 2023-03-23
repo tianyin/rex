@@ -3,8 +3,13 @@ name = "inner_unikernel_rt"
 version = "0.1.0"
 edition = "2021"
 build = "build.rs"
+autotests = false
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+test = false
+doctest = false
 
 [dependencies]
 # rlibc = "1.0.0"
@@ -28,16 +33,17 @@ ksyms = [
     'bpf_probe_read_kernel',
     'bpf_trace_printk_iu',
     'just_return_func',
-  #   'iu_task_storage_lock',
-  #   'iu_task_storage_unlock',
     'jiffies',
     'current_task',
     'cpu_number',
     'numa_node',
+    'iu_task_storage_lock',
+    'iu_task_storage_unlock',
 ]
 
 uheaders = [
     "linux/bpf.h",
+    "linux/errno.h",
     "linux/perf_event.h",
     "linux/ptrace.h",
     "linux/seccomp.h",
@@ -45,5 +51,6 @@ uheaders = [
 ]
 
 kheaders = [
+    "linux/sched.h",
     "linux/gfp_types.h",
 ]

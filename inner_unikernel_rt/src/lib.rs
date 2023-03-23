@@ -10,6 +10,7 @@ pub mod tracepoint;
 mod base_helper;
 mod bindings;
 mod stub;
+pub mod task_struct;
 
 use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;
