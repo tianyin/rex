@@ -37,8 +37,6 @@ ksyms = [
     'current_task',
     'cpu_number',
     'numa_node',
-    'iu_task_storage_lock',
-    'iu_task_storage_unlock',
 ]
 
 uheaders = [

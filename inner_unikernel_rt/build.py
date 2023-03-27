@@ -19,7 +19,6 @@ pub(crate) const unsafe fn %s_addr() -> u64 {
     0x%%s
 }
 """
-
 bindgen_kernel_cmd = '''bindgen %s --allowlist-type="task_struct"
 --allowlist-var="___GFP.*" --opaque-type xregs_state --opaque-type desc_struct
 --opaque-type arch_lbr_state --opaque-type local_apic --opaque-type alt_instr
@@ -131,7 +130,7 @@ def prep_kernel_headers(headers, linux_path, out_dir):
             bindings.write(gen_inc_directive(h))
 
     cmd = bindgen_kernel_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
-    subprocess.run((cmd % (bindings_h, kernel_rs)), check=True, shell=True)
+    subprocess.run(cmd % (bindings_h, kernel_rs), check=True, shell=True)
 
 def main(argv):
     linux_path = argv[1]

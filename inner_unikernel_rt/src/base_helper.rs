@@ -20,9 +20,8 @@ pub(crate) fn bpf_trace_printk(
     arg2: u64,
     arg3: u64,
 ) -> i32 {
-    let code: extern "C" fn(*const u8, u32, u64, u64, u64) -> i32 = unsafe {
-        core::mem::transmute(stub::bpf_trace_printk_iu_addr())
-    };
+    let code: extern "C" fn(*const u8, u32, u64, u64, u64) -> i32 =
+        unsafe { core::mem::transmute(stub::bpf_trace_printk_iu_addr()) };
     code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3)
 }
 
@@ -30,9 +29,8 @@ pub(crate) fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
     map: &IUMap<MT, K, V>,
     key: K,
 ) -> Option<&mut V> {
-    let helper: extern "C" fn(&IUMap<MT, K, V>, *const K) -> *const V = unsafe {
-        core::mem::transmute(stub::bpf_map_lookup_elem_addr())
-    };
+    let helper: extern "C" fn(&IUMap<MT, K, V>, *const K) -> *const V =
+        unsafe { core::mem::transmute(stub::bpf_map_lookup_elem_addr()) };
     let value = helper(map, &key) as *mut V;
 
     if value.is_null() {
@@ -53,9 +51,8 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
         *const K,
         *const V,
         u64,
-    ) -> i64 = unsafe {
-        core::mem::transmute(stub::bpf_map_update_elem_addr())
-    };
+    ) -> i64 =
+        unsafe { core::mem::transmute(stub::bpf_map_update_elem_addr()) };
     helper(map, &key, &value, flags)
 }
 
@@ -66,9 +63,8 @@ pub(crate) fn bpf_probe_read_kernel<T>(
     dst: &mut T,
     unsafe_ptr: *const (),
 ) -> i64 {
-    let helper: extern "C" fn(*mut (), u32, *const ()) -> i64 = unsafe {
-        core::mem::transmute(stub::bpf_probe_read_kernel_addr())
-    };
+    let helper: extern "C" fn(*mut (), u32, *const ()) -> i64 =
+        unsafe { core::mem::transmute(stub::bpf_probe_read_kernel_addr()) };
     helper(
         dst as *mut T as *mut (),
         core::mem::size_of::<T>() as u32,
@@ -137,9 +133,7 @@ pub(crate) fn bpf_strncmp(s1: &str, s2: &str, cnt: usize) -> i32 {
 }
 
 pub(crate) fn bpf_jiffies64() -> u64 {
-    unsafe {
-        core::ptr::read_volatile(stub::jiffies_addr() as *const u64)
-    }
+    unsafe { core::ptr::read_volatile(stub::jiffies_addr() as *const u64) }
 }
 
 /// Assumes `CONFIG_USE_PERCPU_NUMA_NODE_ID`

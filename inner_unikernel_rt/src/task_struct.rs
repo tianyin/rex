@@ -1,16 +1,24 @@
-use crate::stub;
 use crate::bindings::linux::kernel::task_struct;
 use crate::bindings::uapi::linux::errno::EINVAL;
+use crate::kprobe::pt_regs;
+use crate::stub;
 
 use core::cmp::max;
 
+// Bindgen has problem generating these constants
+const TOP_OF_KERNEL_STACK_PADDING: u64 = 0;
+const PAGE_SHIFT: u64 = 12;
+const PAGE_SIZE: u64 = 1u64 << PAGE_SHIFT;
+const THREAD_SIZE_ORDER: u64 = 2; // assume no kasan
+const THREAD_SIZE: u64 = PAGE_SIZE << THREAD_SIZE_ORDER;
+
 pub struct TaskStruct<'a> {
-    pub(crate) kptr: &'a task_struct
+    pub(crate) kptr: &'a task_struct,
 }
 
 impl<'a> TaskStruct<'a> {
     #[inline(always)]
-    pub(crate) const fn new(kp:&'a task_struct) -> TaskStruct<'a> {
+    pub(crate) const fn new(kp: &'a task_struct) -> TaskStruct<'a> {
         Self { kptr: kp }
     }
 
@@ -24,8 +32,6 @@ impl<'a> TaskStruct<'a> {
                 in("rcx") stub::current_task_addr(),
             );
 
-            let scalar: u64 = current as *const () as u64;
-
             if current.is_null() {
                 None
             } else {
@@ -35,12 +41,12 @@ impl<'a> TaskStruct<'a> {
     }
 
     #[inline(always)]
-    pub fn getpid(&self) -> i32 {
+    pub fn get_pid(&self) -> i32 {
         self.kptr.pid
     }
 
     #[inline(always)]
-    pub fn gettgid(&self) -> i32 {
+    pub fn get_tgid(&self) -> i32 {
         self.kptr.tgid
     }
 
@@ -48,7 +54,7 @@ impl<'a> TaskStruct<'a> {
     // since buf is just a buffer. But in Rust we can use const generics to
     // restrict it to only [u8; N] given that comm is a cstring. This also
     // automatically achieves size check, since N is a constexpr.
-    pub fn getcomm<const N: usize>(&self, buf: &mut [i8; N]) -> i32 {
+    pub fn get_comm<const N: usize>(&self, buf: &mut [i8; N]) -> i32 {
         if N == 0 {
             return -(EINVAL as i32);
         }
@@ -63,4 +69,3 @@ impl<'a> TaskStruct<'a> {
         0
     }
 }
-

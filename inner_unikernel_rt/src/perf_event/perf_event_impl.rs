@@ -96,9 +96,8 @@ impl<'a> perf_event<'a> {
             *const bpf_perf_event_data_kern,
             &'a IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
             u64,
-        ) -> i64 = unsafe {
-            core::mem::transmute(stub::bpf_get_stackid_pe_addr())
-        };
+        ) -> i64 =
+            unsafe { core::mem::transmute(stub::bpf_get_stackid_pe_addr()) };
         helper(ctx.kptr, map, flags)
     }
 }
