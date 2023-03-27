@@ -12,13 +12,15 @@ const PAGE_SIZE: u64 = 1u64 << PAGE_SHIFT;
 const THREAD_SIZE_ORDER: u64 = 2; // assume no kasan
 const THREAD_SIZE: u64 = PAGE_SIZE << THREAD_SIZE_ORDER;
 
-pub struct TaskStruct<'a> {
-    pub(crate) kptr: &'a task_struct,
+pub struct TaskStruct {
+    // struct task_struct * should always live longer than program execution
+    // given the RCU read lock
+    pub(crate) kptr: &'static task_struct,
 }
 
-impl<'a> TaskStruct<'a> {
+impl TaskStruct {
     #[inline(always)]
-    pub(crate) const fn new(kp: &'a task_struct) -> TaskStruct<'a> {
+    pub(crate) const fn new(kp: &'static task_struct) -> Self {
         Self { kptr: kp }
     }
 
@@ -68,18 +70,17 @@ impl<'a> TaskStruct<'a> {
         buf[size] = 0;
         0
     }
-    
-    pub fn get_pt_regs(&self) -> &pt_regs {
+
+    pub fn get_pt_regs(&self) -> &'static pt_regs {
         // X86 sepcific
         // stack_top is actually bottom of the kernel stack, it refers to the
         // highest address of the stack pages
         let stack_top =
             self.kptr.stack as u64 + THREAD_SIZE - TOP_OF_KERNEL_STACK_PADDING;
+        let reg_addr = (stack_top - core::mem::size_of::<pt_regs>() as u64);
         // The pt_regs should always be on the top of the stack
         unsafe {
-            core::mem::transmute(
-                stack_top - core::mem::size_of::<pt_regs>() as u64,
-            )
+            &*(reg_addr as *const pt_regs)
         }
     }
 }
