@@ -8,6 +8,7 @@ use crate::bindings::uapi::linux::bpf::{
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
+use crate::task_struct::TaskStruct;
 
 pub type pt_regs = super::binding::pt_regs;
 
@@ -50,22 +51,22 @@ impl<'a> perf_event<'a> {
     }
 
     fn convert_ctx(&self, ctx: *const ()) -> bpf_perf_event_data {
-        let kern_ctx: &bpf_perf_event_data_kern = unsafe {
+        let kptr: &bpf_perf_event_data_kern = unsafe {
             &*core::mem::transmute::<*const (), *const bpf_perf_event_data_kern>(
                 ctx,
             )
         };
 
-        let regs = unsafe { *kern_ctx.regs };
-        let data: &perf_sample_data = unsafe { &*kern_ctx.data };
+        let regs = unsafe { *kptr.regs };
+        let data: &perf_sample_data = unsafe { &*kptr.data };
         let sample_period = data.period;
         let addr = data.addr;
 
         bpf_perf_event_data {
-            regs: regs,
-            sample_period: sample_period,
-            addr: addr,
-            kptr: kern_ctx,
+            regs,
+            sample_period,
+            addr,
+            kptr,
         }
     }
 
@@ -99,6 +100,10 @@ impl<'a> perf_event<'a> {
         ) -> i64 =
             unsafe { core::mem::transmute(stub::bpf_get_stackid_pe_addr()) };
         helper(ctx.kptr, map, flags)
+    }
+
+    pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {
+        TaskStruct::get_current_task()
     }
 }
 

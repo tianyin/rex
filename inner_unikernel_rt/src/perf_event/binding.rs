@@ -132,27 +132,43 @@ impl<T> ::core::fmt::Debug for __IncompleteArrayField<T> {
 #[repr(C)]
 #[derive(Debug, Copy, Clone)]
 pub struct pt_regs {
-    pub r15: u64,
-    pub r14: u64,
-    pub r13: u64,
-    pub r12: u64,
-    pub bp: u64,
-    pub bx: u64,
-    pub r11: u64,
-    pub r10: u64,
-    pub r9: u64,
-    pub r8: u64,
-    pub ax: u64,
-    pub cx: u64,
-    pub dx: u64,
-    pub si: u64,
-    pub di: u64,
-    pub orig_ax: u64,
-    pub ip: u64,
-    pub cs: u64,
-    pub flags: u64,
-    pub sp: u64,
-    pub ss: u64,
+    pub(super) r15: ::core::ffi::c_ulong,
+    pub(super) r14: ::core::ffi::c_ulong,
+    pub(super) r13: ::core::ffi::c_ulong,
+    pub(super) r12: ::core::ffi::c_ulong,
+    pub(super) rbp: ::core::ffi::c_ulong,
+    pub(super) rbx: ::core::ffi::c_ulong,
+    pub(super) r11: ::core::ffi::c_ulong,
+    pub(super) r10: ::core::ffi::c_ulong,
+    pub(super) r9: ::core::ffi::c_ulong,
+    pub(super) r8: ::core::ffi::c_ulong,
+    pub(super) rax: ::core::ffi::c_ulong,
+    pub(super) rcx: ::core::ffi::c_ulong,
+    pub(super) rdx: ::core::ffi::c_ulong,
+    pub(super) rsi: ::core::ffi::c_ulong,
+    pub(super) rdi: ::core::ffi::c_ulong,
+    pub(super) orig_rax: ::core::ffi::c_ulong,
+    pub(super) rip: ::core::ffi::c_ulong,
+    pub(super) cs: ::core::ffi::c_ulong,
+    pub(super) eflags: ::core::ffi::c_ulong,
+    pub(super) rsp: ::core::ffi::c_ulong,
+    pub(super) ss: ::core::ffi::c_ulong,
+}
+
+macro_rules! decl_reg_accessors {
+    ($t:ident $($ts:ident)*) => {
+        #[inline(always)]
+        pub fn $t(&self) -> u64 {
+            self.$t
+        }
+        decl_reg_accessors!($($ts)*);
+    };
+    () => {};
+}
+
+impl pt_regs {
+    decl_reg_accessors!(r15 r14 r13 r12 rbp rbx r11 r10 r9 r8 rax rcx rdx rsi
+        rdi orig_rax rip cs eflags rsp ss);
 }
 
 pub type bpf_user_pt_regs_t = pt_regs;
