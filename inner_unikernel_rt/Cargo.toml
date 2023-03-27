@@ -37,6 +37,7 @@ ksyms = [
     'current_task',
     'cpu_number',
     'numa_node',
+    'panic',
 ]
 
 uheaders = [

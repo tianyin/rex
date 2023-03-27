@@ -32,8 +32,22 @@ fn __iu_entry_perf_event(prog: &perf_event::perf_event, ctx: *const ()) -> u32 {
 
 // This function is called on panic.
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+fn panic(info: &PanicInfo) -> ! {
+    let mut msg = [0u8; 128];
+    if let Some(s) = info.payload().downcast_ref::<&str>() {
+        let len = core::cmp::min(msg.len() - 1, s.len());
+        msg[..len].copy_from_slice(&(*s).as_bytes()[..len]);
+        msg[len] = 0u8;
+    } else {
+        let s = "Rust program panicked\n\0";
+        msg[..s.len()].copy_from_slice(s.as_bytes());
+    }
+
+    unsafe {
+        let panic_fn: unsafe extern "C" fn(*const u8) -> ! = 
+            core::mem::transmute(stub::panic_addr());
+        panic_fn(msg.as_ptr())
+    }
 }
 
 pub use bindings::uapi::*;
