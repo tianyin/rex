@@ -29,7 +29,7 @@ pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> u32 {
             sd.args[2],
         );
     }
-    return 0;
+    0
 }
 
 pub fn func_sys_read(obj: &kprobe, ctx: &pt_regs) -> u32 {
@@ -51,7 +51,7 @@ pub fn func_sys_read(obj: &kprobe, ctx: &pt_regs) -> u32 {
             sd.args[2],
         );
     }
-    return 0;
+    0
 }
 
 pub fn func_sys_mmap(obj: &kprobe, ctx: &pt_regs) -> u32 {
@@ -71,26 +71,26 @@ pub fn func_sys_mmap(obj: &kprobe, ctx: &pt_regs) -> u32 {
         sd.args[1],
         sd.args[2],
     );
-    return 0;
+    0
 }
 
 fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> u32 {
     match ctx.rdi() as u32 {
         __NR_read => {
-            return func_sys_read(obj, ctx);
+            func_sys_read(obj, ctx)
         }
         __NR_write => {
-            return func_sys_write(obj, ctx);
+            func_sys_write(obj, ctx)
         }
         __NR_mmap => {
-            return func_sys_mmap(obj, ctx);
+            func_sys_mmap(obj, ctx)
         }
         __NR_getuid..=__NR_getsid => {
             obj.bpf_trace_printk("syscall=%d (one of get/set uid/pid/gid)\n", ctx.rdi(), 0, 0);
-            return 0;
+            0
         }
         _ => {
-            return 0;
+            0
         }
     }
 }

@@ -8,14 +8,12 @@ use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::tracepoint::*;
 
 fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
-    let pid = (obj.bpf_get_current_pid_tgid() & 0xFFFFFFFF) as u32;
-    bpf_printk!(obj, "Rust triggered from PID %u.\n", pid as u64);
     let option_task = obj.bpf_get_current_task();
     if let Some(task) = option_task {
-        let pid2 = task.getpid();
-        bpf_printk!(obj, "pid=%d\n", pid2 as u64);
+        let pid = task.get_pid();
+        bpf_printk!(obj, "Rust triggered from PID %u.\n", pid as u64);
     }
-    return 0;
+    0
 }
 
 #[link_section = "tracepoint/syscalls/sys_enter_dup"]
