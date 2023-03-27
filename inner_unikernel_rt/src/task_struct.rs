@@ -68,4 +68,18 @@ impl<'a> TaskStruct<'a> {
         buf[size] = 0;
         0
     }
+    
+    pub fn get_pt_regs(&self) -> &pt_regs {
+        // X86 sepcific
+        // stack_top is actually bottom of the kernel stack, it refers to the
+        // highest address of the stack pages
+        let stack_top =
+            self.kptr.stack as u64 + THREAD_SIZE - TOP_OF_KERNEL_STACK_PADDING;
+        // The pt_regs should always be on the top of the stack
+        unsafe {
+            core::mem::transmute(
+                stack_top - core::mem::size_of::<pt_regs>() as u64,
+            )
+        }
+    }
 }
