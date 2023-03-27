@@ -16,7 +16,7 @@ pub const TASK_COMM_LEN: usize = 16;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct key_t {
-    pub comm: [u8; TASK_COMM_LEN],
+    pub comm: [i8; TASK_COMM_LEN],
     pub kernstack: u32,
     pub userstack: u32,
 }
@@ -33,13 +33,8 @@ MAP_DEF!(
     0
 );
 
-pub const KERN_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP) as u64;
-pub const USER_STACKID_FLAGS: u64 = (0 | BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
-
-#[inline]
-fn PT_REGS_IP(x: &pt_regs) -> u64 {
-    return x.ip;
-}
+pub const KERN_STACKID_FLAGS: u64 = BPF_F_FAST_STACK_CMP as u64;
+pub const USER_STACKID_FLAGS: u64 = (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
 fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
     let cpu: u32 = obj.bpf_get_smp_processor_id();
@@ -57,7 +52,12 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         return 0;
     }
 
-    obj.bpf_get_current_comm(&mut key.comm);
+    if let Some(current) = obj.bpf_get_current_task() {
+        current.get_comm(&mut key.comm);
+    } else {
+        return 0;
+    }
+
     key.kernstack = obj.bpf_get_stackid_pe(ctx, stackmap, KERN_STACKID_FLAGS) as u32;
     key.userstack = obj.bpf_get_stackid_pe(ctx, stackmap, USER_STACKID_FLAGS) as u32;
 
@@ -66,7 +66,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
             "CPU-%d period %lld ip %llx",
             cpu as u64,
             ctx.sample_period,
-            PT_REGS_IP(&ctx.regs),
+            ctx.regs.rip(),
         );
         return 0;
     }
@@ -96,7 +96,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
             *val += 1;
         }
     }
-    return 0;
+    0
 }
 
 #[link_section = "perf_event"]
