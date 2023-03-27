@@ -3,8 +3,6 @@ use crate::bindings::uapi::linux::errno::EINVAL;
 use crate::kprobe::pt_regs;
 use crate::stub;
 
-use core::cmp::max;
-
 // Bindgen has problem generating these constants
 const TOP_OF_KERNEL_STACK_PADDING: u64 = 0;
 const PAGE_SHIFT: u64 = 12;
@@ -61,12 +59,12 @@ impl TaskStruct {
             return -(EINVAL as i32);
         }
 
-        let size = max::<usize>(N - 1, self.kptr.comm.len());
+        let size = core::cmp::min::<usize>(N, self.kptr.comm.len()) - 1;
         if size == 0 {
             return -(EINVAL as i32);
         }
 
-        buf[..size].copy_from_slice(&self.kptr.comm);
+        buf[..size].copy_from_slice(&self.kptr.comm[..size]);
         buf[size] = 0;
         0
     }
