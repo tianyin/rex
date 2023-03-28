@@ -1,5 +1,6 @@
 #![no_std]
 #![feature(const_mut_refs)]
+#![feature(panic_info_message)]
 
 pub mod kprobe;
 pub mod map;
@@ -34,7 +35,17 @@ fn __iu_entry_perf_event(prog: &perf_event::perf_event, ctx: *const ()) -> u32 {
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
     let mut msg = [0u8; 128];
-    if let Some(s) = info.payload().downcast_ref::<&str>() {
+    if let Some(args) = info.message() {
+        // Only works in the most trivial case: no format args
+        if let Some(s) = args.as_str() {
+            let len = core::cmp::min(msg.len() - 1, s.len());
+            msg[..len].copy_from_slice(&(*s).as_bytes()[..len]);
+            msg[len] = 0u8;
+        } else {
+            let s = "Rust program panicked\n\0";
+            msg[..s.len()].copy_from_slice(s.as_bytes());
+        }
+    } else if let Some(s) = info.payload().downcast_ref::<&str>() {
         let len = core::cmp::min(msg.len() - 1, s.len());
         msg[..len].copy_from_slice(&(*s).as_bytes()[..len]);
         msg[len] = 0u8;
