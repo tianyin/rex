@@ -9,3 +9,4 @@ fi
 mesg n 2> /dev/null || true
 export LD_LIBRARY_PATH='/host/inner_unikernels/libiu:/host/linux/tools/lib/bpf'
 export PATH=$PATH:'/host/linux/tools/bpf/bpftool'
+PS1="\033[01;01m\][iukernel] \[\e]0;\u@\h: \w\a\]\[\033[01;31m\]\u\033[01;01;36m\]@\033[01;33m\]\h\[\033[00m\]:\[\033[00;33m\]\w\[\033[00m\]$ "
