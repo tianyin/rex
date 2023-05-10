@@ -10,6 +10,7 @@ pub mod tracepoint;
 
 mod base_helper;
 mod bindings;
+mod per_cpu;
 mod stub;
 pub mod task_struct;
 

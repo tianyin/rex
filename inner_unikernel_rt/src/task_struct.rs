@@ -1,6 +1,7 @@
 use crate::bindings::linux::kernel::task_struct;
 use crate::bindings::uapi::linux::errno::EINVAL;
 use crate::kprobe::pt_regs;
+use crate::per_cpu::this_cpu_read;
 use crate::stub;
 
 // Bindgen has problem generating these constants
@@ -24,19 +25,13 @@ impl TaskStruct {
 
     /// Currently returns u64 until `task_struct` binding is generated
     pub(crate) fn get_current_task() -> Option<Self> {
-        unsafe {
-            let mut current: *const task_struct;
-            core::arch::asm!(
-                "mov {}, gs:[rcx]",
-                out(reg) current,
-                in("rcx") stub::current_task_addr(),
-            );
+        let current: *const task_struct =
+            this_cpu_read(unsafe { stub::current_task_addr() });
 
-            if current.is_null() {
-                None
-            } else {
-                Some(TaskStruct::new(&*current))
-            }
+        if current.is_null() {
+            None
+        } else {
+            Some(TaskStruct::new(unsafe { &*current }))
         }
     }
 

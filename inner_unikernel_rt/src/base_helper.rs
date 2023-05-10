@@ -1,17 +1,10 @@
 use crate::linux::bpf::bpf_map_type;
 use crate::map::IUMap;
+use crate::per_cpu::this_cpu_read;
 use crate::stub;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
-    unsafe {
-        let mut cpu: u64;
-        core::arch::asm!(
-            "mov {}, gs:[rcx]",
-            out(reg) cpu,
-            in("rcx") stub::cpu_number_addr(),
-        );
-        cpu as u32
-    }
+    this_cpu_read(unsafe { stub::cpu_number_addr() })
 }
 
 pub(crate) fn bpf_trace_printk(
@@ -138,15 +131,7 @@ pub(crate) fn bpf_jiffies64() -> u64 {
 
 /// Assumes `CONFIG_USE_PERCPU_NUMA_NODE_ID`
 pub(crate) fn bpf_get_numa_node_id() -> i64 {
-    unsafe {
-        let mut numa_id: i64;
-        core::arch::asm!(
-            "mov {}, gs:[rcx]",
-            out(reg) numa_id,
-            in("rcx") stub::numa_node_addr(),
-        );
-        numa_id
-    }
+    this_cpu_read::<u64>(unsafe { stub::numa_node_addr() }) as i64
 }
 
 macro_rules! base_helper_defs {
