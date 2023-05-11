@@ -20,7 +20,7 @@ pub(crate) const unsafe fn %s_addr() -> u64 {
 }
 """
 bindgen_kernel_cmd = '''bindgen %s --allowlist-type="task_struct"
---allowlist-var="___GFP.*" --opaque-type xregs_state --opaque-type desc_struct
+--allowlist-var="(___GFP.*|CONFIG_.*)" --opaque-type xregs_state --opaque-type desc_struct
 --opaque-type arch_lbr_state --opaque-type local_apic --opaque-type alt_instr
 --opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
 --opaque-type kunit_try_catch --opaque-type spinlock --no-doc-comments

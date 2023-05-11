@@ -38,6 +38,7 @@ ksyms = [
     'cpu_number',
     'numa_node',
     'panic',
+    '__per_cpu_offset',
 ]
 
 uheaders = [

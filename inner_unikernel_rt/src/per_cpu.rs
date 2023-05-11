@@ -1,3 +1,6 @@
+use crate::stub;
+use crate::bindings::linux::kernel::CONFIG_NR_CPUS as NR_CPUS;
+
 pub(crate) trait PerCPURead<T> {
     fn this_cpu_read(addr: u64) -> T;
 }
@@ -77,6 +80,7 @@ impl<T> PerCPURead<*const T> for *const T {
     }
 }
 
+/// We have migrate_disable
 impl<T> PerCPURead<*mut T> for *mut T {
     #[inline(always)]
     fn this_cpu_read(addr: u64) -> *mut T {
@@ -96,5 +100,29 @@ impl<T> PerCPURead<*mut T> for *mut T {
 #[inline(always)]
 pub(crate) fn this_cpu_read<T: PerCPURead<T>>(pcp_addr: u64) -> T {
     <T as PerCPURead<T>>::this_cpu_read(pcp_addr)
+}
+
+/// For addresses of per-cpu variables
+/// This is more expensive (in terms of # of insns)
+#[inline(always)]
+fn __this_cpu_ptr(pcp_addr: u64) -> u64 {
+    let cpu_id =
+        this_cpu_read::<u32>(unsafe { stub::cpu_number_addr() }) as usize;
+    let __per_cpu_offset = unsafe {
+        core::slice::from_raw_parts(
+            stub::__per_cpu_offset_addr() as *const u64,
+            NR_CPUS as usize
+        )
+    };
+    let this_cpu_offset = __per_cpu_offset[cpu_id];
+    pcp_addr + this_cpu_offset
+}
+
+pub(crate) fn this_cpu_ptr<T>(pcp_addr: u64) -> *const T {
+    __this_cpu_ptr(pcp_addr) as *const T
+}
+
+pub(crate) fn this_cpu_ptr_mut<T>(pcp_addr: u64) -> *mut T {
+    __this_cpu_ptr(pcp_addr) as *mut T
 }
 
