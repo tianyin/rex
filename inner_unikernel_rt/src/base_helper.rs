@@ -4,7 +4,7 @@ use crate::per_cpu::this_cpu_read;
 use crate::stub;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
-    this_cpu_read(unsafe { stub::cpu_number_addr() })
+    unsafe { this_cpu_read(stub::cpu_number_addr()) }
 }
 
 pub(crate) fn bpf_trace_printk(
@@ -131,7 +131,8 @@ pub(crate) fn bpf_jiffies64() -> u64 {
 
 /// Assumes `CONFIG_USE_PERCPU_NUMA_NODE_ID`
 pub(crate) fn bpf_get_numa_node_id() -> i64 {
-    this_cpu_read::<u64>(unsafe { stub::numa_node_addr() }) as i64
+    let id = unsafe { this_cpu_read::<u64>(stub::numa_node_addr()) };
+    id as i64
 }
 
 macro_rules! base_helper_defs {
