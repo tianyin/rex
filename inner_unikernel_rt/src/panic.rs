@@ -1,12 +1,11 @@
 use core::panic::PanicInfo;
 
-use crate::stub;
 use crate::per_cpu::this_cpu_ptr_mut;
-use crate::base_helper::bpf_trace_printk; // For debug
+use crate::stub;
 
 const ENTRIES_SIZE: usize = 64;
 
-pub(crate) type CleanupFn = fn (*const ()) -> ();
+pub(crate) type CleanupFn = fn(*const ()) -> ();
 
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
@@ -17,11 +16,12 @@ pub(crate) struct CleanupEntry {
 }
 
 impl CleanupEntry {
-    pub fn new(
-        cleanup_fn: CleanupFn,
-        cleanup_arg: *const ()
-    ) -> Self {
-        Self { valid: 1, cleanup_fn: Some(cleanup_fn), cleanup_arg }
+    pub fn new(cleanup_fn: CleanupFn, cleanup_arg: *const ()) -> Self {
+        Self {
+            valid: 1,
+            cleanup_fn: Some(cleanup_fn),
+            cleanup_arg,
+        }
     }
 
     pub fn cleanup(&self) {
@@ -63,7 +63,7 @@ impl<'a> CleanupEntries<'a> {
     /// This function is called by object constructors
     /// Panic is allowed here
     pub(crate) fn find_next_emtpy_entry(
-        &mut self
+        &mut self,
     ) -> (usize, &mut CleanupEntry) {
         for (idx, entry) in self.entries.iter_mut().enumerate() {
             if entry.valid == 0 {
@@ -126,7 +126,7 @@ fn panic(info: &PanicInfo) -> ! {
     }
 
     unsafe {
-        let panic_fn: unsafe extern "C" fn(*const u8) -> ! = 
+        let panic_fn: unsafe extern "C" fn(*const u8) -> ! =
             core::mem::transmute(stub::panic_addr());
         panic_fn(msg.as_ptr())
     }

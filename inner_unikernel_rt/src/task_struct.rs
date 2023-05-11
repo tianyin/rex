@@ -72,8 +72,6 @@ impl TaskStruct {
             self.kptr.stack as u64 + THREAD_SIZE - TOP_OF_KERNEL_STACK_PADDING;
         let reg_addr = (stack_top - core::mem::size_of::<pt_regs>() as u64);
         // The pt_regs should always be on the top of the stack
-        unsafe {
-            &*(reg_addr as *const pt_regs)
-        }
+        unsafe { &*(reg_addr as *const pt_regs) }
     }
 }
