@@ -1,4 +1,5 @@
-
+BASE_PROJ ?= $(shell pwd)
+LINUX ?= ${BASE_PROJ}/linux
 .ALWAYS:
 
 all: vmlinux fs samples
@@ -6,41 +7,35 @@ all: vmlinux fs samples
 docker: .ALWAYS
 	make -C docker/docker-linux-builder docker
 
-bpftool: .ALWAYS docker
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -w /linux/tools/bpf/bpftool linux-builder make bpftool
-	scripts/get_bpftool.sh
+qemu-run: 
+	docker run --privileged --rm \
+	--device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun \
+	-v ${BASE_PROJ}:/inner_unikernels -v ${LINUX}:/linux \
+	-w /linux \
+	-it runtime:latest \
+	/inner_unikernels/q-script/yifei-q
 
-vmlinux-config: .ALWAYS docker
-	cp epf_tests.config ~/linux/.config
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make olddefconfig
+bpftool: 
+	docker run --rm -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool
 
-vmlinux: .ALWAYS docker
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make -j32 bzImage
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make headers
-	scripts/get_linux.sh
-
-samples: .ALWAYS docker vmlinux
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -w /linux/samples/bpf linux-builder make
+vmlinux: 
+	docker run --rm -v ${LINUX}:/linux -w /linux runtime  make -j`nproc` bzImage
 
 linux-clean:
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux linux-builder make distclean
+	docker run --rm -v ${LINUX}:/linux runtime make distclean
 
 # Might not be needed anymore
-#iu: .ALWAYS docker 
-#	docker run --user $(shell id -u) --rm -v ~/linux:/linux -w /linux/tools/lib/bpf linux-builder make libbpf.a
-#	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/libiu linux-builder make -j32
+iu: 
+	docker run --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/libiu runtime make -j32 LLVM=1
 
 iu-clean: 
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -w /inner_unikernels/libiu linux-builder make clean
+	docker run --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/libiu runtime make clean
 
-iu-examples: .ALWAYS docker
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/hello -e LINUX=/inner_unikernels/linux linux-builder make
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/map_test -e LINUX=/inner_unikernels/linux linux-builder make
-	docker run --user $(shell id -u) --rm -v ~/linux:/linux -v ~/inner_unikernels:/inner_unikernels -e CARGO_HOME=/inner_unikernels/.cargo -w /inner_unikernels/samples/syscall_tp -e LINUX=/inner_unikernels/linux linux-builder make
-
-examples: .ALWAYS docker
-	docker run --user $(shell id -u) --rm -v ~/libbpf-bootstrap:/libbpf-bootstrap -w /libbpf-bootstrap/examples/c linux-builder make
-	scripts/get_examples.sh
+iu-examples: 
+	docker run --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/hello runtime make -j32 LLVM=1
+	docker run --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/map_test runtime make -j32 LLVM=1
+	docker run --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/syscall_tp runtime make -j32 LLVM=1
+	docker run --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/trace_event runtime make -j32 LLVM=1
 
 DOCKERCONTEXT=\
 	rootfs/Dockerfile \

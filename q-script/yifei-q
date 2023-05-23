@@ -242,6 +242,7 @@ export KERNEL=$KERNEL
 export PATH=\$HOME/local/bin:\$PATH
 export PATH=\$KERNEL/tools/bpf/bpftool:\$PATH
 export PATH=\$KERNEL/tools/perf:\$PATH
+export LD_LIBRARY_PATH=/inner_unikernels/libiu:/inner_unikernels/tools/lib/bpf:$LD_LIBRARY_PATH
 EOF
 
 	cat << EOF >> $HOME/.bashrc

@@ -2,7 +2,7 @@ LINUX ?= $(HOME)/linux
 
 LINUX_INC = ${LINUX}/usr/include
 LIBBPF_DIR = ${LINUX}/tools/lib/bpf
-LIBIU_DIR = "../../libiu"
+LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unikernels/libiu"; else echo "../../libiu"; fi)
 
 NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
 
@@ -26,7 +26,7 @@ target/release/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 
 loader: loader.c
 	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBBPF_DIR} -L${LIBIU_DIR}\
-		-lbpf -lelf -liu -o $@
+		-lbpf -lelf -liu -lz -o $@
 
 event-trigger: event-trigger.c
 	clang -I${LINUX_INC} -g $< -o $@

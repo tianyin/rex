@@ -6,3 +6,4 @@
 */target
 */.gdbinit
 */.gdb_history
+*/syscall_tp_user

@@ -23,7 +23,7 @@ target/release/tracex5: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 
 tracex5: tracex5.c
 	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBBPF_DIR} -L${LIBIU_DIR}\
-		-lbpf -lelf -liu -o $@
+		-lbpf -lelf -liu -lz -o $@
 
 clean:
 	cargo clean

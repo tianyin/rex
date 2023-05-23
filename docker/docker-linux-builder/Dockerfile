@@ -1,56 +1,51 @@
-FROM debian:bookworm-20211201
+FROM ubuntu:22.04 as Linux-builder
 
 ENV RUSTUP_HOME=/usr/local/rustup \
     CARGO_HOME=/usr/local/cargo \
-    PATH=/usr/local/cargo/bin:$PATH \
-    LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/inner_unikernels/libiu
+    PATH=/usr/local/cargo/bin:/linux/rust/dist/bin:$PATH \
+    LD_LIBRARY_PATH=/inner_unikernels/libiu:$LD_LIBRARY_PATH \
+    LINUX=/linux 
 
-RUN apt-get update
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential gcc-11 g++-11 fakeroot libncurses5-dev libssl-dev ccache dwarves
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libelf-dev
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y cmake
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libdw-dev libdwarf-dev
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y bpfcc-tools libbpfcc-dev libbpfcc
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y linux-headers-generic
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y clang
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libtinfo-dev
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libstdc++-10-dev
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y bc
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y flex bison
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y rsync
+# adding clang
+RUN DEBIAN_FRONTEND=noninteractive apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 
-RUN DEBIAN_FRONTEND=noninteractive update-alternatives --install /usr/bin/gcc gcc /usr/bin/gcc-11 11
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential gcc g++ fakeroot libncurses5-dev libssl-dev ccache dwarves \
+ libelf-dev \
+ cmake \
+ libdw-dev libdwarf-dev \
+ bpfcc-tools libbpfcc-dev libbpfcc \
+ linux-headers-generic \
+ libtinfo-dev \
+ libstdc++-11-dev libstdc++-12-dev \
+ bc \
+ flex bison \
+ rsync \
+ libcap-dev libdisasm-dev binutils-dev unzip \
+ pkg-config lsb-release wget software-properties-common gnupg zlib1g 
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y libcap-dev llvm-dev libdisasm-dev binutils-dev unzip
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y pkg-config
+RUN wget https://apt.llvm.org/llvm.sh
+RUN chmod +x llvm.sh
+RUN ./llvm.sh 16
+RUN ln -s /usr/bin/clang-16 /usr/bin/clang
+RUN ln -s /usr/bin/clang++-16 /usr/bin/clang++
+RUN ln -s /usr/bin/ld.lld-16 /usr/bin/ld.lld 
+RUN ln -s /usr/bin/llvm-ar-16 /usr/bin/llvm-ar
+RUN ln -s /usr/bin/llvm-strip-16 /usr/bin/llvm-strip
+RUN ln -s /usr/bin/llvm-objdump-16 /usr/bin/llvm-objdump
 
-# Rust samples
+# Rust 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3-toml bindgen libssl-dev pkg-config curl ninja-build git
-RUN DEBIAN_FRONTEND=noninteractive git clone https://github.com/xlab-uiuc/rust --recursive
-
+RUN DEBIAN_FRONTEND=noninteractive git clone --recursive -j32 --depth=1 --shallow-submodules https://github.com/xlab-uiuc/rust 
 WORKDIR "/rust"
 RUN cp inner-unikernels-config.toml config.toml
 RUN python3 x.py build; \
 	python3 x.py install;
 RUN python3 x.py install cargo
 
-#RUN set -eux; \
-#    dpkgArch="$(dpkg --print-architecture)"; \
-#    case "${dpkgArch##*-}" in \
-#        amd64) rustArch='x86_64-unknown-linux-gnu' ;; \
-#        arm64) rustArch='aarch64-unknown-linux-gnu' ;; \
-#        *) echo >&2 "unsupported architecture: ${dpkgArch}"; exit 1 ;; \
-#    esac; \
-#    \
-#    url="https://static.rust-lang.org/rustup/dist/${rustArch}/rustup-init"; \
-#    wget "$url"; \
-#    chmod +x rustup-init; \
-#    ./rustup-init -y --no-modify-path --default-toolchain nightly; \
-#    rm rustup-init; \
-#    chmod -R a+w $RUSTUP_HOME $CARGO_HOME; \
-#    rustup --version; \
-#    cargo --version; \
-#    rustc --version;
+ENV PATH=/usr/local/cargo/bin:/rust/dist/bin:$PATH 
+RUN cargo install --version 0.62.0 bindgen-cli
 
-WORKDIR /linux
+# Qemu
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virtinst libvirt-daemon xterm busybox
 

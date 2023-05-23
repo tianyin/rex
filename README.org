@@ -140,13 +140,69 @@ Inside the VM:
 cd ..
 export LD_LIBRARY_PATH=`realpath ./libiu`:`realpath linux/tools/lib/bpf`:$LD_LIBRARY_PATH
 cd samples/hello
-./hello
+./loader & 
+./event_trigger
 #+END_SRC
 
 The following output should be printed out:
 #+BEGIN_EXAMPLE
 <...>-245     [002] d...1    18.417331: bpf_trace_printk: Rust triggered from PID 245.
 #+END_EXAMPLE
+
+* Docker Setup
+
+In this setup, we will have ~runtime~ docker as the all-in-one environment for compiling and running the samples.
+
+** Host Requirements
+
+- Docker
+- Qemu
+
+** Repo setup 
+
+Clone this repo and its submodules:
+#+BEGIN_SRC bash
+git clone --recursive https://github.com/djwillia/inner_unikernels.git
+cd inner_unikernels
+#+END_SRC
+
+** Build Docker
+
+#+BEGIN_SRC bash
+# build linux-builder
+make docker
+#+END_SRC
+
+** Build Dependencies
+
+#+BEGIN_SRC bash
+# On host
+cp ./q-script/.config ./linux/.config
+# build kernel
+make vmlinux
+# build bpf
+make bpftool
+# build libiu
+make iu
+#+END_SRC
+
+** Run Sample Hello
+
+#+BEGIN_SRC bash
+# build sample hello
+make iu-examples
+# start qemu
+make qemu-run
+# run sample hello
+cd ../inner_unikernels/samples/hello
+./loader &
+./event-trigger
+#+END_SRC
+
+*** Docker FAQ
+
+- Q: What can I do if I encounter network error when doing the apt update?
+- A: In the ~./docker/docker-linux-builder/Makefile~, add ~--network=host~ in the docker command. ~docker build --progress=plain --network=host -t runtime~.
 
 * OLD STUFF
 
