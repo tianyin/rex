@@ -10,8 +10,8 @@ ENV RUSTUP_HOME=/usr/local/rustup \
 RUN DEBIAN_FRONTEND=noninteractive apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y git build-essential gcc g++ fakeroot libncurses5-dev libssl-dev ccache dwarves \
- libelf-dev \
+RUN DEBIAN_FRONTEND=noninteractive apt-get update
+RUN DEBIAN_FRONTEND=noninteractive apt-get install --fix-missing -y git build-essential gcc g++ fakeroot libncurses5-dev libssl-dev ccache dwarves libelf-dev \
  cmake \
  libdw-dev libdwarf-dev \
  bpfcc-tools libbpfcc-dev libbpfcc \
@@ -33,6 +33,10 @@ RUN ln -s /usr/bin/ld.lld-16 /usr/bin/ld.lld
 RUN ln -s /usr/bin/llvm-ar-16 /usr/bin/llvm-ar
 RUN ln -s /usr/bin/llvm-strip-16 /usr/bin/llvm-strip
 RUN ln -s /usr/bin/llvm-objdump-16 /usr/bin/llvm-objdump
+RUN ln -s /usr/bin/llc-16 /usr/bin/llc
+RUN ln -s /usr/bin/llvm-readelf-16 /usr/bin/llvm-readelf
+RUN ln -s /usr/bin/llvm-dis-16 /usr/bin/llvm-dis
+RUN ln -s /usr/bin/opt-16 /usr/bin/opt
 
 # Rust 
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3-toml bindgen libssl-dev pkg-config curl ninja-build git
@@ -47,5 +51,6 @@ ENV PATH=/usr/local/cargo/bin:/rust/dist/bin:$PATH
 RUN cargo install --version 0.62.0 bindgen-cli
 
 # Qemu
+RUN DEBIAN_FRONTEND=noninteractive apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install -y qemu-kvm libvirt-clients libvirt-daemon-system bridge-utils virtinst libvirt-daemon xterm busybox
 
