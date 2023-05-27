@@ -1,0 +1,180 @@
+* OLD STUFF
+
+We have a userspace setup to practice loading self-contained programs
+and calling stubs that pretend to be the bpf helper functions.  Then
+we have a virtual machine setup to run on a modified Linux kernel.
+
+** TO DO
+   - [ ] Run the user-framework tests (Rust and C) (Sayeed)
+   - [ ] Build the VM environment, guest kernel, etc. (Sayeed)
+   - [ ] Run the VM environment (Sayeed)
+   - [ ] Gather a list of real BPF programs and run in the test environment (Sayeed)
+   - [ ] Implement the BPF programs in standalone C/Rust
+   - [ ] Figure out why kernel memory is not allocated as executable
+   - [ ] Watchdog timer for infinite loop
+   - [ ] Fuzz test
+
+
+** Userspace setup
+
+The directory `user-framework` contains everything for testing loading
+inner-unikernel programs in userspace.  Entering that directory and
+typing `make run` or `make rust` should demonstrate.
+
+For the Rust programs, https://os.phil-opp.com/ is a great resource
+that showed how to create a freestanding Rust binary.
+
+** Virtual machine setup
+
+*** Docker build containers
+
+At first, make sure you have docker engine installed on your machine.
+You can check that using `docker --version`. If not installed, follow
+instructions from [[https://docs.docker.com/engine/install/ubuntu/][here]].
+There are options for other distros as well. After installing, follow
+these [[https://docs.docker.com/engine/install/linux-postinstall/][post-installation steps]].
+
+We have a lot of build environments in the form of Docker containers.
+While they should get built as a makefile dependency, the build
+containers can be built with:
+
+    make docker
+
+*** VMM
+
+For using QEMU:
+
+    sudo apt update
+    sudo apt install qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virt-manager
+
+*** kernel
+
+We are using a small kernel config based off the firecracker microvm
+config with `make olddefconfig`.  We have added some kernel features
+relevant to eBPF.  Importantly some of the BTF stuff requires really
+recent versions of tools (e.g., `pahole`) for the kernel build.  So,
+it's easiest to use a container.  Run:
+
+#+BEGIN_SRC bash
+cd
+git clone https://github.com/djwillia/linux.git
+cd linux/
+git checkout inner_unikernels
+cd <path_to_inner_unikernels>
+make vmlinux-config
+make
+#+END_SRC
+
+It will build and copy over the kernel vmlinux file and its config so
+that everything matches.
+
+Before going through anything below create a directory under rootfs:
+
+    mkdir rootfs/guest
+
+
+*** bpftool
+
+The Linux kernel comes with a tool called bpftool, which can be useful
+but should be built from the same kernel source that we are dealing
+with.  We have a builder container for that too, so assuming your
+linux tree is at `~/linux` run:
+
+    make bpftool
+
+It will put the bpftool into the `rootfs/guest` directory where it
+will be used by the guest.
+
+*** rootfs
+
+We are trying to use a very small distro so that everything stays fast
+and manageable (e.g., kernel build, building the rootfs, etc.).  The
+distro we are using is from some scripts adapted from Lupine Linux.
+Lupine's scripts create a rootfs from a Docker image.  We put our
+stuff in there (based on ubuntu at this point because we needed a
+glibc-based system).  The `rootfs/Dockerfile` contains the build-time
+stuff to go in the rootfs. Before building this, make sure you have a
+generated public key for ssh. If not, run `ssh-keygen -t rsa -b 2048
+-C "<comment>"` and save the key in the default directory.
+
+Then the root filesystem is best built from the top level with:
+
+    make fs
+
+This can be rerun whenever you want to boot with a new script in the
+guest (put it in `rootfs/guest/`).  But you don't have to run it
+directly because it's a dependency of `make run`.
+
+*** running it
+
+We modified some of the Lupine scripts for a single point of
+invocation into a guest shell.
+
+    make runq
+
+At this point it gives us a root SSH shell.  To get more shells to do
+stuff with, type:
+
+    make shell
+
+Another more convenient way to run QEMU can be to run from the
+q-script directory. In this way the whole filesystem can be used
+inside the VM, instead of only the rootfs/guest directory. To do
+this, first, q-script/.config is needed to be copied into your Linux
+kernel directory (sudo might be necessary). Then the kernel needs to
+be recompiled either by `make` inside the kernel directory, or doing
+`make vmlinux` in this directory. After this one-time action, the VM
+can be started by:
+
+    make qscript
+
+** Samples
+
+We are currently in the process of writing samples applications. They
+can be run according to the following:
+
+*** Hello World!
+
+    make hello
+
+Then the vm can be started using `make run`, `make runq`, or `make
+qscript`.
+
+TODO: The linker script is needed to be added, right now the
+interface addresses are updated manually.
+
+*** Simple map application
+
+    make map
+
+The vm can be started using `make run`, `make runq`, or `make
+qscript`.
+
+*** tracex5
+
+    make tracex5
+
+In this case, it is only supported by `make qscript`.
+
+*** cpustat
+
+    make tracex5
+
+Like tracex5, it is only supported by `make qscript`. Right now, the
+programs can be loaded inside the kernel successfully, which is just
+enough for our context, they don't run, as sclaing cpu frequency
+inside the VM might not be possible. This needs to be further
+investigated.
+
+TODO: The linker script is needed to be added, right now the
+interface addresses are updated manually.
+
+*** status
+
+So far, we have run the sock_example from the bundled Linux samples.
+See `linux/samples/bpf/README.rst`.  Also, the minimal example from
+libbpf-bootstrap.
+
+*** Next steps
+
+- check out some of the debugging features from https://prototype-kernel.readthedocs.io/en/latest/bpf/troubleshooting.html

@@ -1,0 +1,24 @@
+* OLD ABSTRACT
+
+Safe kernel extensions, in the form of eBPF in Linux, are enabling new
+functionality from observability and debugging superpowers to high-performance,
+close-to-the-hardware packet processing. The extension code is verified to be
+safe and executed at any kernel hook points. Despite its safety guarantees, the
+price of kernel verification of eBPF programs is high. The restricted
+expressiveness of eBPF on loops or complex logic often leads to splitting the
+program into small pieces, or limitation in functionality when logic cannot be
+expressed. On the other hand, bypassing the verifier means giving up safety and
+security. This prompts us to rethink kernel extensions — how to offer the
+desired programmability without giving up safety?
+
+In this paper, we make the observation that the infrastructure around eBPF is
+useful and the needed safety can still be guaranteed from a safe language like
+Rust without the verifier. We design and implement a new kernel extension
+abstraction: Rust-based inner unikernels, which are standalone safe Rust
+programs that run in the place of verified eBPF programs. The use of Rust
+achieves both Turing-Completeness and runtime-safety. Our Rust layer provides
+access to the eBPF helper function interface, a signature scheme ensures
+safety, and kernel support ensures timely termination. We implement several
+state of the art eBPF programs with comparable performance to JITed eBPF
+programs, demonstrating there is no need to split programs or limit their
+processing data size.
