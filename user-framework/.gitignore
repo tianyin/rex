@@ -1,9 +1,0 @@
-interface.h
-rust_test/src/interface.rs
-interface-kernel.h
-rust_test/target
-rust_test/Cargo.lock
-test/hello
-bpf-load
-event-trigger
-prog-run
