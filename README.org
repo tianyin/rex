@@ -175,6 +175,10 @@ make iu
 make iu-examples
 # start qemu
 make qemu-run
+# start ssh session with qemu
+make qemu-ssh 
+# alternatively, use standard ssh to connect to vm
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p 52222
 # run sample hello
 cd ../inner_unikernels/samples/hello
 ./loader &
