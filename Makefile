@@ -12,8 +12,9 @@ qemu-run:
 	--device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun \
 	-v ${BASE_PROJ}:/inner_unikernels -v ${LINUX}:/linux \
 	-w /linux \
+	-p 127.0.0.1:52222:52222 \
 	-it runtime:latest \
-	/inner_unikernels/q-script/yifei-q
+	/inner_unikernels/q-script/yifei-q -s
 
 bpftool: 
 	docker run --rm -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool 

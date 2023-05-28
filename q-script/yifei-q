@@ -46,7 +46,12 @@ host() {
 
 	local net
 	if [ "$SSH" = "y" ]; then
-		net+=" -netdev user,id=virtual,hostfwd=tcp:127.0.0.1:52222-:22"
+    # check container env assume docker
+    if [ -f /.dockerenv ]; then
+		  net+=" -netdev user,id=virtual,hostfwd=tcp::52222-:22"
+    else
+		  net+=" -netdev user,id=virtual,hostfwd=tcp:127.0.0.1:52222-:22"
+    fi
 	else
 		net+=" -netdev user,id=virtual"
 	fi
@@ -214,6 +219,16 @@ guest() {
 	usermod -R /mnt -d "$HOME" root
 	umount /mnt
 
+  # For system cannot get ip addr by udhcpc
+  local ip_address=$(ip -4 addr show $iface | grep -oP '(?<=inet\s)\d+(\.\d+){3}')
+  local default_route=$(ip route | grep default)
+  if [[ -z "$ip_address" ]]; then
+      ip a add 10.0.2.15/24 dev eth0 
+  fi
+  if [[ -z "$default_route" ]]; then
+    ip route add default via 10.0.2.2
+  fi
+
 	if [ "$SSH" = "y" ]; then
 		say setup sshd: '$ ssh -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null root@localhost -p 52222'
 		mask-dir () {
@@ -231,6 +246,7 @@ session sufficient pam_permit.so
 EOF
 
 		ssh-keygen -A
+    mkdir -p /run/sshd
 		`which sshd` -p 22 -o UsePAM=yes -o PermitRootLogin=yes -f /dev/null -E /var/log/sshd
 	fi
 
