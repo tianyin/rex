@@ -16,6 +16,10 @@ qemu-run:
 	-it runtime:latest \
 	/inner_unikernels/q-script/yifei-q -s
 
+# connect running qemu by ssh
+qemu-ssh:
+	ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p 52222
+
 bpftool: 
 	docker run --rm -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool 
 
