@@ -29,6 +29,8 @@ ksyms = [
     'bpf_get_stackid_pe',
     'bpf_map_lookup_elem',
     'bpf_map_update_elem',
+    'bpf_map_delete_elem',
+    'bpf_map_push_elem',
     'bpf_perf_prog_read_value',
     'bpf_probe_read_kernel',
     'bpf_trace_printk_iu',
