@@ -1,5 +1,6 @@
 BASE_PROJ ?= $(shell pwd)
 LINUX ?= ${BASE_PROJ}/linux
+USER_ID ?= "$(shell id -u):$(shell id -g)"
 .ALWAYS:
 
 all: vmlinux fs samples
@@ -21,40 +22,41 @@ qemu-ssh:
 	ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p 52222
 
 bpftool: 
-	docker run --rm -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool 
+	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool 
 
 bpftool-clean:
 	docker run --rm -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` clean 
 
 vmlinux: 
-	docker run --rm -v ${LINUX}:/linux -w /linux runtime  make -j`nproc` bzImage 
+	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux runtime  make -j`nproc` bzImage 
 
 linux-clean:
 	docker run --rm -v ${LINUX}:/linux -w /linux runtime make distclean
 
 # Targets for C BPF
 bpf-samples:
-	docker run --rm -v ${LINUX}:/linux -w /linux/samples/bpf runtime make -j`nproc`
+	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux/samples/bpf runtime make -j`nproc`
 
 bpf-samples-clean:
 	docker run --rm -v ${LINUX}:/linux -w /linux/samples/bpf runtime make clean
 
 # Target to enter docker container
 enter-docker:
-	docker run --rm -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels -it runtime /bin/bash
+	docker run --rm -u ${USER_ID} -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels -it runtime /bin/bash
 
 # Might not be needed anymore
 iu: 
-	docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/libiu runtime make -j32 LLVM=1
+	docker run --network=host --rm -u ${USER_ID} -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/libiu runtime make -j32 LLVM=1
 
 iu-clean: 
 	docker run --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/libiu runtime make clean
 
 iu-examples: 
-	docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/hello runtime make -j32 LLVM=1
-	docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/map_test runtime make -j32 LLVM=1
-	docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/syscall_tp runtime make -j32 LLVM=1
-	docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/trace_event runtime make -j32 LLVM=1
+	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/hello runtime make -j32 LLVM=1
+	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/map_test runtime make -j32 LLVM=1
+	# comment out because the sample test requires rewriting
+	# docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/syscall_tp runtime make -j32 LLVM=1
+	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/trace_event runtime make -j32 LLVM=1
 
 DOCKERCONTEXT=\
 	rootfs/Dockerfile \

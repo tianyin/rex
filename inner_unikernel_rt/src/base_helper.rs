@@ -49,6 +49,25 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
     helper(map, &key, &value, flags)
 }
 
+pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
+    map: &IUMap<MT, K, V>,
+    key: K,
+) -> i64 {
+    let helper: extern "C" fn(&IUMap<MT, K, V>, *const K) -> i64 =
+        unsafe { core::mem::transmute(stub::bpf_map_delete_elem_addr()) };
+    helper(map, &key)
+}
+
+pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
+    map: &IUMap<MT, K, V>,
+    value: V,
+    flags: u64,
+) -> i64 {
+    let helper: extern "C" fn(&IUMap<MT, K, V>, *const V, u64) -> i64 =
+        unsafe { core::mem::transmute(stub::bpf_map_push_elem_addr()) };
+    helper(map, &value, flags)
+}
+
 // Design decision: Make the destination a generic type so that probe read
 // kernel can directly fill in variables of certain type. This also achieves
 // size checking, since T is known at compile time for monomorphization
@@ -172,6 +191,25 @@ macro_rules! base_helper_defs {
             flags: u64,
         ) -> i64 {
             crate::base_helper::bpf_map_update_elem(map, key, value, flags)
+        }
+
+        #[inline(always)]
+        pub fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
+            &self,
+            map: &IUMap<MT, K, V>,
+            key: K,
+        ) -> i64 {
+            crate::base_helper::bpf_map_delete_elem(map, key)
+        }
+
+        #[inline(always)]
+        pub fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
+            &self,
+            map: &IUMap<MT, K, V>,
+            value: V,
+            flags: u64,
+        ) -> i64 {
+            crate::base_helper::bpf_map_push_elem(map, value, flags)
         }
 
         #[inline(always)]
