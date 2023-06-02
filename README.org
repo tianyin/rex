@@ -12,22 +12,12 @@ describe a design centered around kernel extensions in safe Rust that will
 eliminate the need of the in-kernel verifier, improve expressiveness, allow for
 reduced escape hatches, and ultimately improve the safety of kernel extensions.
 
+The basic ideas are documented in [[docs/rust-kernel-ext.pdf][a workshop paper]].
 
 *** Relevant github repos:
-- Linux kernel: [[https://github.com/djwillia/linux/tree/inner_unikernels]]
-- HotOS XIX paper: [[https://github.com/djwillia/inner_unikernels_paper]]
-- Rust toolchain: [[https://github.com/xlab-uiuc/rust]]
+- Linux Kernel: [[https://github.com/djwillia/linux/tree/inner_unikernels]]
+- Rust Toolchain: [[https://github.com/xlab-uiuc/rust]]
 - LLVM CodeGen for Rust: [[https://github.com/xlab-uiuc/llvm-rust]]
-
-*** HotOS paper authors:
-- Jinghao Jia (UIUC)
-- Raj Sahu (Virginia Tech)
-- Adam Oswald (Virginia Tech)
-- Dan Williams (Virginia Tech)
-- Michael V. Le (IBM Research)
-- Tianyin Xu (UIUC)
-
-[[./image/poster.jpg]]
 
 Check out the [[docs/minutes.org][meeting minutes]].
 
