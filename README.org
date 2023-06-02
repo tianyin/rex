@@ -12,6 +12,8 @@ describe a design centered around kernel extensions in safe Rust that will
 eliminate the need of the in-kernel verifier, improve expressiveness, allow for
 reduced escape hatches, and ultimately improve the safety of kernel extensions.
 
+The basic ideas are documented in [[docs/rust-kernel-ext.pdf][a workshop paper]].
+
 *** Relevant github repos:
 - Linux Kernel: [[https://github.com/djwillia/linux/tree/inner_unikernels]]
 - Rust Toolchain: [[https://github.com/xlab-uiuc/rust]]
