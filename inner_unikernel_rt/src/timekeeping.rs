@@ -82,7 +82,7 @@ fn ktime_get_fast_ns(tkf: &TimeKeeperFast) -> u64 {
     loop {
         seq = raw_read_seqcount_latch(&tkf.seq);
         tkr = &tkf.base[(seq & 0x01) as usize];
-        now = ktime_to_ns(tkr.base) as u64;
+        now = tkr.base as u64;
 
         now += timekeeping_delta_to_ns(
             tkr,
@@ -109,5 +109,5 @@ pub(crate) fn ktime_get_boot_fast_ns() -> u64 {
     let tk_core = unsafe { &*(stub::tk_core_addr() as *mut TKCore) };
     let tk: &timekeeper = &tk_core.timekeeper;
 
-    (ktime_get_mono_fast_ns() as i64 + ktime_to_ns(tk.offs_boot)) as u64
+    (ktime_get_mono_fast_ns() as i64 + tk.offs_boot) as u64
 }

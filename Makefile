@@ -57,6 +57,7 @@ iu-examples:
 	# comment out because the sample test requires rewriting
 	# docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/syscall_tp runtime make -j32 LLVM=1
 	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/trace_event runtime make -j32 LLVM=1
+	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/ktime runtime make -j32 LLVM=1
 
 DOCKERCONTEXT=\
 	rootfs/Dockerfile \
