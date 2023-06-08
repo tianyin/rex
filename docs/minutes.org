@@ -4,9 +4,12 @@ MEETING MINUTES
 - Rewrite eBPF helper functions: ~ktime_get_mono_fast_ns()~ and ~ktime_get_boot_fast_ns()~.
 - Added a Rust implementation for ~READ_ONCE~ macro in kernel.
 *** Where we are going
-- Attempt to minimize addition of unsafe code in the kernel by rewriting kernel inline function and macro in Rust.
- - Rewrite ~read_seqcount_latch_retry()~ function.
 - Adopting reduction perspective, we're aiming to assume no existing eBPF helper functions and construct our own Rust versions.
+- Current Standard
+ - If using Rust over C doesn't offer substantial benefits, we need to justify why it's the case.
+ - For extremely difficult task, like rewriting a complicated inline function or macros, also requires a compelling reason to proceed.
+ - Attempt to minimize addition of unsafe code in the kernel by rewriting kernel inline function and macro in Rust.
+  - Rewrite ~read_seqcount_latch_retry()~ function.
 * 22-05-17 (scribe: Jinghao)
 *** Where we are
 - ~bpftool~ displays correctly the run count of eBPF programs, so it could be
