@@ -19,7 +19,7 @@ pub(crate) const unsafe fn %s_addr() -> u64 {
     0x%%s
 }
 """
-bindgen_kernel_cmd = '''bindgen %s --allowlist-type="task_struct"
+bindgen_kernel_cmd = '''bindgen %s --allowlist-type="(task_struct|tk_read_base|seqcount_raw_spinlock_t|clocksource|seqcount_latch_t|timekeeper)"
 --allowlist-var="(___GFP.*|CONFIG_.*)" --opaque-type xregs_state --opaque-type desc_struct
 --opaque-type arch_lbr_state --opaque-type local_apic --opaque-type alt_instr
 --opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
@@ -67,7 +67,7 @@ def filter_symbol(nm_line):
     if len(nm_line) != 3:
         return False;
     sym_ty = nm_line[1].lower()
-    return sym_ty == 't' or sym_ty == 'd'
+    return sym_ty == 't' or sym_ty == 'd' or sym_ty == 'b'
 
 def get_symbols(vmlinux):
     result = subprocess.run(['nm', vmlinux], check=True, capture_output=True)

@@ -10,10 +10,13 @@ pub mod tracepoint;
 
 mod base_helper;
 mod bindings;
+mod ktime;
 mod panic;
 mod per_cpu;
+mod read_once;
 mod stub;
 pub mod task_struct;
+pub mod timekeeping;
 
 use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;

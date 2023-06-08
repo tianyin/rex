@@ -2,6 +2,7 @@ use crate::linux::bpf::bpf_map_type;
 use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
 use crate::stub;
+use crate::timekeeping::*;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
     unsafe { this_cpu_read(stub::cpu_number_addr()) }
@@ -154,6 +155,28 @@ pub(crate) fn bpf_get_numa_node_id() -> i64 {
     id as i64
 }
 
+// This two functions call the original helper directly, so that confirm the
+// return value is correct
+pub(crate) fn bpf_ktime_get_ns_origin() -> u64 {
+    let helper: extern "C" fn() -> u64 =
+        unsafe { core::mem::transmute(stub::ktime_get_mono_fast_ns_addr()) };
+    helper()
+}
+
+pub(crate) fn bpf_ktime_get_boot_ns_origin() -> u64 {
+    let helper: extern "C" fn() -> u64 =
+        unsafe { core::mem::transmute(stub::ktime_get_boot_fast_ns_addr()) };
+    helper()
+}
+
+pub(crate) fn bpf_ktime_get_ns() -> u64 {
+    ktime_get_mono_fast_ns()
+}
+
+pub(crate) fn bpf_ktime_get_boot_ns() -> u64 {
+    ktime_get_boot_fast_ns()
+}
+
 macro_rules! base_helper_defs {
     () => {
         #[inline(always)]
@@ -224,6 +247,25 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_get_numa_node_id(&self) -> i64 {
             crate::base_helper::bpf_get_numa_node_id()
+        }
+        #[inline(always)]
+        pub fn bpf_ktime_get_ns_origin(&self) -> u64 {
+            crate::base_helper::bpf_ktime_get_ns_origin()
+        }
+
+        #[inline(always)]
+        pub fn bpf_ktime_get_boot_ns_origin(&self) -> u64 {
+            crate::base_helper::bpf_ktime_get_boot_ns_origin()
+        }
+
+        #[inline(always)]
+        pub fn bpf_ktime_get_ns(&self) -> u64 {
+            crate::base_helper::bpf_ktime_get_ns()
+        }
+
+        #[inline(always)]
+        pub fn bpf_ktime_get_boot_ns(&self) -> u64 {
+            crate::base_helper::bpf_ktime_get_boot_ns()
         }
     };
 }
