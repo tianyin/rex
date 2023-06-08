@@ -10,7 +10,6 @@ pub mod tracepoint;
 
 mod base_helper;
 mod bindings;
-mod ktime;
 mod panic;
 mod per_cpu;
 mod read_once;

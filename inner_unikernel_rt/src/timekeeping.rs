@@ -6,7 +6,9 @@ use crate::bindings::linux::kernel::{
 };
 use crate::read_once::*;
 use crate::stub;
-pub use crate::{bpf_printk, ktime::*};
+
+pub(crate) type ktime_t = i64;
+pub(crate) type time64_t = i64;
 
 // This struct is an instance of an unnamed struct in kernel timekeeping.c so
 // have to redefine it here
@@ -51,7 +53,7 @@ fn timekeeping_delta_to_ns(tkr: &tk_read_base, delta: u64) -> u64 {
 
 #[inline(always)]
 fn tk_clock_read(tkr: &tk_read_base) -> u64 {
-    let clock: &mut clocksource = unsafe { &mut *read_once(tkr.clock) };
+    let clock: &mut clocksource = unsafe { &mut *read_once(&tkr.clock) };
 
     let read_fn: extern "C" fn(*mut clocksource) -> u64 =
         unsafe { core::mem::transmute(clock.read) };
@@ -61,7 +63,7 @@ fn tk_clock_read(tkr: &tk_read_base) -> u64 {
 
 #[inline(always)]
 pub(crate) fn raw_read_seqcount_latch(seq: &seqcount_latch_t) -> u32 {
-    read_once(seq.seqcount.sequence)
+    read_once(&seq.seqcount.sequence)
 }
 
 #[inline(always)]
