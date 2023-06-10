@@ -1,6 +1,7 @@
 #![no_std]
 #![feature(const_mut_refs)]
 #![feature(panic_info_message)]
+#![feature(c_variadic)]
 
 pub mod kprobe;
 pub mod map;
@@ -10,6 +11,7 @@ pub mod tracepoint;
 
 mod base_helper;
 mod bindings;
+mod debug;
 mod panic;
 mod per_cpu;
 mod read_once;
