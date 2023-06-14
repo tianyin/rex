@@ -1,6 +1,7 @@
 BASE_PROJ ?= $(shell pwd)
 LINUX ?= ${BASE_PROJ}/linux
 USER_ID ?= "$(shell id -u):$(shell id -g)"
+SSH_PORT ?= "52222"
 .ALWAYS:
 
 all: vmlinux fs samples
@@ -13,13 +14,13 @@ qemu-run:
 	--device=/dev/kvm:/dev/kvm --device=/dev/net/tun:/dev/net/tun \
 	-v ${BASE_PROJ}:/inner_unikernels -v ${LINUX}:/linux \
 	-w /linux \
-	-p 127.0.0.1:52222:52222 \
+	-p 127.0.0.1:${SSH_PORT}:52222 \
 	-it runtime:latest \
 	/inner_unikernels/q-script/yifei-q -s
 
 # connect running qemu by ssh
 qemu-ssh:
-	ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p 52222
+	ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p ${SSH_PORT}
 
 bpftool: 
 	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool 

@@ -172,6 +172,9 @@ make iu-examples
 make qemu-run
 # start ssh session with qemu
 make qemu-ssh 
+# assign ssh port with SSH_PORT env 
+SSH_PORT=52222 make qemu-run
+SSH_PORT=52222 make qemu-ssh
 # alternatively, use standard ssh to connect to vm
 ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p 52222
 # run sample hello
