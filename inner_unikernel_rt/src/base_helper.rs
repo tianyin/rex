@@ -1,6 +1,7 @@
 use crate::linux::bpf::bpf_map_type;
 use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
+use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
 use crate::timekeeping::*;
 
@@ -111,7 +112,7 @@ pub(crate) fn bpf_strcmp(s1: &str, s2: &str) -> i32 {
             }
         };
     }
-    return 0;
+    0
 }
 
 pub(crate) fn bpf_strncmp(s1: &str, s2: &str, cnt: usize) -> i32 {
@@ -175,6 +176,14 @@ pub(crate) fn bpf_ktime_get_ns() -> u64 {
 
 pub(crate) fn bpf_ktime_get_boot_ns() -> u64 {
     ktime_get_boot_fast_ns()
+}
+
+pub(crate) fn bpf_ktime_get_coarse_ns() -> u64 {
+    ktime_get_coarse() as u64
+}
+
+pub(crate) fn bpf_get_prandom_u32() -> u32 {
+    bpf_user_rnd_u32()
 }
 
 macro_rules! base_helper_defs {
@@ -266,6 +275,16 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_ktime_get_boot_ns(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_boot_ns()
+        }
+
+        #[inline(always)]
+        pub fn bpf_ktime_get_coarse_ns(&self) -> u64 {
+            crate::base_helper::bpf_ktime_get_coarse_ns()
+        }
+
+        #[inline(always)]
+        pub fn bpf_get_prandom_u32(&self) -> u32 {
+            crate::base_helper::bpf_get_prandom_u32()
         }
     };
 }

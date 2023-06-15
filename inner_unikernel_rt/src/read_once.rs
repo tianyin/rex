@@ -74,7 +74,7 @@ impl<T> ReadOnce<*mut T> for *mut T {
     }
 }
 
-// follow the coding style with pre_cpu.rsj
+// follow the coding style with pre_cpu.rs
 #[inline(always)]
 pub(crate) fn read_once<T: ReadOnce<T>>(var_addr: &T) -> T {
     <T as ReadOnce<T>>::read_once(var_addr)

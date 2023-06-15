@@ -49,6 +49,8 @@ ksyms = [
   'panic',
   '__per_cpu_offset',
   'iu_cleanup_entries',
+  'get_random_u32',
+  'ktime_get_coarse_ts64'
 ]
 
 uheaders = [
@@ -65,4 +67,6 @@ kheaders = [
   "linux/gfp_types.h",
   "linux/timekeeper_internal.h",
   "linux/seqlock.h",
+  "linux/prandom.h",
+  "linux/kcsan.h",
 ]

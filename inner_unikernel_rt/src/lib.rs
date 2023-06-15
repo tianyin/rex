@@ -9,12 +9,15 @@ pub mod perf_event;
 pub mod prog_type;
 pub mod tracepoint;
 
+mod barrier;
 mod base_helper;
 mod bindings;
 mod debug;
 mod panic;
 mod per_cpu;
+mod random32;
 mod read_once;
+mod seqlock;
 mod stub;
 pub mod task_struct;
 pub mod timekeeping;
