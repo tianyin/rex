@@ -1,4 +1,17 @@
 MEETING MINUTES
+* 23-06-15 (scribe: Ruowen)
+*** Where we are
+- Rewrite ebpf helper function
+  - bpf_ktime_get_coarse_ns()
+  - bpf_get_prandom_u32()
+- Add new function for barrier() and update read_seqcount_latch_retry()
+  - Rewrite read_seqcount_latch_retry() function, so we don't need wrap function inside kernel source code
+  - Directly use get_random_u32() rather than get_random_u32_state() https://lore.kernel.org/lkml/87edtctz8t.fsf@toke.dk/T/ . But this new implementation have performance drawback (a little bit, 38 cycles vs 25 cycles)
+  - Currently memory barrier uses core::sync::atomic::{compiler_fence, Ordering}
+*** Where we are going
+ - We should aim to eliminate unnecessary kernel interfaces by implementing the relevant code directly in Rust.
+  - Since we have implmented task_struct in helper function, we could just use task sturct directly rather than use call kernel interface mutiple times.
+  - We'll use a breadth-first approach, try to implment ebpf helper function without touching inside kernel code, and see which ebpf functions could be elimiated.
 * 23-06-08 (scribe: Ruowen)
 *** Where we are
 - Rewrite eBPF helper functions: ~ktime_get_mono_fast_ns()~ and ~ktime_get_boot_fast_ns()~.
