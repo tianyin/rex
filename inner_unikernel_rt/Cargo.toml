@@ -35,7 +35,6 @@ ksyms = [
   'tk_core',
   '_printk',
   'vprintk',
-  'read_seqcount_latch_retry_helper',
   'ktime_get_mono_fast_ns',
   'ktime_get_boot_fast_ns',
   'bpf_perf_prog_read_value',
