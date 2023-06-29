@@ -1,6 +1,6 @@
 ## helper functions
 
-If I'm not sure about a decision, the function will follow a question mark.
+If I'm not sure about the decision, the function (or group of functions) will follow a question mark.
 
 Next step:
 - bpf_map_pop_elem
@@ -8,16 +8,14 @@ Next step:
 - bpf_for_each_map_elem
 - bpf_spin_lock
 - bpf_spin_unlock
-- bpf_sysctl_get_name
-- bpf_sysctl_get_current_value
-- bpf_sysctl_get_new_value
-- bpf_sysctl_set_new_value
-- bpf_strtol
-- bpf_strtoul
-- bpf_probe_read_kernel
-- bpf_probe_read_user
-- bpf_seq_printf
-- bpf_seq_write
+- cgroup helper function
+	- bpf_sysctl_get_name
+	- bpf_sysctl_get_current_value
+	- bpf_sysctl_get_new_value
+	- bpf_sysctl_set_new_value
+- bpf_strtol bpf_strtoul (we could use something like u64::from_str_radix)
+- bpf_snprintf
+
 
 Function wrapper:
 - bpf_map_lookup_elem
@@ -25,6 +23,7 @@ Function wrapper:
 - bpf_map_delete_elem
 - bpf_map_push_elem
 - bpf_probe_read
+- bpf_probe_read_kernel
 
 Half implemented in Rust:
 - bpf_ktime_get_coarse_ns
@@ -52,7 +51,7 @@ All implemented in Rust:
 	- bpf_task_pt_regs
 - perf_event
 	- bpf_perf_prog_read_value
-	- 
+
 
 Not implemented yet
 - bpf_tail_call ?
@@ -81,9 +80,7 @@ Not implemented yet
 - bpf_ringbuf_query
 - bpf_get_task_stack
 - bpf_copy_from_user
-- bpf_snprintf
-- bpf_snprintf_btf
-	- https://www.kernel.org/doc/html/next/bpf/btf.html
+
 - bpf_seq_printf_btf
 - bpf_ima_inode_hash
 - bpf_sys_bpf
@@ -94,6 +91,11 @@ Not implemented yet
 - bpf_timer_start
 - bpf_timer_cancel
 - bpf_get_func_ip
+- bpf_probe_read_user
+- bpf_seq_printf
+- bpf_seq_write
+- bpf_snprintf_btf
+	- https://www.kernel.org/doc/html/next/bpf/btf.html
 
 Discarded:
 - network
@@ -102,3 +104,4 @@ Discarded:
 - bpf_d_path 
 - bpf_get_current_task_btf
 - bpf_loop
+
