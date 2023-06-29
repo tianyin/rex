@@ -13,7 +13,8 @@ Next step:
 	- bpf_sysctl_get_current_value
 	- bpf_sysctl_get_new_value
 	- bpf_sysctl_set_new_value
-- bpf_strtol bpf_strtoul (we could use something like u64::from_str_radix)
+- bpf_strtol 
+- bpf_strtoul (we could use something like str.parse)
 - bpf_snprintf
 
 
@@ -101,6 +102,7 @@ Discarded:
 - network
 - sock?
 - cgroup?
+	- like bpf_get_cgroup_classid
 - bpf_d_path 
 - bpf_get_current_task_btf
 - bpf_loop
