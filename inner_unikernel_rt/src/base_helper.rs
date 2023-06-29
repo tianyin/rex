@@ -233,26 +233,6 @@ pub(crate) fn bpf_get_prandom_u32() -> u32 {
     bpf_user_rnd_u32()
 }
 
-pub fn str_to_i64(s: &str) -> i64 {
-    match s.parse::<i64>() {
-        Ok(n) => n,
-        Err(e) => {
-            bpf_trace_printk("Error parsing string to i64", 0, 0, 0);
-            0 // return a default value
-        }
-    }
-}
-
-pub fn str_to_u64(s: &str) -> u64 {
-    match s.parse::<u64>() {
-        Ok(n) => n,
-        Err(e) => {
-            bpf_trace_printk("Error parsing string to u64", 0, 0, 0);
-            0 // return a default value
-        }
-    }
-}
-
 // In document it says that data is a pointer to an array of 64-bit values.
 pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     str: &mut [u8; N],

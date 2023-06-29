@@ -1,17 +1,29 @@
 use core::ffi::CStr;
 use core::ffi::{c_char, c_void};
 
+use crate::base_helper::bpf_trace_printk;
 use crate::bindings::linux::kernel::bpf_sysctl_kern;
 use crate::bindings::uapi::linux::errno::EINVAL;
 use crate::stub;
 
-
-pub fn string_to_i64(s: &str) -> i64 {
-    s.parse::<i64>().unwrap()
+pub fn str_to_i64(s: &str) -> i64 {
+    match s.parse::<i64>() {
+        Ok(n) => n,
+        Err(e) => {
+            bpf_trace_printk("Error parsing string to i64", 0, 0, 0);
+            0 // return a default value
+        }
+    }
 }
 
-pub fn string_to_u64(s: &str) -> u64 {
-    s.parse::<u64>().unwrap()
+pub fn str_to_u64(s: &str) -> u64 {
+    match s.parse::<u64>() {
+        Ok(n) => n,
+        Err(e) => {
+            bpf_trace_printk("Error parsing string to u64", 0, 0, 0);
+            0 // return a default value
+        }
+    }
 }
 
 // TODO check if [u8; N] is a valid type for buf

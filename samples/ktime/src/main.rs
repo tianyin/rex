@@ -6,6 +6,7 @@ extern crate rlibc;
 
 use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::linux::bpf::*;
+use inner_unikernel_rt::sysctl::{str_to_i64, str_to_u64};
 use inner_unikernel_rt::tracepoint::*;
 
 fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
@@ -28,6 +29,10 @@ fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
 
     let u32_random = obj.bpf_get_prandom_u32();
     bpf_printk!(obj, "Random: %llu\n", u32_random as u64);
+
+    // test string_to_u64
+    let test_num = str_to_u64("1234234");
+    bpf_printk!(obj, "Test Num: %llu\n", test_num);
 
     0
 }
