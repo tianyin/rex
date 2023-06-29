@@ -19,7 +19,7 @@ pub(crate) const unsafe fn %s_addr() -> u64 {
     0x%%s
 }
 """
-bindgen_kernel_cmd = '''bindgen %s --allowlist-type="(task_struct|tk_read_base|seqcount_raw_spinlock_t|clocksource|seqcount_t|seqcount_latch_t|timekeeper|kcsan_ctx|rnd_state|timespec64)"
+bindgen_kernel_cmd = '''bindgen %s --allowlist-type="(task_struct|tk_read_base|seqcount_raw_spinlock_t|clocksource|seqcount_t|seqcount_latch_t|timekeeper|kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern)"
 --allowlist-var="(___GFP.*|CONFIG_.*)" --opaque-type xregs_state --opaque-type desc_struct
 --opaque-type arch_lbr_state --opaque-type local_apic --opaque-type alt_instr
 --opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
@@ -55,6 +55,7 @@ bindgen_kernel_cmd = '''bindgen %s --allowlist-type="(task_struct|tk_read_base|s
 -Wformat-extra-args -Wformat-invalid-specifier -Wformat-zero-length -Wnonnull
 -Wformat-insufficient-args -Wno-sign-compare -Wno-pointer-to-enum-cast
 -Wno-tautological-constant-out-of-range-compare -Wno-unaligned-access -g
+-DKBUILD_MODNAME='"inner_unikernel"'
 -D__BINDGEN__ -DMODULE'''
 
 def gen_inc_directive(header):
@@ -110,7 +111,7 @@ def parse_config(cargo_toml):
         config = tomllib.load(toml_f)
 
     if not 'inner_unikernel' in config:
-        return [], []
+        return [], [], []
 
     ksyms = config['inner_unikernel'].get('ksyms', [])
     uheaders = config['inner_unikernel'].get('uheaders', [])

@@ -29,6 +29,9 @@ ksyms = [
   'bpf_map_update_elem',
   'bpf_map_delete_elem',
   'bpf_map_push_elem',
+  'bpf_map_pop_elem',
+  'bpf_map_peek_elem',
+  'bpf_for_each_map_elem',
   'tk_fast_mono',
   'tk_core',
   '_printk',
@@ -48,6 +51,12 @@ ksyms = [
   'iu_cleanup_entries',
   'get_random_u32',
   'ktime_get_coarse_ts64',
+  'bpf_spin_lock',
+  'bpf_spin_unlock',
+  'bpf_sysctl_get_name',
+  'copy_sysctl_value',
+  'bpf_sysctl_set_new_value',
+  'bpf_snprintf',
 ]
 
 uheaders = [
@@ -66,4 +75,5 @@ kheaders = [
   "linux/seqlock.h",
   "linux/prandom.h",
   "linux/kcsan.h",
+  "linux/filter.h",
 ]
