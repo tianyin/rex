@@ -1,4 +1,34 @@
 MEETING MINUTES
+* 23-06-29 (scribe: Ruowen)
+*** Where we are
+Rewrite ebpf helper function (most function wrapper)
+- bpf_map_pop_elem
+- bpf_map_peek_elem
+- bpf_for_each_map_elem
+- bpf_spin_lock
+- bpf_spin_unlock
+- cgroup helper function
+	- bpf_sysctl_get_name
+	- bpf_sysctl_get_current_value
+	- bpf_sysctl_get_new_value
+	- bpf_sysctl_set_new_value
+- bpf_strtol 
+- bpf_strtoul (we could use something like str.parse)
+- bpf_snprintf
+*** Where we are going
+We need to implement key application to help evaluate expressiveness as kernel kernel extension rather than just talking about trust model.
+1. runtime protection
+	1. WIP
+2. key application
+	1. BMC
+		1. https://www.usenix.org/conference/nsdi21/presentation/ghigoff
+	2. XRP
+		1. https://www.usenix.org/conference/osdi22/presentation/zhong
+	3. Electrode
+		1. https://www.usenix.org/conference/nsdi23/presentation/zhou
+3. helper functions
+	1. wrappers
+	2. pick required networking helper functions to implement BMC.
 * 23-06-15 (scribe: Ruowen)
 *** Where we are
 - Rewrite ebpf helper function
