@@ -57,6 +57,8 @@ ksyms = [
   'copy_sysctl_value',
   'bpf_sysctl_set_new_value',
   'bpf_snprintf',
+  'bpf_xdp_adjust_head',
+  'bpf_xdp_adjust_tail',
 ]
 
 uheaders = [
@@ -76,4 +78,5 @@ kheaders = [
   "linux/prandom.h",
   "linux/kcsan.h",
   "linux/filter.h",
+  "net/xdp.h",
 ]

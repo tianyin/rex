@@ -11,6 +11,7 @@ pub mod sysctl;
 pub mod task_struct;
 pub mod timekeeping;
 pub mod tracepoint;
+pub mod xdp;
 
 mod barrier;
 mod base_helper;
