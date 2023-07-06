@@ -3,6 +3,13 @@
 additional function
 - compute_ip_checksum
 - bmc_rx_filter
+- bmc_hash_keys
+- bmc_prepare_packet
+- bmc_write_reply
+- bmc_invalidate_cache
+- bmc_tx_filter
+- bmc_update_cache
+
 
 bpf helper function:
 - bpf_spin_lock done
