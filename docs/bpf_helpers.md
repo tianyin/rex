@@ -2,7 +2,15 @@
 
 If I'm not sure about the decision, the function (or group of functions) will follow a question mark.
 
-Next step:
+Function wrapper:
+- bpf_map_lookup_elem
+- bpf_map_update_elem
+- bpf_map_delete_elem
+- bpf_map_push_elem
+- bpf_probe_read
+- bpf_probe_read_kernel
+- bpf_xdp_adjust_head
+- bpf_xdp_adjust_tail
 - bpf_map_pop_elem
 - bpf_map_peek_elem
 - bpf_for_each_map_elem
@@ -13,18 +21,7 @@ Next step:
 	- bpf_sysctl_get_current_value
 	- bpf_sysctl_get_new_value
 	- bpf_sysctl_set_new_value
-- bpf_strtol 
-- bpf_strtoul (we could use something like str.parse)
 - bpf_snprintf
-
-
-Function wrapper:
-- bpf_map_lookup_elem
-- bpf_map_update_elem
-- bpf_map_delete_elem
-- bpf_map_push_elem
-- bpf_probe_read
-- bpf_probe_read_kernel
 
 Half implemented in Rust:
 - bpf_ktime_get_coarse_ns
@@ -52,6 +49,8 @@ All implemented in Rust:
 	- bpf_task_pt_regs
 - perf_event
 	- bpf_perf_prog_read_value
+- bpf_strtoul (use rust &str.parse::<u64>)
+- bpf_strtol 
 
 
 Not implemented yet
