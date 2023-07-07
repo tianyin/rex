@@ -1,4 +1,35 @@
 MEETING MINUTES
+* 23-07-06 (scribe: Jinghao)
+*** Where we are going
+We decided to re-position our work
+- The security issue is raise repeatedly at HotOS (large TCB from Rust
+  toolchain)
+  - Aim for privileged context
+- We are going to shift away from the safety argument -- the current way of
+  rewriting helpers will produce error-prone and un-maintainable code
+  - unclear boundary between Rust and kernel C (e.g., why ~task_struct~ support
+    in Rust)
+  - Code duplication
+  - needs to keep *exactly* the same semantics with kernel C code
+  - trouble during kernel upgrades
+- Instead, we stick to the current helper interface
+  - directly invoking C in Rust wrappers
+  - if the computation is /local/, we will do it entirely in Rust (e.g.,
+    loop, ~strncmp~, checksum computation)
+- The expressiveness will be our focus at this point
+  - systematically articulate the current eBPF limitations
+  - can we use Rust to solve these? (answer is probably "some of them")
+  - Example limitations
+    - Rust extension could solve the missing unbounded loop in BPF
+    - Rust extension may not allow us to implement advanced data structures
+      (like B-Trees) given that we do not have dynamic allocation
+*** Next step
+- Create a list of abstract eBPF limitations
+  - For each of these create an eBPF program to show the difficulty
+  - Also write a Rust program to see if we can solve them
+- Ruowen will also take a look at BMC
+- Jinghao will take a look at the termination mechanism
+
 * 23-06-29 (scribe: Ruowen)
 *** Where we are
 Rewrite ebpf helper function (most function wrapper)
@@ -12,7 +43,7 @@ Rewrite ebpf helper function (most function wrapper)
 	- bpf_sysctl_get_current_value
 	- bpf_sysctl_get_new_value
 	- bpf_sysctl_set_new_value
-- bpf_strtol 
+- bpf_strtol
 - bpf_strtoul (we could use something like str.parse)
 - bpf_snprintf
 *** Where we are going
