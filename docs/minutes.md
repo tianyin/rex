@@ -1,4 +1,25 @@
 MEETING MINUTES
+# 23-07-20 (scribe: Ruowen)
+
+### Where we are going
+- Modify BMC to function on qemu with kernel 5.15
+    - https://github.com/xlab-uiuc/bmc-cache
+- Develop a new memcached benchmark due  to specific testing needs
+    - Existing benchmark fails to meet requirements
+        - UDP (Unsupported by memtier/memslap)
+        - ASCII code
+        - High load
+        - Restrictions on key and value sizes
+    - Hence, we're creating our own.
+        - Rust
+        - Asynchronous and thread-safe (using tokio)
+        - Higher stress than the C-based memslap
+    - https://github.com/xlab-uiuc/memcached_benchmark
+
+### Next step
+- Ruowen will take a look for BMC on a baremetal host
+- Rewrite BMC into current rust kernel extension
+
 # 23-07-06 (scribe: Jinghao)
 
 ### Where we are going
