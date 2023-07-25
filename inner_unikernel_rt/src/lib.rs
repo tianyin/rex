@@ -2,6 +2,7 @@
 #![feature(const_mut_refs)]
 #![feature(panic_info_message)]
 #![feature(c_variadic)]
+#![allow(non_camel_case_types)]
 
 pub mod kprobe;
 pub mod map;
@@ -39,6 +40,11 @@ fn __iu_entry_kprobe(prog: &kprobe::kprobe, ctx: *const ()) -> u32 {
 
 #[no_mangle]
 fn __iu_entry_perf_event(prog: &perf_event::perf_event, ctx: *const ()) -> u32 {
+    prog.prog_run(ctx)
+}
+
+#[no_mangle]
+fn __iu_entry_xdp(prog: &xdp::xdp, ctx: *const ()) -> u32 {
     prog.prog_run(ctx)
 }
 
