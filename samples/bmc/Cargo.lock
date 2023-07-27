@@ -6,8 +6,13 @@ version = 3
 name = "bmc"
 version = "0.1.0"
 dependencies = [
+ "inner_unikernel_rt",
  "rlibc",
 ]
+
+[[package]]
+name = "inner_unikernel_rt"
+version = "0.1.0"
 
 [[package]]
 name = "rlibc"

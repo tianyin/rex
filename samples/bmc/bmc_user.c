@@ -24,6 +24,9 @@
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
 
+#include "libiu.h"
+// #include <libbpf.h>
+
 #include "bmc_common.h"
 
 #define BPF_SYSFS_ROOT "/sys/fs/bpf"
@@ -143,7 +146,7 @@ int main(int argc, char *argv[])
 	struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
 	int base_fd, rx_prog_fd, tx_prog_fd, map_progs_xdp_fd, xdp_main_prog_fd, map_progs_tc_fd, map_progs_fd, map_stats_fd;
 	struct bpf_object_load_attr load_attr;
-	// struct bpf_object *obj;
+	struct bpf_object *obj;
 	char filename[PATH_MAX];
 	int err, prog_count;
 	__u32 xdp_flags = 0;
