@@ -3,15 +3,20 @@ use crate::bindings::uapi::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_XDP};
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
+use core::ffi::{c_char, c_void};
+use core::slice;
 
 // pub type pt_regs = super::binding::pt_regs;
 
 #[derive(Debug, Copy, Clone)]
-pub struct xdp_md {
+pub struct xdp_md<'b> {
     // TODO check the kernel version xdp_md
     // pub regs: bpf_user_pt_regs_t,
-    pub data_end: u32,
-    pub data_meta: u32,
+    data: usize,
+    data_end: usize,
+    pub data_slice: &'b [c_void],
+    pub data_length: usize,
+    pub data_meta: usize,
     pub ingress_ifindex: u32,
     pub rx_qeueu_index: u32,
     pub egress_ifindex: u32,
@@ -59,16 +64,26 @@ impl<'a> xdp<'a> {
             &*core::mem::transmute::<*const (), *const xdp_buff>(ctx)
         };
 
-        // TODO update based on xdp_buff
         // BUG may not work since directly truncate the pointer to u32
-        let data_end = kptr.data_end as u32;
-        let data_meta = kptr.data_meta as u32;
+        let data = kptr.data as usize;
+        let data_end = kptr.data_end as usize;
+        let data_meta = kptr.data_meta as usize;
+        let data_length = (data_end - data) as usize;
+
+        // TODO should we use slice::from_raw_parts or slice::copy_from_slice?
+        let data_slice = unsafe {
+            slice::from_raw_parts(kptr.data as *const c_void, data_length)
+        };
+
         let ingress_ifindex = kptr.rxq as u32;
         let rx_qeueu_index = unsafe { (*kptr.rxq).queue_index };
         let egress_ifindex = unsafe { (*(*kptr.txq).dev).ifindex as u32 };
 
         xdp_md {
+            data,
             data_end,
+            data_slice,
+            data_length,
             data_meta,
             ingress_ifindex,
             rx_qeueu_index,
@@ -77,6 +92,7 @@ impl<'a> xdp<'a> {
         }
     }
 
+    // TODO update based on xdp_md to convert to xdp_buff
     pub fn bpf_xdp_adjust_head(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
         let helper: extern "C" fn(*mut xdp_buff, i32) -> i32 =
             unsafe { core::mem::transmute(stub::bpf_xdp_adjust_head_addr()) };
