@@ -16,7 +16,7 @@ fn main() {
         .expect("failed to execute process");
 
     output.status.exit_ok().unwrap_or_else(|_| {
-        panic!("{}", String::from_utf8_lossy(&output.stderr))
+        panic!("\n{}", String::from_utf8_lossy(&output.stderr))
     });
 
     println!("cargo:rerun-if-changed=Cargo.toml");
