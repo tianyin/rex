@@ -1,5 +1,8 @@
+#![feature(exit_status_error)]
+
 use std::env;
-use std::process::Command;
+use std::process::{Command, ExitStatus};
+use std::string::String;
 
 fn main() {
     let out_dir = env::var("OUT_DIR").unwrap();
@@ -10,10 +13,12 @@ fn main() {
         .arg(&linux_dir)
         .arg(&out_dir)
         .output()
-        .unwrap();
+        .expect("failed to execute process");
 
-    // add more debug log
-    println!("cargo:warning={}", String::from_utf8_lossy(&output.stdout));
+    output.status.exit_ok().unwrap_or_else(|_| {
+        panic!("{}", String::from_utf8_lossy(&output.stderr))
+    });
+
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=./src/*");
 }
