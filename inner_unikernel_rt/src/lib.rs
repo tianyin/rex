@@ -8,9 +8,9 @@ pub mod kprobe;
 pub mod map;
 pub mod perf_event;
 pub mod prog_type;
-pub mod sysctl;
+//pub mod sysctl;
 pub mod task_struct;
-pub mod timekeeping;
+// pub mod timekeeping;
 pub mod tracepoint;
 pub mod xdp;
 
@@ -22,7 +22,7 @@ mod panic;
 mod per_cpu;
 mod random32;
 mod read_once;
-mod seqlock;
+//mod seqlock;
 mod stub;
 
 use crate::prog_type::iu_prog;

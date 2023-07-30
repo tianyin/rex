@@ -4,7 +4,7 @@ use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
-use crate::timekeeping::*;
+// use crate::timekeeping::*;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
     unsafe { this_cpu_read(stub::cpu_number_addr()) }
@@ -217,6 +217,7 @@ pub(crate) fn bpf_ktime_get_boot_ns_origin() -> u64 {
     helper()
 }
 
+/*
 pub(crate) fn bpf_ktime_get_ns() -> u64 {
     ktime_get_mono_fast_ns()
 }
@@ -228,6 +229,7 @@ pub(crate) fn bpf_ktime_get_boot_ns() -> u64 {
 pub(crate) fn bpf_ktime_get_coarse_ns() -> u64 {
     ktime_get_coarse() as u64
 }
+*/
 
 pub(crate) fn bpf_get_prandom_u32() -> u32 {
     bpf_user_rnd_u32()
@@ -349,6 +351,7 @@ macro_rules! base_helper_defs {
             crate::base_helper::bpf_ktime_get_boot_ns_origin()
         }
 
+        /*
         #[inline(always)]
         pub fn bpf_ktime_get_ns(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_ns()
@@ -363,6 +366,7 @@ macro_rules! base_helper_defs {
         pub fn bpf_ktime_get_coarse_ns(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_coarse_ns()
         }
+        */
 
         #[inline(always)]
         pub fn bpf_get_prandom_u32(&self) -> u32 {
