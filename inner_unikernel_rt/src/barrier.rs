@@ -34,7 +34,6 @@ pub(crate) fn unlikely(b: bool) -> bool {
 #[inline(always)]
 pub(crate) fn kcsan_atomic_next(_: u32) {}
 
-
 /// Compiler barrier to prevent instruction reordering across the barrier.
 #[inline(always)]
 pub(crate) fn barrier() {

@@ -5,7 +5,6 @@ use crate::bindings::linux::kernel::{
 use crate::barrier::*;
 use crate::read_once::read_once;
 
-
 #[inline(always)]
 fn __seqprop_sequence(s: &seqcount_t) -> u32 {
     read_once(&s.sequence)

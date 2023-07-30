@@ -1,7 +1,7 @@
 #![feature(exit_status_error)]
 
 use std::env;
-use std::process::{Command, ExitStatus};
+use std::process::Command;
 use std::string::String;
 
 fn main() {
