@@ -9,7 +9,7 @@
  *  Author: Yoann GHIGOFF <yoann.ghigoff@orange.com> et al.
  */
 
-use crate::linux::bpf::*;
+use inner_unikernel_rt::linux::bpf::*;
 
 pub const BMC_MAX_KEY_LENGTH: u32 = 250;
 pub const BMC_MAX_VAL_LENGTH: u32 = 1000;
