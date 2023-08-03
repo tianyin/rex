@@ -203,7 +203,7 @@ int main(int argc, char *argv[])
 		interfaces_idx[i] = atoi(argv[optind]);
 	}
 	xdp_flags |= XDP_FLAGS_DRV_MODE;
-	nr_cpus = libiu_num_possible_cpus();
+	nr_cpus = libbpf_num_possible_cpus();
 
 	// snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
 
@@ -228,7 +228,7 @@ int main(int argc, char *argv[])
 	// }
 
 	iu_set_debug(1); // enable debug info
-	base_fd = iu_obj_load(EXE);
+	base_fd = iu_obj_load(EXE, obj);
 
 	if (base_fd < 0) {
 		fprintf(stderr, "couldn't load the base program\n");

@@ -10,17 +10,20 @@ RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
 		-A non_upper_case_globals -A non_snake_case ${NO_OPT} -C iu-playground
 
-all: target/debug/bmc
+all: target/debug/xdp_test entry
 
-target/debug/bmc: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+target/debug/xdp_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}
 
-target/release/bmc: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+ir: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+	cargo rustc -vv -- ${RUST_FLAGS} --emit=llvm-ir
+
+target/release/xdp_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv --release -- ${RUST_FLAGS}
 
-bmc_user: bmc_user.c bmc_common.h
-	clang -g -Wl,--as-needed -I. -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}  -o bmc $< ${LIBBPF_DIR}/bpf/libbpf.a  -L${LIBBPF_DIR} -l:libbpf.a -L${LIBIU_DIR} -lelf -liu -lz
+entry: entry.c
+	clang -g -Wl,--as-needed -I. -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}  -o $@ $< ${LIBBPF_DIR}/bpf/libbpf.a  -L${LIBBPF_DIR} -l:libbpf.a -L${LIBIU_DIR} -lelf -liu -lz
 
 clean:
 	cargo clean
-	rm -rf bmc ./src/linux/*.rs ./src/stub.rs
+	rm -rf entry ./src/linux/*.rs ./src/stub.rs
