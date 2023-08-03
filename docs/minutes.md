@@ -1,4 +1,26 @@
 MEETING MINUTES
+# 23-07-27 (scribe: Ruowen)
+
+### Where we are going
+- Run benchmark on BMC with both SR-IOV VM and qemu user network VM
+    - Performance gain is not that significant
+    - SR-IOV VM, 1 million request, key size 12 value size 12
+        - Without BMC
+            - ~130 seconds
+        - With BMC
+            - ~95 seconds
+    - Qemu user network VM, 1 million request, key size 12 value size 12
+        - Without BMC
+            - ~30 seconds
+        - With BMC
+            - ~19 seconds
+- Add a draft xdp implementation in rust kernel extension
+    - program doesn't work ... 
+
+### Next step
+- Fix xdp framework and makes it works on simple scenario (like rx).
+
+
 # 23-07-20 (scribe: Ruowen)
 
 ### Where we are going
