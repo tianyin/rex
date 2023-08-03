@@ -600,10 +600,11 @@ public:
 
 static void iu_object__elf_finish(struct bpf_object *obj)
 {
-	if (obj->efile.elf) {
-		elf_end(obj->efile.elf);
-		obj->efile.elf = NULL;
-	}
+	// if (obj->efile.elf) {
+	// 	elf_end(obj->efile.elf);
+	// 	obj->efile.elf = NULL;
+	// }
+
 	obj->efile.symbols = NULL;
 	obj->efile.data = NULL;
 	obj->efile.rodata = NULL;
@@ -1383,6 +1384,10 @@ struct bpf_object *iu_object__open(char *path)
 	if (base_fd < 0){
 		bpf_object__close(obj);
 		return NULL;
+	}
+
+	if (debug) {
+		std::clog << "base_fd: \"" << base_fd << "\"" << std::endl;
 	}
 
 	return obj;
