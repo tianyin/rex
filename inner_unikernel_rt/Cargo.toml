@@ -68,6 +68,7 @@ uheaders = [
   "linux/ptrace.h",
   "linux/seccomp.h",
   "linux/unistd.h",
+  "linux/in.h",
 ]
 
 kheaders = [
@@ -78,5 +79,9 @@ kheaders = [
   "linux/prandom.h",
   "linux/kcsan.h",
   "linux/filter.h",
+  "linux/if_ether.h",
+  "linux/ip.h",
+  "linux/tcp.h",
+  "linux/udp.h",
   "net/xdp.h",
 ]
