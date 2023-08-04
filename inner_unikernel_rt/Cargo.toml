@@ -34,7 +34,6 @@ ksyms = [
   'bpf_for_each_map_elem',
   'tk_fast_mono',
   #  'tk_core',
-  '_printk',
   'vprintk',
   'ktime_get_mono_fast_ns',
   'ktime_get_boot_fast_ns',
