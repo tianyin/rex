@@ -1,7 +1,27 @@
 MEETING MINUTES
+
+# 23-08-03 (scribe: Ruowen)
+
+### Where we are
+- Now the program can deal with the normal tcp/udp packet from rx_queue
+    - currently we use unsafe read_unaligned() method to convert buffer into tcp/ip header struct
+- Start to implement tx_queue which usea a different BPF type rather than normal XDP
+
+
+### Next step
+When we convert our BPF program in to our current rust inner-unikernel program, in the below situation, we have to use the unsafe rust
+- call kernel helper functions
+- read kernel variables and re-borrowing 
+- convert buffer into network header type like TCP
+	- Ruowen aims to accomplish this through 'safe Rust', instead of directly converting variable types
+
+The BPF program permits directly convert the void pointer into different struct, with the BPF verifier ensuring that kernel memory remains uncorrupted. However, this mechanism does not validate the BPF program itself. A case in point is when a BPF program transmutes the void pointer into a incorrect type of struct, this action would pass the verifier and load into kernel but this program would not work as expected due to the inherent 'unsafe' logic.
+
+Our Rust kernel extension seeks to enhance expressiveness and potentially avert such circumstances.
+
 # 23-07-27 (scribe: Ruowen)
 
-### Where we are going
+### Where we are
 - Run benchmark on BMC with both SR-IOV VM and qemu user network VM
     - Performance gain is not that significant
     - SR-IOV VM, 1 million request, key size 12 value size 12
