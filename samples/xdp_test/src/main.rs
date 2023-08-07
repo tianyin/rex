@@ -8,6 +8,7 @@ use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::linux::bpf::{BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH};
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::xdp::*;
+use inner_unikernel_rt::sched_cls::*;
 use inner_unikernel_rt::MAP_DEF;
 
 MAP_DEF!(map_hash, __map_1, u32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
@@ -28,20 +29,20 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
 
     match u8::from_be(ip_header.protocol) {
         6 => {
-            // bpf_printk!(obj, "tcp packet.\n");
-            //
-            // let tcp_header = obj.tcp_header(ctx);
-            //
-            // bpf_printk!(
-            //     obj,
-            //     "tcp_src port: %d\n",
-            //     u16::from_be(tcp_header.source) as u64
-            // );
-            // bpf_printk!(
-            //     obj,
-            //     "tcp_dst port: %d\n",
-            //     u16::from_be(tcp_header.dest) as u64
-            // );
+             bpf_printk!(obj, "tcp packet.\n");
+            
+             let tcp_header = obj.tcp_header(ctx);
+            
+             bpf_printk!(
+                 obj,
+                 "tcp_src port: %d\n",
+                 u16::from_be(tcp_header.source) as u64
+             );
+             bpf_printk!(
+                 obj,
+                 "tcp_dst port: %d\n",
+                 u16::from_be(tcp_header.dest) as u64
+             );
         }
         17 => {
             bpf_printk!(obj, "udp packet.\n");
@@ -63,17 +64,16 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
 
     XDP_PASS
 }
-fn xdp_tx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
-    bpf_printk!(obj, "ctx data length %d.\n", ctx.data_length as u64);
-    XDP_PASS
+fn xdp_tx_filter_fn(obj: &sched_cls, ctx: &__sk_buff) -> u32 {
+    0
 }
 #[link_section = "xdp"]
 static PROG1: xdp = xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
 
 
 // ERROR need to add additional BPF_PROG_TYPE_SCHED_CLS in LLVM pass
-#[link_section = "xdp"]
-static PROG2: xdp = xdp::new(
+#[link_section = "sched_cls"]
+static PROG2: sched_cls = sched_cls::new(
     xdp_tx_filter_fn,
     "xdp_tx_filter",
     BPF_PROG_TYPE_SCHED_CLS as u64,
