@@ -1,4 +1,3 @@
-use crate::base_helper::bpf_trace_printk;
 use crate::stub;
 
 use crate::bindings::linux::kernel::{ethhdr, iphdr, tcphdr, udphdr, xdp_buff};
@@ -12,25 +11,34 @@ use core::{mem, slice};
 
 // expose the following constants to the user
 pub use crate::bindings::uapi::linux::bpf::{
-    BPF_PROG_TYPE_SCHED_CLS, BPF_PROG_TYPE_XDP, XDP_ABORTED, XDP_DROP,
+    BPF_PROG_TYPE_XDP, XDP_ABORTED, XDP_DROP,
     XDP_PASS, XDP_REDIRECT, XDP_TX,
 };
 
 // pub type pt_regs = super::binding::pt_regs;
 
-#[derive(Debug, Clone)]
-pub struct xdp_md<'b> {
+#[derive(Debug)]
+pub struct xdp_md<'a> {
     // TODO check the kernel version xdp_md
     // pub regs: bpf_user_pt_regs_t,
     data: usize,
     data_end: usize,
-    pub data_slice: &'b [c_char],
+    pub data_slice: &'a [c_char],
     pub data_length: usize,
     pub data_meta: usize,
     pub ingress_ifindex: u32,
     pub rx_qeueu_index: u32,
     pub egress_ifindex: u32,
     kptr: *const xdp_buff,
+}
+
+const ETH_ALEN: usize = 6;
+
+#[derive(Debug)]
+pub struct eth_header<'a> {
+    h_dest: &'a [c_char],
+    h_source: &'a [c_char],
+    h_proto: u16,
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -116,6 +124,7 @@ impl<'a> xdp<'a> {
     }
 
     // User can get the customized struct like memcached from the data_slice
+    // TODO maybe we should add safe version for this function
     pub fn convert_slice_to_struct<T>(&self, slice: &[c_char]) -> T {
         let ptr = slice.as_ptr() as *const T;
         unsafe { core::ptr::read_unaligned(ptr) }
@@ -127,13 +136,6 @@ impl<'a> xdp<'a> {
         let part = &ctx.data_slice[begin..];
         let udp_header = self.convert_slice_to_struct::<udphdr>(part);
 
-        bpf_trace_printk(
-            "port number %d",
-            u16::from_be(udp_header.dest) as u64,
-            0,
-            0,
-        );
-
         udp_header
     }
 
@@ -143,23 +145,9 @@ impl<'a> xdp<'a> {
         let part = &ctx.data_slice[begin..];
         let tcp_header = self.convert_slice_to_struct::<tcphdr>(part);
 
-        bpf_trace_printk(
-            "port number %d\n",
-            u16::from_be(tcp_header.dest) as u64,
-            0,
-            0,
-        );
-
         unsafe {
-            if 22 == u16::from_be(tcp_header.dest) {
-                printk("dest port 22\n\0");
-            }
-            // TODO why the printk output is not correct?
-            printk("tcp_dest: %d\n\0", u16::from_be(tcp_header.dest) as u32);
-            printk(
-                "tcp_dest port: %llu\n\0",
-                u16::from_be(tcp_header.dest) as u64,
-            );
+            printk("tcp_dest %d\n\0", u16::from_be(tcp_header.dest) as u32);
+            printk("tcp_src %d\n\0", u16::from_be(tcp_header.source) as u32);
         }
 
         tcp_header
@@ -174,25 +162,19 @@ impl<'a> xdp<'a> {
         ip_header
     }
 
-    pub fn eth_header(&self, ctx: &xdp_md) -> ethhdr {
-        let eth_header = self.convert_slice_to_struct::<ethhdr>(ctx.data_slice);
-        unsafe {
-            printk("eth_source: 0x%llx\n\0", eth_header.h_source);
-            printk("eth_dst: 0x%llx\n\0", eth_header.h_dest);
-            printk(
-                "eth_proto: 02%x\n\0",
-                u16::from_be(eth_header.h_proto) as c_uint,
-            );
-        }
+    pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> eth_header<'b> {
+        let combined: u16 =
+            ((ctx.data_slice[13] as u16) << 8) | (ctx.data_slice[12] as u16);
 
+        let eth_header = eth_header {
+            h_dest: &ctx.data_slice[0..6],
+            h_source: &ctx.data_slice[6..12],
+            h_proto: combined,
+        };
+        unsafe {
+            printk("eth_protocol %d\n\0", eth_header.h_proto as u32);
+        }
         eth_header
-    }
-
-    pub fn trigger_func(&self, ctx: &xdp_md) {
-        let eth_header = self.eth_header(ctx);
-        unsafe {
-            printk("eth_header: %s\n", eth_header.h_dest);
-        }
     }
 
     pub fn bpf_xdp_adjust_tail(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {

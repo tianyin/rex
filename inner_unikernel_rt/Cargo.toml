@@ -82,5 +82,6 @@ kheaders = [
   "linux/ip.h",
   "linux/tcp.h",
   "linux/udp.h",
+  "linux/skbuff.h",
   "net/xdp.h",
 ]
