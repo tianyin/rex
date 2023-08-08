@@ -11,8 +11,7 @@ use core::{mem, slice};
 
 // expose the following constants to the user
 pub use crate::bindings::uapi::linux::bpf::{
-    BPF_PROG_TYPE_XDP, XDP_ABORTED, XDP_DROP,
-    XDP_PASS, XDP_REDIRECT, XDP_TX,
+    BPF_PROG_TYPE_XDP, XDP_ABORTED, XDP_DROP, XDP_PASS, XDP_REDIRECT, XDP_TX,
 };
 
 // pub type pt_regs = super::binding::pt_regs;

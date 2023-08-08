@@ -11,9 +11,9 @@ pub mod prog_type;
 //pub mod sysctl;
 pub mod task_struct;
 // pub mod timekeeping;
+pub mod sched_cls;
 pub mod tracepoint;
 pub mod xdp;
-pub mod sched_cls;
 
 mod barrier;
 mod base_helper;
