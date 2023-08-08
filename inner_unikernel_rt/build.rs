@@ -15,9 +15,11 @@ fn main() {
         .output()
         .expect("failed to execute process");
 
-    output.status.exit_ok().unwrap_or_else(|_| {
-        panic!("\n{}", String::from_utf8_lossy(&output.stderr))
-    });
+    output
+        .status
+        .exit_ok()
+        .map(|_| print!("{}", String::from_utf8_lossy(&output.stdout)))
+        .map_err(|_| panic!("\n{}", String::from_utf8_lossy(&output.stderr)));
 
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=./src/*");

@@ -29,6 +29,11 @@ mod stub;
 use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;
 
+#[cfg(CONFIG_CC_IS_CLANG = "y")]
+static CC_IS_CLANG: bool = true;
+#[cfg(not(CONFIG_CC_IS_CLANG = "y"))]
+static CC_IS_GCC: bool = true;
+
 #[no_mangle]
 fn __iu_entry_tracepoint(prog: &tracepoint::tracepoint, ctx: *const ()) -> u32 {
     prog.prog_run(ctx)

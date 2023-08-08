@@ -1,4 +1,5 @@
 import os
+import re
 import subprocess
 import sys
 
@@ -106,18 +107,18 @@ def prep_headers(usr_include, headers, out_dir):
         with open(os.path.join(subdir, '%s.rs' % file[:-2]), 'w') as bind_f:
             bind_f.write(output)
 
-def parse_config(cargo_toml):
-    with open(cargo_toml, toml_flag) as toml_f:
-        config = tomllib.load(toml_f)
+def parse_cargo_toml(cargo_toml_path):
+    with open(cargo_toml_path, toml_flag) as toml_f:
+        cargo_toml = tomllib.load(toml_f)
 
-    if not 'inner_unikernel' in config:
-        return [], [], []
+    assert 'inner_unikernel' in cargo_toml, "no inner_unikernel config found"
 
-    ksyms = config['inner_unikernel'].get('ksyms', [])
-    uheaders = config['inner_unikernel'].get('uheaders', [])
-    kheaders = config['inner_unikernel'].get('kheaders', [])
+    ksyms = cargo_toml['inner_unikernel'].get('ksyms', [])
+    uheaders = cargo_toml['inner_unikernel'].get('uheaders', [])
+    kheaders = cargo_toml['inner_unikernel'].get('kheaders', [])
+    kconfigs = cargo_toml['inner_unikernel'].get('kconfigs', [])
 
-    return ksyms, uheaders, kheaders
+    return ksyms, uheaders, kheaders, kconfigs
 
 def prep_kernel_headers(headers, linux_path, out_dir):
     bindings_h = os.path.join(out_dir, 'bindings.h')
@@ -133,16 +134,31 @@ def prep_kernel_headers(headers, linux_path, out_dir):
     cmd = bindgen_kernel_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
     subprocess.run(cmd % (bindings_h, kernel_rs), check=True, shell=True)
 
+def parse_kconfigs(dot_config_path, kconfigs):
+    if len(kconfigs) == 0:
+        return
+
+    with open(dot_config_path) as dot_config:
+        dot_config_content = dot_config.readlines()
+
+    ptn = re.compile('(%s)' % '|'.join(kconfigs))
+
+    print('\n'.join(map(lambda l: 'cargo:rustc-cfg=%s="%s"' % l,
+                        map(lambda l: tuple(l.strip().split('=')),
+                            filter(lambda l: l[0] != '#' and ptn.match(l),
+                                   dot_config_content)))))
+
 def main(argv):
     linux_path = argv[1]
     out_dir = argv[2]
     target_path = os.getcwd()
-    result = parse_config(os.path.join(target_path, 'Cargo.toml'))
-    ksyms, uheaders, kheaders = result
+    result = parse_cargo_toml(os.path.join(target_path, 'Cargo.toml'))
+    ksyms, uheaders, kheaders, kconfigs = result
     gen_stubs(os.path.join(linux_path, 'vmlinux'), ksyms, out_dir)
     u_out_dir = os.path.join(out_dir, 'uapi')
     prep_headers(os.path.join(linux_path, 'usr/include'), uheaders, u_out_dir)
     prep_kernel_headers(kheaders, linux_path, out_dir)
+    parse_kconfigs(os.path.join(linux_path, '.config'), kconfigs)
     return 0
 
 if __name__ == '__main__':

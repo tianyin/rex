@@ -85,3 +85,7 @@ kheaders = [
   "linux/skbuff.h",
   "net/xdp.h",
 ]
+
+kconfigs = [
+  "CONFIG_CC_IS_CLANG",
+]
