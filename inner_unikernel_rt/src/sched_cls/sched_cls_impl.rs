@@ -1,13 +1,52 @@
-use crate::bindings::linux::kernel::{ethhdr, iphdr, sk_buff, tcphdr, udphdr};
+use crate::debug::printk;
+use crate::stub;
+
+use crate::bindings::linux::kernel::{ethhdr, iphdr, sk_buff, tcphdr, udphdr, sock};
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
 pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
 use crate::prog_type::iu_prog;
-use crate::stub;
 use crate::{bpf_printk, map::*};
+use core::ffi::{c_char, c_uint, c_void};
+use core::{mem, slice};
 
-#[derive(Debug)]
-pub struct __sk_buff {
-    // TODO check the kernel version __sk_buff
+pub struct u16be(u16);
+
+pub struct __sk_buff<'a> {
+    // TODO: may need to append more based on __sk_buff
+    pub len: u32,
+    // be16
+    pub protocol: u16be,
+    pub priority: u32,
+    pub ingress_ifindex: u32,
+    pub ifindex: u32,
+    pub hash: u32,
+    pub mark: u32,
+
+    // such as PACKET_HOST if_packet.h
+    // /* if you move pkt_type around you also must adapt those constants */
+    // #ifdef __BIG_ENDIAN_BITFIELD
+    // #define PKT_TYPE_MAX	(7 << 5)
+    // #else
+    // #define PKT_TYPE_MAX	7
+    // #endif
+    pub pkt_type: u32,
+
+    pub queue_mapping: u16,
+
+    pub vlan_present: u32,
+    pub vlan_tci: u16,
+    pub vlan_proto: u16be,
+    pub cb: &'a [c_char; 48],
+
+    pub tc_classid: u32,
+    pub tc_index: u16,
+
+    pub napi_id: u32,
+
+    // sk: &'a &sock,
+
+    pub data_meta: u32,
+    pub data_slice: &'a [c_char],
     kptr: *const sk_buff,
 }
 
@@ -51,7 +90,44 @@ impl<'a> sched_cls<'a> {
         let kptr: &sk_buff =
             unsafe { &*core::mem::transmute::<*const (), *const sk_buff>(ctx) };
 
-        __sk_buff { kptr }
+        let data = kptr.data as usize;
+        let data_length = kptr.data_len as usize;
+        let data_slice = unsafe {
+            slice::from_raw_parts(kptr.data as *const c_char, data_length)
+        };
+        unsafe {
+            printk("data_len %d\n\0", data_length);
+        }
+
+        // bindgen for C union is kind of wired, so we have to do this
+        // let sk: sock = unsafe { &kptr.sk_buff__bindgen_ty_2.sk };
+
+        // TODO: UNION required unsafe, and need to update binding.rs
+        let napi_id = 0;
+
+        __sk_buff {
+            // TODO: may need to append more based on __sk_buff
+            len: kptr.len,
+            protocol: u16be(kptr.protocol),
+            priority: kptr.priority,
+            ingress_ifindex: 0,
+            ifindex: 0,
+            hash: kptr.hash,
+            mark: 0,
+            pkt_type: 0,
+            queue_mapping: kptr.queue_mapping,
+            vlan_present: 0,
+            vlan_tci: kptr.vlan_tci,
+            vlan_proto: u16be(kptr.vlan_proto),
+            cb: &kptr.cb,
+            tc_classid: 0,
+            tc_index: kptr.tc_index,
+            napi_id,
+            // sk,
+            data_slice,
+            data_meta: 0,
+            kptr,
+        }
     }
 }
 

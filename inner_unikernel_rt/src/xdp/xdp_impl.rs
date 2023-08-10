@@ -162,6 +162,7 @@ impl<'a> xdp<'a> {
     }
 
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> eth_header<'b> {
+        // TODO big endian may be different in different arch this is x86 version
         let combined: u16 =
             ((ctx.data_slice[13] as u16) << 8) | (ctx.data_slice[12] as u16);
 
