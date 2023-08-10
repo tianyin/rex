@@ -12,6 +12,7 @@ test = false
 doctest = false
 
 [dependencies]
+paste = "1.0.14"
 # rlibc = "1.0.0"
 
 [profile.dev]

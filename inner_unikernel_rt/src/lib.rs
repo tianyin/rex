@@ -26,37 +26,36 @@ mod read_once;
 //mod seqlock;
 mod stub;
 
+extern crate paste;
+
 use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;
+
+use paste::paste;
 
 #[cfg(CONFIG_CC_IS_CLANG = "y")]
 static CC_IS_CLANG: bool = true;
 #[cfg(not(CONFIG_CC_IS_CLANG = "y"))]
 static CC_IS_GCC: bool = true;
 
-#[no_mangle]
-fn __iu_entry_tracepoint(prog: &tracepoint::tracepoint, ctx: *const ()) -> u32 {
-    prog.prog_run(ctx)
+macro_rules! define_prog_entry {
+    ($prog_ty:ident) => {
+        paste! {
+            #[no_mangle]
+            fn [<__iu_entry_ $prog_ty>](
+                prog: &$prog_ty::$prog_ty,
+                ctx: *const()
+            ) -> u32 {
+                prog.prog_run(ctx)
+            }
+        }
+    };
 }
 
-#[no_mangle]
-fn __iu_entry_kprobe(prog: &kprobe::kprobe, ctx: *const ()) -> u32 {
-    prog.prog_run(ctx)
-}
-
-#[no_mangle]
-fn __iu_entry_perf_event(prog: &perf_event::perf_event, ctx: *const ()) -> u32 {
-    prog.prog_run(ctx)
-}
-
-#[no_mangle]
-fn __iu_entry_xdp(prog: &xdp::xdp, ctx: *const ()) -> u32 {
-    prog.prog_run(ctx)
-}
-
-#[no_mangle]
-fn __iu_entry_sched_cls(prog: &sched_cls::sched_cls, ctx: *const ()) -> u32 {
-    prog.prog_run(ctx)
-}
+define_prog_entry!(tracepoint);
+define_prog_entry!(kprobe);
+define_prog_entry!(perf_event);
+define_prog_entry!(xdp);
+define_prog_entry!(sched_cls);
 
 pub use bindings::uapi::*;
