@@ -45,7 +45,7 @@ macro_rules! define_prog_entry {
             #[no_mangle]
             fn [<__iu_entry_ $prog_ty>](
                 prog: &$prog_ty::$prog_ty,
-                ctx: *const()
+                ctx: *const(),
             ) -> u32 {
                 prog.prog_run(ctx)
             }
