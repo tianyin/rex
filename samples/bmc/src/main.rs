@@ -2,7 +2,6 @@
 #![no_main]
 
 extern crate inner_unikernel_rt;
-extern crate rlibc;
 
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::MAP_DEF;

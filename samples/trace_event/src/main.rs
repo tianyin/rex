@@ -2,7 +2,6 @@
 #![no_main]
 
 extern crate inner_unikernel_rt;
-extern crate rlibc;
 
 use inner_unikernel_rt::linux::bpf::*;
 use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
