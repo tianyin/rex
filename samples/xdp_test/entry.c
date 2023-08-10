@@ -1,5 +1,3 @@
-
-
 #include <assert.h>
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
@@ -49,6 +47,14 @@ static struct bpf_progs_desc progs[] = {
     // BMC_PROG_TC_UPDATE_CACHE, NULL},
 };
 
+static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
+{
+    if (level == LIBBPF_DEBUG || level == LIBBPF_INFO) {
+        return vfprintf(stderr, format, args);
+    }
+    return 0;
+}
+
 int main(int argc, char *argv[]) {
   struct rlimit r = {RLIM_INFINITY, RLIM_INFINITY};
   int base_fd, rx_prog_fd, tx_prog_fd, xdp_main_prog_fd;
@@ -64,6 +70,7 @@ int main(int argc, char *argv[]) {
   int opt;
   int interface_count = 0;
 
+  libbpf_set_print(libbpf_print_fn);
   iu_set_debug(1);  // enable debug info
 
   interface_count = argc - optind;
@@ -119,34 +126,46 @@ int main(int argc, char *argv[]) {
     }
   }
 
-	tx_prog = bpf_object__find_program_by_name(obj, "xdp_tx_filter");
+  char prog_name[256] = "xdp_tx_filter";
+  tx_prog = bpf_object__find_program_by_name(obj, "xdp_tx_filter");
+  if (!tx_prog) {
+    fprintf(stderr, "tx_prog not found\n");
+    exit(1);
+  }
+  printf("tx_prog: %s\n", bpf_program__name(tx_prog));
 
-  int len =
-      snprintf(filename, PATH_MAX, "%s/%s", BPF_SYSFS_ROOT, "xdp_tx_filter");
+  int len = snprintf(filename, PATH_MAX, "%s/%s", BPF_SYSFS_ROOT, prog_name);
   if (len < 0) {
-      fprintf(stderr, "Error: Program name '%s' is invalid\n", "xdp_tx_filter");
-      return -1;
+    fprintf(stderr, "Error: Program name '%s' is invalid\n", "xdp_tx_filter");
+    return -1;
   } else if (len >= PATH_MAX) {
-      fprintf(stderr, "Error: Program name '%s' is too long\n",
-              "xdp_tx_filter");
-      return -1;
+    fprintf(stderr, "Error: Program name '%s' is too long\n", prog_name);
+    return -1;
   }
 
-  if (bpf_program__pin_instance(tx_prog, filename, 0)) {
-      fprintf(stderr, "Error: Failed to pin program '%s' to path %s\n",
-              "xdp_tx_filter", filename);
-      if (errno == EEXIST) {
-        fprintf(stdout,
-                "BPF program '%s' already pinned, unpinning it to reload it\n",
-                "xdp_tx_filter");
-        if (bpf_program__unpin_instance(tx_prog, filename, 0)) {
-          fprintf(stderr, "Error: Fail to unpin program '%s' at %s\n",
-                  "xdp_tx_filter", filename);
-          return -1;
-        }
-      }
-      return -1;
+  ret = bpf_program__pin(tx_prog, filename);
+  if (ret != 0) {
+    fprintf(stderr,
+            "Error: Failed to pin program '%s' to path %s with error code %d\n",
+            prog_name, filename, ret);
+    return ret;
   }
+
+  // if (bpf_program__pin_instance(tx_prog, filename, 0)) {
+  //     fprintf(stderr, "Error: Failed to pin program '%s' to path %s\n",
+  //             "xdp_tx_filter", filename);
+  //     if (errno == EEXIST) {
+  //       fprintf(stdout,
+  //               "BPF program '%s' already pinned, unpinning it to reload
+  //               it\n", "xdp_tx_filter");
+  //       if (bpf_program__unpin_instance(tx_prog, filename, 0)) {
+  //         fprintf(stderr, "Error: Fail to unpin program '%s' at %s\n",
+  //                 "xdp_tx_filter", filename);
+  //         return -1;
+  //       }
+  //     }
+  //     return -1;
+  // }
   // for (int i = 0; i < interface_count; i++) {
   //     bpf_set_link_xdp_fd(interfaces_idx[i], -1, xdp_flags);
   // }
