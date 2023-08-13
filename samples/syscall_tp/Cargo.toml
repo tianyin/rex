@@ -10,9 +10,11 @@ rlibc = "1.0.0"
 
 [profile.dev]
 panic = "abort"
+debug = false
 
 [profile.release]
 panic = "abort"
+debug = false
 
 [inner_unikernel]
 helpers = [

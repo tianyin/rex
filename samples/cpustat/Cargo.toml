@@ -18,6 +18,8 @@ path = "src/cpustat_freq.rs"
 
 [profile.dev]
 panic = "abort"
+debug = false
 
 [profile.release]
 panic = "abort"
+debug = false
