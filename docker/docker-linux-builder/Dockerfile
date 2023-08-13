@@ -12,7 +12,7 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get upgrade -y
 
 RUN DEBIAN_FRONTEND=noninteractive apt-get update
 RUN DEBIAN_FRONTEND=noninteractive apt-get install --fix-missing -y git build-essential gcc g++ fakeroot libncurses5-dev libssl-dev ccache dwarves libelf-dev \
- cmake \
+ cmake mold \
  libdw-dev libdwarf-dev \
  bpfcc-tools libbpfcc-dev libbpfcc \
  linux-headers-generic \
