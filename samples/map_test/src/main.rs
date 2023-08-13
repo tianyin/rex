@@ -93,5 +93,5 @@ fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
     map_test1(obj, map_array)
 }
 
-#[link_section = "tracepoint/syscalls/sys_enter_dup"]
+#[link_section = "inner_unikernel/tracepoint/syscalls/sys_enter_dup"]
 static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_ctx::Void);

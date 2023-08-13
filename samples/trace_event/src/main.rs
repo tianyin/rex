@@ -98,5 +98,5 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
     0
 }
 
-#[link_section = "perf_event"]
+#[link_section = "inner_unikernel/perf_event"]
 static PROG: perf_event = perf_event::new(iu_prog1_fn, "iu_prog1");

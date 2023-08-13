@@ -82,7 +82,7 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
 fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> u32 {
     0
 }
-#[link_section = "xdp"]
+#[link_section = "inner_unikernel/xdp"]
 static PROG1: xdp = xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
 
 // ERROR need to add additional BPF_PROG_TYPE_SCHED_CLS in LLVM pass
