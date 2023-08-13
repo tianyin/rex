@@ -14,6 +14,7 @@ pub mod task_struct;
 pub mod sched_cls;
 pub mod tracepoint;
 pub mod xdp;
+pub mod utils;
 
 mod barrier;
 mod base_helper;

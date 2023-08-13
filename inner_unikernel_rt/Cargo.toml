@@ -14,6 +14,7 @@ doctest = false
 [dependencies]
 paste = "1.0.14"
 rlibc = "1.0.0"
+struct_filter = { path = "../struct_filter" }
 
 [profile.dev]
 debug = 0
@@ -87,6 +88,4 @@ kheaders = [
   "net/xdp.h",
 ]
 
-kconfigs = [
-  "CONFIG_CC_IS_CLANG",
-]
+kconfigs = ["CONFIG_CC_IS_CLANG"]

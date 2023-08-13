@@ -2,9 +2,9 @@ use crate::stub;
 
 use crate::bindings::linux::kernel::{ethhdr, iphdr, tcphdr, udphdr, xdp_buff};
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
-// use crate::bindings::uapi::linux::r#in::{IPPROTO_TCP, IPPROTO_UDP};
 use crate::debug::printk;
 use crate::prog_type::iu_prog;
+use crate::utils::*;
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_char, c_uint, c_void};
 use core::{mem, slice};
@@ -13,6 +13,7 @@ use core::{mem, slice};
 pub use crate::bindings::uapi::linux::bpf::{
     BPF_PROG_TYPE_XDP, XDP_ABORTED, XDP_DROP, XDP_PASS, XDP_REDIRECT, XDP_TX,
 };
+pub use crate::bindings::uapi::linux::r#in::{IPPROTO_TCP, IPPROTO_UDP};
 
 // pub type pt_regs = super::binding::pt_regs;
 
@@ -115,21 +116,24 @@ impl<'a> xdp<'a> {
         }
     }
 
-    // TODO update based on xdp_md to convert to xdp_buff
-    pub fn bpf_xdp_adjust_head(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
-        let helper: extern "C" fn(*mut xdp_buff, i32) -> i32 =
-            unsafe { core::mem::transmute(stub::bpf_xdp_adjust_head_addr()) };
-        helper(xdp, offset)
-    }
-
     // User can get the customized struct like memcached from the data_slice
-    // TODO maybe we should add safe version for this function
-    pub fn convert_slice_to_struct<T>(&self, slice: &[c_char]) -> T {
+    // TODO: maybe we should add safe version for this function
+    // TODO: add a bound checking for this function, also check for the struct
+    // member make sure no pointer
+    pub fn convert_slice_to_struct<T>(&self, slice: &[c_char]) -> &T {
         let ptr = slice.as_ptr() as *const T;
-        unsafe { core::ptr::read_unaligned(ptr) }
+        unsafe { &*(&core::ptr::read_unaligned(ptr) as *const T) }
     }
 
-    pub fn udp_header(&self, ctx: &xdp_md) -> udphdr {
+    pub fn convert_slice_to_struct_mut<T>(
+        &self,
+        slice: &mut [c_char],
+    ) -> &mut T {
+        let ptr = slice.as_ptr() as *mut T;
+        unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
+    }
+
+    pub fn udp_header(&self, ctx: &xdp_md) -> &udphdr {
         // WARN this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
@@ -138,7 +142,7 @@ impl<'a> xdp<'a> {
         udp_header
     }
 
-    pub fn tcp_header(&self, ctx: &xdp_md) -> tcphdr {
+    pub fn tcp_header(&self, ctx: &xdp_md) -> &tcphdr {
         // WARN this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
@@ -152,7 +156,7 @@ impl<'a> xdp<'a> {
         tcp_header
     }
 
-    pub fn ip_header(&self, ctx: &xdp_md) -> iphdr {
+    pub fn ip_header(&self, ctx: &xdp_md) -> &iphdr {
         // WARN this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let part = &ctx.data_slice[begin..];
@@ -162,7 +166,8 @@ impl<'a> xdp<'a> {
     }
 
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> eth_header<'b> {
-        // TODO big endian may be different in different arch this is x86 version
+        // TODO big endian may be different in different arch this is x86
+        // version
         let combined: u16 =
             ((ctx.data_slice[13] as u16) << 8) | (ctx.data_slice[12] as u16);
 
@@ -177,6 +182,49 @@ impl<'a> xdp<'a> {
         eth_header
     }
 
+    pub fn bpf_change_udp_port(&self, ctx: &xdp_md, port_num: u16) {
+        let kptr = unsafe { *(ctx.kptr) };
+
+        // may not work since directly truncate the pointer
+        let data = kptr.data as usize;
+        let data_end = kptr.data_end as usize;
+        let data_meta = kptr.data_meta as usize;
+        let data_length = data_end - data;
+
+        // TODO should we use slice::from_raw_parts or slice::copy_from_slice?
+        let data_slice = unsafe {
+            slice::from_raw_parts_mut(kptr.data as *mut c_char, data_length)
+        };
+
+        let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
+        let part = &mut data_slice[begin..];
+        let mut udp_header = self.convert_slice_to_struct_mut::<udphdr>(part);
+
+        unsafe {
+            printk(
+                "udp_dest change before %d\n\0",
+                u16::from_be(udp_header.dest) as u32,
+            );
+        }
+        udp_header.dest = port_num.to_be();
+
+        let mut udp_header_2 = self.convert_slice_to_struct_mut::<udphdr>(part);
+        unsafe {
+            printk(
+                "udp_dest change to %d\n\0",
+                u16::from_be(udp_header_2.dest) as u32,
+            );
+        }
+    }
+
+    // TODO: update based on xdp_md to convert to xdp_buff
+    pub fn bpf_xdp_adjust_head(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
+        let helper: extern "C" fn(*mut xdp_buff, i32) -> i32 =
+            unsafe { core::mem::transmute(stub::bpf_xdp_adjust_head_addr()) };
+        helper(xdp, offset)
+    }
+
+    // TODO: update based on xdp_md to convert to xdp_buff
     pub fn bpf_xdp_adjust_tail(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
         let helper: extern "C" fn(*mut xdp_buff, i32) -> i32 =
             unsafe { core::mem::transmute(stub::bpf_xdp_adjust_tail_addr()) };

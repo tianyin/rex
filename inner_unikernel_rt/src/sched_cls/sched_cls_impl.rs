@@ -8,8 +8,8 @@ use crate::prog_type::iu_prog;
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_char, c_uint, c_void};
 use core::{mem, slice};
+use crate::utils::*;
 
-pub struct u16be(u16);
 
 pub struct __sk_buff<'a> {
     // TODO: may need to append more based on __sk_buff
@@ -100,7 +100,7 @@ impl<'a> sched_cls<'a> {
         }
 
         // bindgen for C union is kind of wired, so we have to do this
-        // let sk: sock = unsafe { &kptr.sk_buff__bindgen_ty_2.sk };
+        let sk: &sock = unsafe { &*kptr.__bindgen_anon_2.sk };
 
         // TODO: UNION required unsafe, and need to update binding.rs
         let napi_id = 0;
