@@ -27,5 +27,3 @@ jobs:
         context: ./docker/docker-linux-builder
         push: true
         tags: ghcr.io/${{ github.repository }}/runtime:latest
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
