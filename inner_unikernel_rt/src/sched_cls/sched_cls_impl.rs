@@ -1,15 +1,16 @@
 use crate::debug::printk;
 use crate::stub;
 
-use crate::bindings::linux::kernel::{ethhdr, iphdr, sk_buff, tcphdr, udphdr, sock};
+use crate::bindings::linux::kernel::{
+    ethhdr, iphdr, sk_buff, sock, tcphdr, udphdr,
+};
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
 pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
 use crate::prog_type::iu_prog;
+use crate::utils::*;
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_char, c_uint, c_void};
 use core::{mem, slice};
-use crate::utils::*;
-
 
 pub struct __sk_buff<'a> {
     // TODO: may need to append more based on __sk_buff
@@ -44,7 +45,6 @@ pub struct __sk_buff<'a> {
     pub napi_id: u32,
 
     // sk: &'a &sock,
-
     pub data_meta: u32,
     pub data_slice: &'a [c_char],
     kptr: *const sk_buff,

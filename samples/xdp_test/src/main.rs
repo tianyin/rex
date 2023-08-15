@@ -7,13 +7,14 @@ use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::linux::bpf::{BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH};
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::sched_cls::*;
-use inner_unikernel_rt::xdp::*;
-use inner_unikernel_rt::MAP_DEF;
 use inner_unikernel_rt::utils::u16be;
-
+use inner_unikernel_rt::xdp::*;
+use inner_unikernel_rt::FieldChecker;
+use inner_unikernel_rt::MAP_DEF;
 MAP_DEF!(map_hash, __map_1, u32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
 MAP_DEF!(map_array, __map_2, u32, u64, BPF_MAP_TYPE_ARRAY, 256, 0);
 
+#[derive(FieldChecker)]
 #[repr(C, packed)]
 pub struct MemcachedUdpHeader<'a> {
     request_id: u16,
@@ -21,6 +22,7 @@ pub struct MemcachedUdpHeader<'a> {
     num_dgram: u16,
     unused: u16,
     data: &'a [u8],
+    data_meta: [u8; 12],
 }
 
 fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {

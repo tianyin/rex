@@ -30,6 +30,7 @@ mod stub;
 extern crate paste;
 extern crate rlibc;
 
+pub use struct_filter::*;
 use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;
 
