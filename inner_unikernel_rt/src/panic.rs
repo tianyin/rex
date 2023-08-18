@@ -126,8 +126,8 @@ fn panic(info: &PanicInfo) -> ! {
     }
 
     unsafe {
-        let panic_fn: unsafe extern "C" fn(*const u8) -> ! =
-            core::mem::transmute(stub::panic_addr());
-        panic_fn(msg.as_ptr())
+        let landingpad: unsafe extern "C" fn(*const u8) -> ! =
+            core::mem::transmute(stub::iu_landingpad_addr());
+        landingpad(msg.as_ptr())
     }
 }

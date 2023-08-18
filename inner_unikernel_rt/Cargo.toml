@@ -60,6 +60,7 @@ ksyms = [
   'bpf_snprintf',
   'bpf_xdp_adjust_head',
   'bpf_xdp_adjust_tail',
+  'iu_landingpad',
 ]
 
 uheaders = [
