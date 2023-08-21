@@ -35,9 +35,9 @@ pub struct xdp_md<'a> {
 const ETH_ALEN: usize = 6;
 
 #[derive(Debug)]
-pub struct eth_header<'a> {
-    h_dest: &'a [c_uchar; 6],
-    h_source: &'a [c_uchar; 6],
+pub struct eth_header {
+    h_dest:  [c_uchar; ETH_ALEN],
+    h_source:  [c_uchar; ETH_ALEN],
     h_proto: u16,
 }
 
@@ -165,34 +165,15 @@ impl<'a> xdp<'a> {
         ip_header
     }
 
-    pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> eth_header<'b> {
+    pub fn eth_header(&self, ctx: &xdp_md) -> &eth_header {
         // TODO big endian may be different in different arch this is x86
         // version
-        let combined: u16 =
-            ((ctx.data_slice[13] as u16) << 8) | (ctx.data_slice[12] as u16);
 
-        let h_dest = <[u8; 6] as FromCharBufSafe>::from_char_buf_safe(
-            &ctx.data_slice[0..6],
-        );
-        let h_source = <[u8; 6] as FromCharBufSafe>::from_char_buf_safe(
-            &ctx.data_slice[6..12],
-        );
-        let h_proto = u16::from_be(
-            *<u16 as FromCharBufSafe>::from_char_buf_safe(
-                &ctx.data_slice[12..14],
-            )
-            .unwrap(),
-        );
+        direct_packet_access_ok::<[u8; 6]>();
+        direct_packet_access_ok::<[u8; 6]>();
+        direct_packet_access_ok::<u16>();
 
-        let eth_header = eth_header {
-            h_dest: h_dest.unwrap(),
-            h_source: h_source.unwrap(),
-            h_proto,
-        };
-        unsafe {
-            printk("eth_protocol 0x%x\n\0", eth_header.h_proto as u32);
-        }
-        eth_header
+        self.convert_slice_to_struct(ctx.data_slice)
     }
 
     pub fn bpf_change_udp_port(&self, ctx: &xdp_md, port_num: u16) {

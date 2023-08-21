@@ -62,3 +62,4 @@ define_prog_entry!(xdp);
 define_prog_entry!(sched_cls);
 
 pub use bindings::uapi::*;
+pub use utils::direct_packet_access_ok;

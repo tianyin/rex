@@ -10,46 +10,41 @@ impl From<u16be> for u16 {
     }
 }
 
-pub trait FromCharBufSafe {
-    fn from_char_buf_safe(buf: &[u8]) -> Option<&Self>;
+mod private {
+    pub trait DirectPacketAccessOkBase {}
 }
 
-macro_rules! from_char_buf_safe_impl {
+
+pub trait DirectPacketAccessOk: private::DirectPacketAccessOkBase {
+    fn access_ok();
+}
+
+macro_rules! direct_packet_access_ok_impl {
     ($dest_ty:ident $($dest_tys:ident)*) => {
-        impl FromCharBufSafe for $dest_ty {
-            fn from_char_buf_safe(buf: &[u8]) -> Option<&$dest_ty> {
-                if (buf.len() != core::mem::size_of::<$dest_ty>()) {
-                    None
-                } else {
-                    unsafe { Some(core::mem::transmute(buf.as_ptr())) }
-                }
-            }
+        impl private::DirectPacketAccessOkBase for $dest_ty {}
+        impl DirectPacketAccessOk for $dest_ty {
+            fn access_ok() {}
         }
-        from_char_buf_safe_impl!($($dest_tys)*);
+        direct_packet_access_ok_impl!($($dest_tys)*);
     };
     () => {};
 }
 
-from_char_buf_safe_impl!(u64 i64 u32 i32 u16 i16 u8 i8);
+direct_packet_access_ok_impl!(u64 i64 u32 i32 u16 i16 u8 i8);
 
-macro_rules! from_char_buf_safe_impl_arr {
+macro_rules! direct_packet_access_ok_impl_arr {
     ($dest_ty:ident $($dest_tys:ident)*) => {
-        impl<const N: usize> FromCharBufSafe for [$dest_ty; N] {
-            fn from_char_buf_safe(buf: &[u8]) -> Option<&[$dest_ty; N]> {
-                if (buf.len() != core::mem::size_of::<$dest_ty>() * N) {
-                    None
-                } else {
-                    unsafe { Some(&*buf.as_ptr().cast::<[$dest_ty; N]>()) }
-                }
-            }
+        impl<const N: usize> private::DirectPacketAccessOkBase for [$dest_ty; N] {}
+        impl<const N: usize> DirectPacketAccessOk for [$dest_ty; N] {
+            fn access_ok() {}
         }
-        from_char_buf_safe_impl_arr!($($dest_tys)*);
+        direct_packet_access_ok_impl_arr!($($dest_tys)*);
     };
     () => {};
 }
 
-from_char_buf_safe_impl_arr!(u64 i64 u32 i32 u16 i16 u8 i8);
+direct_packet_access_ok_impl_arr!(u64 i64 u32 i32 u16 i16 u8 i8);
 
-pub trait FromCharBufSafeMut {
-    fn from_char_buf_safe_mut(buf: &[u8]) -> Option<&mut Self>;
+pub fn direct_packet_access_ok<T: DirectPacketAccessOk>() {
+    <T as DirectPacketAccessOk>::access_ok()
 }
