@@ -32,15 +32,6 @@ pub struct xdp_md<'a> {
     kptr: *const xdp_buff,
 }
 
-const ETH_ALEN: usize = 6;
-
-#[derive(Debug)]
-pub struct eth_header {
-    h_dest:  [c_uchar; ETH_ALEN],
-    h_source:  [c_uchar; ETH_ALEN],
-    h_proto: u16,
-}
-
 // First 3 fields should always be rtti, prog_fn, and name
 //
 // rtti should be u64, therefore after compiling the
@@ -165,7 +156,7 @@ impl<'a> xdp<'a> {
         ip_header
     }
 
-    pub fn eth_header(&self, ctx: &xdp_md) -> &eth_header {
+    pub fn eth_header(&self, ctx: &xdp_md) -> &ethhdr {
         // TODO big endian may be different in different arch this is x86
         // version
 
