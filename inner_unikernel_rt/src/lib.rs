@@ -13,8 +13,8 @@ pub mod task_struct;
 // pub mod timekeeping;
 pub mod sched_cls;
 pub mod tracepoint;
-pub mod xdp;
 pub mod utils;
+pub mod xdp;
 
 mod barrier;
 mod base_helper;
@@ -30,9 +30,9 @@ mod stub;
 extern crate paste;
 extern crate rlibc;
 
-pub use struct_filter::*;
 use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;
+pub use struct_filter::*;
 
 use paste::paste;
 
