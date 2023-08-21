@@ -37,9 +37,6 @@ fn field_type_check(ty: Type) -> Result<(), TokenStream> {
     } else if let Type::Reference(type_ref) = ty {
         // convert &'a T to T
         return field_type_check(*type_ref.elem);
-    } else if let Type::Slice(type_slice) = ty {
-        // convert [T] to T
-        return field_type_check(*type_slice.elem);
     } else {
         // TODO: add more detailed type hints
         return Err(
@@ -56,11 +53,17 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
     let original_input = input.clone();
     let ast: DeriveInput = parse_macro_input!(input as DeriveInput);
     let struct_name = ast.ident;
-    let mut struct_fields = vec![];
+    let mut fields_token = vec![];
 
     if let Data::Struct(s) = ast.data {
         for field in s.fields {
-            struct_fields.push(field);
+            let field_type = &field.ty;
+            let field_ident = field.ident.as_ref().unwrap();
+
+            let token = quote!( direct_packet_access_ok::<#field_type>(); );
+            println!("Field Name: {:?}", field_ident);
+            println!("token is {}", token.to_string());
+            fields_token.push(token);
         }
     }
 
@@ -81,17 +84,16 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
     //     },
     //     _ => (),
     // }
-    TokenStream::new()
+    // TokenStream::new()
     // You can still derive other traits, or just generate an empty implementation
-    // let struct_name = ast.ident;
-    // let gen = quote! {
-    //     impl #struct_name {
-    //         fn new(data: &[u8]) -> Self {
-    //         #struct_name {
-    //                 a
-    //             }
-    //         }
-    //     }
-    // };
-    // gen.into()
+    let gen = quote! {
+        impl #struct_name {
+            fn new(data: &[u8]) -> #struct_name{
+             #(#fields_token)*
+             convert_slice_to_struct::<#struct_name>(data)
+            }
+        }
+    };
+    println!("generated code is:\n {}", gen.to_string());
+    gen.into()
 }

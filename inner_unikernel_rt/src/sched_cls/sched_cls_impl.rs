@@ -9,7 +9,7 @@ pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
 use crate::prog_type::iu_prog;
 use crate::utils::*;
 use crate::{bpf_printk, map::*};
-use core::ffi::{c_uchar, c_uint, c_void, c_char};
+use core::ffi::{c_char, c_uchar, c_uint, c_void};
 use core::{mem, slice};
 
 pub struct __sk_buff<'a> {

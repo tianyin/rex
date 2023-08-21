@@ -111,33 +111,30 @@ impl<'a> xdp<'a> {
     // TODO: maybe we should add safe version for this function
     // TODO: add a bound checking for this function, also check for the struct
     // member make sure no pointer
-    pub fn convert_slice_to_struct<T>(&self, slice: &[c_uchar]) -> &T {
+    pub fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
         let ptr = slice.as_ptr() as *const T;
         unsafe { &*(&core::ptr::read_unaligned(ptr) as *const T) }
     }
 
-    pub fn convert_slice_to_struct_mut<T>(
-        &self,
-        slice: &mut [c_uchar],
-    ) -> &mut T {
+    pub fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
         let ptr = slice.as_ptr() as *mut T;
         unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
     }
 
-    pub fn udp_header(&self, ctx: &xdp_md) -> &udphdr {
+    pub fn udp_header(&'a self, ctx: &'a xdp_md) -> &udphdr {
         // WARN this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
-        let udp_header = self.convert_slice_to_struct::<udphdr>(part);
+        let udp_header = Self::convert_slice_to_struct::<udphdr>(part);
 
         udp_header
     }
 
-    pub fn tcp_header(&self, ctx: &xdp_md) -> &tcphdr {
+    pub fn tcp_header(&'a self, ctx: &'a xdp_md) -> &tcphdr {
         // WARN this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
-        let tcp_header = self.convert_slice_to_struct::<tcphdr>(part);
+        let tcp_header = Self::convert_slice_to_struct::<tcphdr>(part);
 
         unsafe {
             printk("tcp_dest %d\n\0", u16::from_be(tcp_header.dest) as u32);
@@ -147,16 +144,16 @@ impl<'a> xdp<'a> {
         tcp_header
     }
 
-    pub fn ip_header(&self, ctx: &xdp_md) -> &iphdr {
+    pub fn ip_header(&'a self, ctx: &'a xdp_md) -> &iphdr {
         // WARN this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let part = &ctx.data_slice[begin..];
-        let ip_header = self.convert_slice_to_struct::<iphdr>(part);
+        let ip_header = Self::convert_slice_to_struct::<iphdr>(part);
 
         ip_header
     }
 
-    pub fn eth_header(&self, ctx: &xdp_md) -> &ethhdr {
+    pub fn eth_header(&'a self, ctx: &'a xdp_md) -> &ethhdr {
         // TODO big endian may be different in different arch this is x86
         // version
 
@@ -164,7 +161,7 @@ impl<'a> xdp<'a> {
         direct_packet_access_ok::<[u8; 6]>();
         direct_packet_access_ok::<u16>();
 
-        self.convert_slice_to_struct(ctx.data_slice)
+        Self::convert_slice_to_struct(ctx.data_slice)
     }
 
     pub fn bpf_change_udp_port(&self, ctx: &xdp_md, port_num: u16) {
@@ -183,7 +180,7 @@ impl<'a> xdp<'a> {
 
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &mut data_slice[begin..];
-        let mut udp_header = self.convert_slice_to_struct_mut::<udphdr>(part);
+        let mut udp_header = Self::convert_slice_to_struct_mut::<udphdr>(part);
 
         unsafe {
             printk(
@@ -193,7 +190,8 @@ impl<'a> xdp<'a> {
         }
         udp_header.dest = port_num.to_be();
 
-        let mut udp_header_2 = self.convert_slice_to_struct_mut::<udphdr>(part);
+        let mut udp_header_2 =
+            Self::convert_slice_to_struct_mut::<udphdr>(part);
         unsafe {
             printk(
                 "udp_dest change to %d\n\0",

@@ -16,13 +16,11 @@ MAP_DEF!(map_array, __map_2, u32, u64, BPF_MAP_TYPE_ARRAY, 256, 0);
 
 #[derive(FieldChecker)]
 #[repr(C, packed)]
-pub struct MemcachedUdpHeader<'a> {
+pub struct MemcachedUdpHeader {
     request_id: u16,
     seq_num: u16,
     num_dgram: u16,
     unused: u16,
-    data: &'a [u8],
-    data_meta: [u8; 12],
 }
 
 fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {

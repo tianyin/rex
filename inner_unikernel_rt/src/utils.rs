@@ -14,7 +14,6 @@ mod private {
     pub trait DirectPacketAccessOkBase {}
 }
 
-
 pub trait DirectPacketAccessOk: private::DirectPacketAccessOkBase {}
 
 macro_rules! direct_packet_access_ok_impl {
@@ -41,3 +40,4 @@ direct_packet_access_ok_impl_arr!(u64 i64 u32 i32 u16 i16 u8 i8);
 
 #[inline(always)]
 pub fn direct_packet_access_ok<T: DirectPacketAccessOk>() {}
+
