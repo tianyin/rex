@@ -32,12 +32,24 @@ macro_rules! from_char_buf_safe_impl {
 
 from_char_buf_safe_impl!(u64 i64 u32 i32 u16 i16 u8 i8);
 
-impl<const N: usize> FromCharBufSafe for [u16; N] {
-    fn from_char_buf_safe(buf: &[u8]) -> Option<&[u16; N]> {
-        if (buf.len() != core::mem::size_of::<u16>() * N) {
-            None
-        } else {
-            unsafe { Some(&*buf.as_ptr().cast::<[u16; N]>()) }
+macro_rules! from_char_buf_safe_impl_arr {
+    ($dest_ty:ident $($dest_tys:ident)*) => {
+        impl<const N: usize> FromCharBufSafe for [$dest_ty; N] {
+            fn from_char_buf_safe(buf: &[u8]) -> Option<&[$dest_ty; N]> {
+                if (buf.len() != core::mem::size_of::<$dest_ty>() * N) {
+                    None
+                } else {
+                    unsafe { Some(&*buf.as_ptr().cast::<[$dest_ty; N]>()) }
+                }
+            }
         }
-    }
+        from_char_buf_safe_impl_arr!($($dest_tys)*);
+    };
+    () => {};
+}
+
+from_char_buf_safe_impl_arr!(u64 i64 u32 i32 u16 i16 u8 i8);
+
+pub trait FromCharBufSafeMut {
+    fn from_char_buf_safe_mut(buf: &[u8]) -> Option<&mut Self>;
 }
