@@ -7,7 +7,7 @@ use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::linux::bpf::{BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH};
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::sched_cls::*;
-use inner_unikernel_rt::utils::u16be;
+use inner_unikernel_rt::utils::*;
 use inner_unikernel_rt::xdp::*;
 use inner_unikernel_rt::FieldChecker;
 use inner_unikernel_rt::MAP_DEF;

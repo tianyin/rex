@@ -6,7 +6,7 @@ use crate::debug::printk;
 use crate::prog_type::iu_prog;
 use crate::utils::*;
 use crate::{bpf_printk, map::*};
-use core::ffi::{c_char, c_uint, c_void};
+use core::ffi::{c_uchar, c_uint, c_void};
 use core::{mem, slice};
 
 // expose the following constants to the user
@@ -23,7 +23,7 @@ pub struct xdp_md<'a> {
     // pub regs: bpf_user_pt_regs_t,
     data: usize,
     data_end: usize,
-    pub data_slice: &'a [c_char],
+    pub data_slice: &'a [c_uchar],
     pub data_length: usize,
     pub data_meta: usize,
     pub ingress_ifindex: u32,
@@ -36,8 +36,8 @@ const ETH_ALEN: usize = 6;
 
 #[derive(Debug)]
 pub struct eth_header<'a> {
-    h_dest: &'a [c_char],
-    h_source: &'a [c_char],
+    h_dest: &'a [c_uchar; 6],
+    h_source: &'a [c_uchar; 6],
     h_proto: u16,
 }
 
@@ -91,7 +91,7 @@ impl<'a> xdp<'a> {
 
         // TODO should we use slice::from_raw_parts or slice::copy_from_slice?
         let data_slice = unsafe {
-            slice::from_raw_parts(kptr.data as *const c_char, data_length)
+            slice::from_raw_parts(kptr.data as *const c_uchar, data_length)
         };
 
         let ingress_ifindex = kptr.rxq as u32;
@@ -120,14 +120,14 @@ impl<'a> xdp<'a> {
     // TODO: maybe we should add safe version for this function
     // TODO: add a bound checking for this function, also check for the struct
     // member make sure no pointer
-    pub fn convert_slice_to_struct<T>(&self, slice: &[c_char]) -> &T {
+    pub fn convert_slice_to_struct<T>(&self, slice: &[c_uchar]) -> &T {
         let ptr = slice.as_ptr() as *const T;
         unsafe { &*(&core::ptr::read_unaligned(ptr) as *const T) }
     }
 
     pub fn convert_slice_to_struct_mut<T>(
         &self,
-        slice: &mut [c_char],
+        slice: &mut [c_uchar],
     ) -> &mut T {
         let ptr = slice.as_ptr() as *mut T;
         unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
@@ -171,13 +171,26 @@ impl<'a> xdp<'a> {
         let combined: u16 =
             ((ctx.data_slice[13] as u16) << 8) | (ctx.data_slice[12] as u16);
 
+        let h_dest = <[u8; 6] as FromCharBufSafe>::from_char_buf_safe(
+            &ctx.data_slice[0..6],
+        );
+        let h_source = <[u8; 6] as FromCharBufSafe>::from_char_buf_safe(
+            &ctx.data_slice[6..12],
+        );
+        let h_proto = u16::from_be(
+            *<u16 as FromCharBufSafe>::from_char_buf_safe(
+                &ctx.data_slice[12..14],
+            )
+            .unwrap(),
+        );
+
         let eth_header = eth_header {
-            h_dest: &ctx.data_slice[0..6],
-            h_source: &ctx.data_slice[6..12],
-            h_proto: combined,
+            h_dest: h_dest.unwrap(),
+            h_source: h_source.unwrap(),
+            h_proto,
         };
         unsafe {
-            printk("eth_protocol %d\n\0", eth_header.h_proto as u32);
+            printk("eth_protocol 0x%x\n\0", eth_header.h_proto as u32);
         }
         eth_header
     }
@@ -193,7 +206,7 @@ impl<'a> xdp<'a> {
 
         // TODO should we use slice::from_raw_parts or slice::copy_from_slice?
         let data_slice = unsafe {
-            slice::from_raw_parts_mut(kptr.data as *mut c_char, data_length)
+            slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };
 
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();

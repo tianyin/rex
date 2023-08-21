@@ -9,7 +9,7 @@ pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
 use crate::prog_type::iu_prog;
 use crate::utils::*;
 use crate::{bpf_printk, map::*};
-use core::ffi::{c_char, c_uint, c_void};
+use core::ffi::{c_uchar, c_uint, c_void, c_char};
 use core::{mem, slice};
 
 pub struct __sk_buff<'a> {
@@ -46,7 +46,7 @@ pub struct __sk_buff<'a> {
 
     // sk: &'a &sock,
     pub data_meta: u32,
-    pub data_slice: &'a [c_char],
+    pub data_slice: &'a [c_uchar],
     kptr: *const sk_buff,
 }
 
@@ -93,7 +93,7 @@ impl<'a> sched_cls<'a> {
         let data = kptr.data as usize;
         let data_length = kptr.data_len as usize;
         let data_slice = unsafe {
-            slice::from_raw_parts(kptr.data as *const c_char, data_length)
+            slice::from_raw_parts(kptr.data as *const c_uchar, data_length)
         };
         unsafe {
             printk("data_len %d\n\0", data_length);
