@@ -50,9 +50,25 @@ fn field_type_check(ty: Type) -> Result<(), TokenStream> {
 
 #[proc_macro_derive(FieldChecker)]
 pub fn ensure_numberic(input: TokenStream) -> TokenStream {
-    let original_input = input.clone();
+    let input_copy = input.clone();
     let ast: DeriveInput = parse_macro_input!(input as DeriveInput);
     let struct_name = ast.ident;
+
+    match ast.data {
+        Data::Struct(s) => match s.fields {
+            Fields::Named(fields) => {
+                for field in fields.named {
+                    if let Err(err) = field_type_check(field.ty) {
+                        return err;
+                    }
+                }
+            }
+            _ => (),
+        },
+        _ => (),
+    }
+
+    let ast: DeriveInput = parse_macro_input!(input_copy as DeriveInput);
     let mut fields_token = vec![];
 
     if let Data::Struct(s) = ast.data {
@@ -61,30 +77,10 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
             let field_ident = field.ident.as_ref().unwrap();
 
             let token = quote!( direct_packet_access_ok::<#field_type>(); );
-            println!("Field Name: {:?}", field_ident);
-            println!("token is {}", token.to_string());
             fields_token.push(token);
         }
     }
 
-    // match ast.data {
-    //     Data::Struct(s) => match s.fields {
-    //         Fields::Named(fields) => {
-    //             for field in fields.named {
-    //                 let field_type = &field.ty;
-    //                 // let tokens = quote! { #field_type };
-    //                 struct_fields.push((field.ident, field_type.clone()));
-
-    //                 if let Err(err) = field_type_check(field.ty) {
-    //                     return err;
-    //                 }
-    //             }
-    //         }
-    //         _ => (),
-    //     },
-    //     _ => (),
-    // }
-    // TokenStream::new()
     // You can still derive other traits, or just generate an empty implementation
     let gen = quote! {
         impl #struct_name {
