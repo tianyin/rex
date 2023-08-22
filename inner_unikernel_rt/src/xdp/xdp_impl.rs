@@ -1,6 +1,8 @@
 use crate::stub;
 
-use crate::bindings::linux::kernel::{ethhdr, iphdr, tcphdr, udphdr, xdp_buff};
+pub use crate::bindings::linux::kernel::{
+    ethhdr, iphdr, tcphdr, udphdr, xdp_buff,
+};
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
 use crate::debug::printk;
 use crate::prog_type::iu_prog;
@@ -33,14 +35,14 @@ pub struct xdp_md<'a> {
 }
 
 // User can get the customized struct like memcached from the data_slice
-// TODO: maybe we should add safe version for this function
-// TODO: add a bound checking for this function, also check for the struct
-// member make sure no pointer
+// TODO: add a bound checking for this function, add size check
 pub fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
     let ptr = slice.as_ptr() as *const T;
-    unsafe { &*(&core::ptr::read_unaligned(ptr) as *const T) }
+    // unsafe { &*(&core::ptr::read_unaligned(ptr) as *const T) }
+    unsafe { &*(slice.as_ptr() as *const T) }
 }
 
+// FIX: change this method to unsafe
 pub fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
     let ptr = slice.as_ptr() as *mut T;
     unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
@@ -122,42 +124,34 @@ impl<'a> xdp<'a> {
     }
 
     pub fn udp_header<'b>(&self, ctx: &'b xdp_md) -> &'b udphdr {
-        // WARN this assumes packet has ethhdr and iphdr
+        // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
         convert_slice_to_struct::<udphdr>(part)
     }
 
     pub fn tcp_header(&'a self, ctx: &'a xdp_md) -> &tcphdr {
-        // WARN this assumes packet has ethhdr and iphdr
+        // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
         let tcp_header = convert_slice_to_struct::<tcphdr>(part);
-
-        unsafe {
-            printk("tcp_dest %d\n\0", u16::from_be(tcp_header.dest) as u32);
-            printk("tcp_src %d\n\0", u16::from_be(tcp_header.source) as u32);
-        }
 
         tcp_header
     }
 
     pub fn ip_header<'b>(&self, ctx: &'b xdp_md) -> &'b iphdr {
-        // WARN this assumes packet has ethhdr
+        // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let part = &ctx.data_slice[begin..];
         convert_slice_to_struct::<iphdr>(part)
     }
 
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b ethhdr {
-        // TODO big endian may be different in different arch this is x86
-        // version
-
         direct_packet_access_ok::<[u8; 6]>();
         direct_packet_access_ok::<[u8; 6]>();
         direct_packet_access_ok::<u16>();
 
-        convert_slice_to_struct::<ethhdr>(ctx.data_slice)
+        convert_slice_to_struct::<ethhdr>(&ctx.data_slice[0..14])
     }
 
     pub fn bpf_change_udp_port(&self, ctx: &xdp_md, port_num: u16) {
@@ -195,14 +189,14 @@ impl<'a> xdp<'a> {
         }
     }
 
-    // TODO: update based on xdp_md to convert to xdp_buff
+    // FIX: update based on xdp_md to convert to xdp_buff
     pub fn bpf_xdp_adjust_head(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
         let helper: extern "C" fn(*mut xdp_buff, i32) -> i32 =
             unsafe { core::mem::transmute(stub::bpf_xdp_adjust_head_addr()) };
         helper(xdp, offset)
     }
 
-    // TODO: update based on xdp_md to convert to xdp_buff
+    // FIX: update based on xdp_md to convert to xdp_buff
     pub fn bpf_xdp_adjust_tail(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
         let helper: extern "C" fn(*mut xdp_buff, i32) -> i32 =
             unsafe { core::mem::transmute(stub::bpf_xdp_adjust_tail_addr()) };

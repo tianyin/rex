@@ -23,8 +23,16 @@ pub struct MemcachedUdpHeader {
     unused: u16,
 }
 
+#[derive(FieldChecker)]
+#[repr(C, packed)]
+pub struct eth_header {
+    pub h_dest: [u8; 6usize],
+    pub h_source: [u8; 6usize],
+    pub h_proto: u16,
+}
+
 fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
-    let eth_header = obj.eth_header(ctx);
+    let eth_header = eth_header::new(&ctx.data_slice[0..14]);
     let ip_header = obj.ip_header(ctx);
 
     match u8::from_be(ip_header.protocol) as u32 {
@@ -45,6 +53,12 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
             //  );
         }
         IPPROTO_UDP => {
+            bpf_printk!(
+                obj,
+                "eth proto 0x%x\n",
+                u16::from_be(eth_header.h_proto) as u64
+            );
+
             bpf_printk!(obj, "udp packet.\n");
             let udp_header = obj.udp_header(ctx);
 
