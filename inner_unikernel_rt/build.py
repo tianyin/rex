@@ -154,9 +154,12 @@ def main(argv):
     linux_path = argv[1]
     out_dir = argv[2]
     target_path = os.getcwd()
+
     result = parse_cargo_toml(os.path.join(target_path, 'Cargo.toml'))
     ksyms, uheaders, kheaders, kconfigs = result
+
     gen_stubs(os.path.join(linux_path, 'vmlinux'), ksyms, out_dir)
+
     u_out_dir = os.path.join(out_dir, 'uapi')
     prep_headers(os.path.join(linux_path, 'usr/include'), uheaders, u_out_dir)
     prep_kernel_headers(kheaders, linux_path, out_dir)

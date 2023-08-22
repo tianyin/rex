@@ -1,5 +1,3 @@
-use core::ffi::c_uchar;
-
 #[repr(transparent)]
 pub struct u16be(pub(crate) u16);
 
