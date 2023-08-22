@@ -36,15 +36,24 @@ pub struct xdp_md<'a> {
 
 // User can get the customized struct like memcached from the data_slice
 // TODO: add a bound checking for this function, add size check
-pub fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
-    let ptr = slice.as_ptr() as *const T;
-    // unsafe { &*(&core::ptr::read_unaligned(ptr) as *const T) }
+pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
+    assert_eq!(
+        slice.len(),
+        mem::size_of::<T>(),
+        "size mismatch in convert_slice_to_struct"
+    );
+
     unsafe { &*(slice.as_ptr() as *const T) }
 }
 
 // FIX: change this method to unsafe
-pub fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
-    let ptr = slice.as_ptr() as *mut T;
+pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
+    assert_eq!(
+        slice.len(),
+        mem::size_of::<T>(),
+        "size mismatch in convert_slice_to_struct_mut"
+    );
+
     unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
 }
 
@@ -127,14 +136,14 @@ impl<'a> xdp<'a> {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
-        convert_slice_to_struct::<udphdr>(part)
+        unsafe { convert_slice_to_struct::<udphdr>(part) }
     }
 
     pub fn tcp_header(&'a self, ctx: &'a xdp_md) -> &tcphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &ctx.data_slice[begin..];
-        let tcp_header = convert_slice_to_struct::<tcphdr>(part);
+        let tcp_header = unsafe { convert_slice_to_struct::<tcphdr>(part) };
 
         tcp_header
     }
@@ -143,7 +152,7 @@ impl<'a> xdp<'a> {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let part = &ctx.data_slice[begin..];
-        convert_slice_to_struct::<iphdr>(part)
+        unsafe { convert_slice_to_struct::<iphdr>(part) }
     }
 
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b ethhdr {
@@ -151,7 +160,7 @@ impl<'a> xdp<'a> {
         direct_packet_access_ok::<[u8; 6]>();
         direct_packet_access_ok::<u16>();
 
-        convert_slice_to_struct::<ethhdr>(&ctx.data_slice[0..14])
+        unsafe { convert_slice_to_struct::<ethhdr>(&ctx.data_slice[0..14]) }
     }
 
     pub fn bpf_change_udp_port(&self, ctx: &xdp_md, port_num: u16) {
@@ -170,7 +179,8 @@ impl<'a> xdp<'a> {
 
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let part = &mut data_slice[begin..];
-        let mut udp_header = convert_slice_to_struct_mut::<udphdr>(part);
+        let mut udp_header =
+            unsafe { convert_slice_to_struct_mut::<udphdr>(part) };
 
         unsafe {
             printk(
@@ -180,7 +190,8 @@ impl<'a> xdp<'a> {
         }
         udp_header.dest = port_num.to_be();
 
-        let mut udp_header_2 = convert_slice_to_struct_mut::<udphdr>(part);
+        let mut udp_header_2 =
+            unsafe { convert_slice_to_struct_mut::<udphdr>(part) };
         unsafe {
             printk(
                 "udp_dest change to %d\n\0",
