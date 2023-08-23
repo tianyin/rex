@@ -25,7 +25,7 @@ pub struct xdp_md<'a> {
     // pub regs: bpf_user_pt_regs_t,
     data: usize,
     data_end: usize,
-    pub data_slice: &'a [c_uchar],
+    pub data_slice: &'a mut [c_uchar],
     pub data_length: usize,
     pub data_meta: usize,
     pub ingress_ifindex: u32,
@@ -46,7 +46,6 @@ pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
     unsafe { &*(slice.as_ptr() as *const T) }
 }
 
-// FIX: change this method to unsafe
 pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
     assert_eq!(
         slice.len(),
@@ -105,9 +104,8 @@ impl<'a> xdp<'a> {
         let data_meta = kptr.data_meta as usize;
         let data_length = data_end - data;
 
-        // TODO should we use slice::from_raw_parts or slice::copy_from_slice?
         let data_slice = unsafe {
-            slice::from_raw_parts(kptr.data as *const c_uchar, data_length)
+            slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };
 
         let ingress_ifindex = kptr.rxq as u32;
@@ -172,7 +170,6 @@ impl<'a> xdp<'a> {
         let data_meta = kptr.data_meta as usize;
         let data_length = data_end - data;
 
-        // TODO should we use slice::from_raw_parts or slice::copy_from_slice?
         let data_slice = unsafe {
             slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };

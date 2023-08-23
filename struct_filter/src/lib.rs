@@ -74,7 +74,8 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
     if let Data::Struct(s) = ast.data {
         for field in s.fields {
             let field_type = &field.ty;
-            let field_ident = field.ident.as_ref().unwrap();
+            // get field ident
+            let _ = field.ident.as_ref().unwrap();
 
             let token = quote!( direct_packet_access_ok::<#field_type>(); );
             fields_token.push(token);
@@ -86,7 +87,7 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
         impl #struct_name {
             fn new(data: &[u8]) -> &#struct_name{
              #(#fields_token)*
-             convert_slice_to_struct::<#struct_name>(data)
+             unsafe { convert_slice_to_struct::<#struct_name>(data) }
             }
         }
     };
