@@ -70,4 +70,5 @@ programs (i.e. these invoked via `trace_call_bpf`). Other program types
 
 For further information please refer to the actual commits:
 https://github.com/djwillia/linux/commit/348c9a1ef8a92172e9c9a1f724f363d4a9dbf749
-https://github.com/djwillia/linux/commit/11d3a5fd12872dd47da54a41483c567419a80fd3
+
+https://github.com/djwillia/linux/commit/348c9a1ef8a92172e9c9a1f724f363d4a9dbf749
