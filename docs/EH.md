@@ -44,7 +44,14 @@ resource cleanup in the runtime crate.
 
 ### Kernel stack unwinding
 
-This component consists the `iu_dispatcher_func` to dispatch
+We need to be able support graceful exception handling in kernel space, i.e.
+the extension program should be terminated without bringing down the kernel.
+The idea is to transfer the exceptional control flow back to the return address
+of the extension program and reset the stack and frame pointer to ensure the
+context remains valid. In this way, the program would act as if it just
+returned normally.
+
+The implementation consists the `iu_dispatcher_func` to dispatch
 inner-unikernel programs so that rust panics can be handled. The dispatcher
 have a prototype of:
 
@@ -106,14 +113,23 @@ then sets a return value of `-EINVAL` and jumps to `iu_exit` to return from
                                                   +-------------------------+
 ```
 
-This right now only works for program invocations where
-`bpf_dispatcher_nop_func` is used originally. It does cover all tracing
-programs (i.e. these invoked via `trace_call_bpf`). Other program types
-(e.g. XDP) are not supported.
+Note:
+1. This right now only works for program invocations where
+   `bpf_dispatcher_nop_func` is used originally. It does cover all tracing
+   programs (i.e. these invoked via `trace_call_bpf`). Other program types
+   (e.g. XDP) are not supported (but it should be easy).
+2. This stack unwinding probably does not work well with shadow stacks, since
+   it requires explicitly reset the stack and frame pointer (or, in other
+   words, all exception handling routines invoked during stack unwinding are
+   `noreturn`).
+3. Seems it does not work well with retpoline and a frame-pointer-enabled
+   kernel config, but as a PoC implementation this is probably okay.
 
 For further information please refer to the actual commits:
-- <https://github.com/djwillia/linux/commit/348c9a1ef8a92172e9c9a1f724f363d4a9dbf749>
-- <https://github.com/djwillia/linux/commit/11d3a5fd12872dd47da54a41483c567419a80fd3>
+- [348c9a1ef8a9 ("Add support for rust panic handling and stack unwinding
+  ")](https://github.com/djwillia/linux/commit/348c9a1ef8a92172e9c9a1f724f363d4a9dbf749)
+- [11d3a5fd1287 ("Link inner-unikernel invocation with new
+  dispatcher")](https://github.com/djwillia/linux/commit/11d3a5fd12872dd47da54a41483c567419a80fd3)
 
 ### Resource cleanup in Rust
 
@@ -156,7 +172,7 @@ of the kernel resource binding types in the runtime crate:
 Note:
 1. `valid` field is of type `u64`. This may not seem space effcient at a
    glance, but since both `cleanup_fn` and `cleanup_arg` are 64 bit large.
-   The alignment of the struct is 64 bit anyway.
+   The alignment of the struct is 64 bits anyway.
 2. According to
    [Rustonomicon](https://doc.rust-lang.org/nomicon/repr-rust.html) and
    [Rust doc](https://doc.rust-lang.org/std/option/#representation),
@@ -164,11 +180,13 @@ Note:
    `CleanupFn` as long as it is a `Some`. This is important because on the
    kernel side it can be treated as a `void (*)(void *)`.
 
-The created struct is then stored in a per-CPU array `iu_cleanup_entries`
-in the kernel. Since for non-sleepable BPF programs, no two programs can
-execute on the same CPU at the same time, there is no race condition
-possible ([this](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/kernel/trace/bpf_trace.c#n109) is an example, though it is questionable whether this assumption can be generalized to all program types).
-This also implies that a C binding for `CleanupEntry` is needed in the kernel:
+The created struct is then stored in a per-CPU array `iu_cleanup_entries` in
+the kernel. Since for non-sleepable BPF programs, no two programs can execute
+on the same CPU at the same time, there is no race condition possible
+([this](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/kernel/trace/bpf_trace.c#n109)
+is an example, though it is questionable whether this assumption can be
+generalized to all program types).  This also implies that a C binding for
+`CleanupEntry` is needed in the kernel:
 ```C
 struct iu_cleanup_entry {
     u64 valid;
@@ -177,20 +195,22 @@ struct iu_cleanup_entry {
 };
 ```
 Note:
-1. Using `void *` to store function pointer is not standard compliant,
-  though at ABI level it is always a 64-bit value and should work correctly.
-  We should change it to a real function pointer: `void (*)(void *)`.
-2. Currently, the array is statically allocated with a capacity
-  of 64. This **may not** be sustainable.
+1. Using `void *` to store function pointer is not standard compliant, though
+   at ABI level it is always a 64-bit value and should work correctly.  We
+   should change it to a real function pointer: `void (*)(void *)`.
+2. Currently, the array is statically allocated with a capacity of 64. This
+   **may not** be sustainable.
 
 During normal execution, the `drop` handlers are executed normally so the
 kernel resource will be released and the `CleanupEntry` will be invalidated.
 
-Upon a panic, the control flow will transfer to `rust_begin_unwind` (i.e.
-the Rust panic handler). `rust_begin_unwind` will traverse the array on current
-CPU and free any resources allocated by invoking `(cleanup_fn)(cleanup_arg)`.
-It then invalidate these entries.
+Upon a panic, the control flow will transfer to `rust_begin_unwind` (i.e.  the
+Rust panic handler). `rust_begin_unwind` will traverse the array on current CPU
+and free any resources allocated by invoking `(cleanup_fn)(cleanup_arg)`.  It
+then invalidate these entries.
 
 Code references:
-1. [Rust side `CleanupEntry` and panic handler implementation](https://github.com/djwillia/inner_unikernels/blob/main/inner_unikernel_rt/src/panic.rs)
-2. [Kernel side binding type and per-CPU array](https://github.com/djwillia/linux/blob/inner_unikernels/kernel/bpf/core.c#L2465)
+1. [Rust side `CleanupEntry` and panic handler
+   implementation](https://github.com/djwillia/inner_unikernels/blob/main/inner_unikernel_rt/src/panic.rs)
+2. [Kernel side binding type and per-CPU
+   array](https://github.com/djwillia/linux/blob/inner_unikernels/kernel/bpf/core.c#L2465)
