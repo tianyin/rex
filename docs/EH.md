@@ -1,9 +1,9 @@
 # Exception handling and runtime mechanism
 
 This document will cover the following:
-- Handling of Rust panics (language exceptions)
-  - Kernel dispatch and landingpad
-  - Rust panic handler and cleanup mechanism
+- [Handling of Rust panics (language exceptions)](#handling-of-rust-panics-in-kernel-space)
+  - [Kernel dispatch and landingpad](#kernel-stack-unwinding)
+  - [Rust panic handler and cleanup mechanism](#resource-cleanup-in-rust)
 - Handling of kernel events triggered by extension programs
   - Kernel stack overflow
   - Program termination
@@ -112,5 +112,85 @@ programs (i.e. these invoked via `trace_call_bpf`). Other program types
 (e.g. XDP) are not supported.
 
 For further information please refer to the actual commits:
-<https://github.com/djwillia/linux/commit/348c9a1ef8a92172e9c9a1f724f363d4a9dbf749>
-<https://github.com/djwillia/linux/commit/11d3a5fd12872dd47da54a41483c567419a80fd3>
+- <https://github.com/djwillia/linux/commit/348c9a1ef8a92172e9c9a1f724f363d4a9dbf749>
+- <https://github.com/djwillia/linux/commit/11d3a5fd12872dd47da54a41483c567419a80fd3>
+
+### Resource cleanup in Rust
+
+Not using the existing ABI-based exception handling / stack unwinding scheme
+means we need to handle resource cleanup in our own way. We make the observation
+that the only resources that requires cleanup are the resources obtained from
+kernel helper functions. This is because of the restricted programing interface
+exposed to these extension programs, which disallow direct kernel resource
+alloation (e.g. allocate memory, directly access a lock, etc).
+
+This brings us chance to create a light-weight resource clean up scheme. We
+can record allocated kernel resources and their destructors on-the-fly
+during program execution. When termination is needed, the destructors of
+allocated resources are invoked to release the resources. Since only the
+trusted kernel crate that interfaces with the kernel resources is
+responsible for implementing the aforementioned destructors, all the
+cleanup code is trusted and guaranteed not to fail.
+
+The PoC implemention uses `CleanupEntry` to represent an allocated resource:
+```Rust
+pub(crate) type CleanupFn = fn(*const ()) -> ();
+
+#[derive(Debug, Copy, Clone)]
+#[repr(C)]
+pub(crate) struct CleanupEntry {
+    pub(crate) valid: u64,
+    pub(crate) cleanup_fn: Option<CleanupFn>,
+    pub(crate) cleanup_arg: *const (),
+}
+```
+An instance of the struct is supposed to be instantiated in the constructor
+of the kernel resource binding types in the runtime crate:
+- `valid` should be set to 1
+- `cleanup_fn` should point to a function provided in `impl` of the binding
+  type, which takes in a pointer to the object and runs `drop` on it. The
+  `drop` handler is also responsible for setting `valid` to 0.
+- `cleanup_arg` should point to the newly created object. It is used as the
+  argument to `cleanup_fn`.
+
+Note:
+1. `valid` field is of type `u64`. This may not seem space effcient at a
+   glance, but since both `cleanup_fn` and `cleanup_arg` are 64 bit large.
+   The alignment of the struct is 64 bit anyway.
+2. According to
+   [Rustonomicon](https://doc.rust-lang.org/nomicon/repr-rust.html) and
+   [Rust doc](https://doc.rust-lang.org/std/option/#representation),
+   `Option<CleanupFn>` has the same size and bit-level representation as
+   `CleanupFn` as long as it is a `Some`. This is important because on the
+   kernel side it can be treated as a `void (*)(void *)`.
+
+The created struct is then stored in a per-CPU array `iu_cleanup_entries`
+in the kernel. Since for non-sleepable BPF programs, no two programs can
+execute on the same CPU at the same time, there is no race condition
+possible ([this](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/kernel/trace/bpf_trace.c#n109) is an example, though it is questionable whether this assumption can be generalized to all program types).
+This also implies that a C binding for `CleanupEntry` is needed in the kernel:
+```C
+struct iu_cleanup_entry {
+    u64 valid;
+    void *cleanup_fn;
+    void *cleanup_arg;
+};
+```
+Note:
+1. Using `void *` to store function pointer is not standard compliant,
+  though at ABI level it is always a 64-bit value and should work correctly.
+  We should change it to a real function pointer: `void (*)(void *)`.
+2. Currently, the array is statically allocated with a capacity
+  of 64. This **may not** be sustainable.
+
+During normal execution, the `drop` handlers are executed normally so the
+kernel resource will be released and the `CleanupEntry` will be invalidated.
+
+Upon a panic, the control flow will transfer to `rust_begin_unwind` (i.e.
+the Rust panic handler). `rust_begin_unwind` will traverse the array on current
+CPU and free any resources allocated by invoking `(cleanup_fn)(cleanup_arg)`.
+It then invalidate these entries.
+
+Code references:
+1. [Rust side `CleanupEntry` and panic handler implementation](https://github.com/djwillia/inner_unikernels/blob/main/inner_unikernel_rt/src/panic.rs)
+2. [Kernel side binding type and per-CPU array](https://github.com/djwillia/linux/blob/inner_unikernels/kernel/bpf/core.c#L2465)
