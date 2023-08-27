@@ -4,8 +4,8 @@ This document will cover the following:
 - [Handling of Rust panics (language exceptions)](#handling-of-rust-panics-in-kernel-space)
   - [Kernel dispatch and landingpad](#kernel-stack-unwinding)
   - [Rust panic handler and cleanup mechanism](#resource-cleanup-in-rust)
-- Handling of kernel events triggered by extension programs
-  - Kernel stack overflow
+- [Runtime protection mechanism](#runtime-protection-mechanism)
+  - [Kernel stack overflow](#kernel-stack-overflow)
   - Program termination
 
 ## Handling of Rust panics in kernel space
@@ -214,3 +214,39 @@ Code references:
    implementation](https://github.com/djwillia/inner_unikernels/blob/main/inner_unikernel_rt/src/panic.rs)
 2. [Kernel side binding type and per-CPU
    array](https://github.com/djwillia/linux/blob/inner_unikernels/kernel/bpf/core.c#L2465)
+
+## Runtime protection mechanism
+
+As a general-purpose programming language, even programs using the safe subset
+of Rust can exhibit undesirable behavior, including infinite loops, deadlocks,
+and kernel stack overflows.
+
+### Kernel stack overflow
+
+On X86 the kernel stack is 8k large ([kernel
+doc](https://www.kernel.org/doc/html/next/x86/kernel-stacks.html)) and does not
+grow like its counterpart in userspace. This means a safe Rust program may
+overflow the kernel stack because of the different runtime environment.
+
+Thoughts on possible ways to prevent kernel stack overflow:
+- **Terminate the program when overflow happens**: With
+  [`CONFIG_VMAP_STACK`](https://elixir.bootlin.com/linux/v5.15.128/source/arch/Kconfig#L1120),
+  the kernel stack is virtually mapped with guard pages, which allows kernel
+  stack overflows to be caught immediately. At high-level, it seems that we can
+  redirect the control flow of the extension program to the Rust panic handler
+  under such situation. However, two challenges remain:
+  1. How should termination happen if the stack overflow happens inside a
+  helper function, where it might be holding locks or ref-counts?
+  2. Stack overflow event manifests as a "double fault" in the kernel and is
+  handled by an interrupt. This effectively means the handling context is
+  different from the extension context that triggers the stack overflow. There
+  will need to be a way to redirect the control flow of the extension program
+  from the handler context.
+- **Use a dedicated stack** We can switch to a growable stack before the
+  extension program executes. How this can be done is not clear at this point.
+  But we will definitely need to answer the following questions:
+  1. How can we implement a growable stack in the kernel
+  2. Should there still be a upper limit on the stack size, in order to prevent
+  resource exhaustion?
+  3. What is the overhead of switching stacks and how does it affects
+  performance oriented use cases such as XDP?
