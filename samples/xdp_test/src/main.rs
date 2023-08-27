@@ -4,6 +4,7 @@
 extern crate inner_unikernel_rt;
 
 use inner_unikernel_rt::bpf_printk;
+use inner_unikernel_rt::entry_link;
 use inner_unikernel_rt::linux::bpf::{BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH};
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::sched_cls::*;
@@ -96,11 +97,11 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
 fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> u32 {
     0
 }
-#[link_section = "inner_unikernel/xdp"]
+#[entry_link(inner_unikernel/xdp)]
 static PROG1: xdp = xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
 
 // ERROR need to add additional BPF_PROG_TYPE_SCHED_CLS in LLVM pass
-#[link_section = "inner_unikernel/tc"]
+#[entry_link(inner_unikernel/tc)]
 static PROG2: sched_cls = sched_cls::new(
     xdp_tx_filter_fn,
     "xdp_tx_filter",
