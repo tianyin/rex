@@ -61,7 +61,7 @@ fn field_type_check(ty: Type) -> Result<(), TokenStream> {
     Ok(())
 }
 
-#[proc_macro_derive(FieldChecker)]
+#[proc_macro_derive(FieldTransmute)]
 pub fn ensure_numberic(input: TokenStream) -> TokenStream {
     let input_copy = input.clone();
     let ast: DeriveInput = parse_macro_input!(input as DeriveInput);

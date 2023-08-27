@@ -10,12 +10,12 @@ use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::sched_cls::*;
 use inner_unikernel_rt::utils::*;
 use inner_unikernel_rt::xdp::*;
-use inner_unikernel_rt::FieldChecker;
+use inner_unikernel_rt::FieldTransmute;
 use inner_unikernel_rt::MAP_DEF;
 MAP_DEF!(map_hash, __map_1, u32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
 MAP_DEF!(map_array, __map_2, u32, u64, BPF_MAP_TYPE_ARRAY, 256, 0);
 
-#[derive(FieldChecker)]
+#[derive(FieldTransmute)]
 #[repr(C, packed)]
 pub struct MemcachedUdpHeader {
     request_id: u16,
@@ -24,7 +24,7 @@ pub struct MemcachedUdpHeader {
     unused: u16,
 }
 
-#[derive(FieldChecker)]
+#[derive(FieldTransmute)]
 #[repr(C, packed)]
 pub struct eth_header {
     pub h_dest: [u8; 6usize],
