@@ -9,8 +9,6 @@ rustflags = [
   "-Cforce-unwind-tables=n",
   "-Ztune-cpu=generic",
   "-Csymbol-mangling-version=v0",
-  "-C",
-  "codegen-units=1",
-  "-C",
-  "target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3,+soft-float",
+  "-Ccodegen-units=1",
+  "-Ctarget-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3,+soft-float",
 ]
