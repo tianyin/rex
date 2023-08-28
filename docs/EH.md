@@ -183,7 +183,7 @@ Note:
 The created struct is then stored in a per-CPU array `iu_cleanup_entries` in
 the kernel. Since for non-sleepable BPF programs, no two programs can execute
 on the same CPU at the same time, there is no race condition possible
-([this](https://git.kernel.org/pub/scm/linux/kernel/git/stable/linux.git/tree/kernel/trace/bpf_trace.c#n109)
+([this](https://elixir.bootlin.com/linux/v5.15.128/source/kernel/trace/bpf_trace.c#L101)
 is an example, though it is questionable whether this assumption can be
 generalized to all program types).  This also implies that a C binding for
 `CleanupEntry` is needed in the kernel:
