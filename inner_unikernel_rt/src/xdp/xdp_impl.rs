@@ -133,15 +133,19 @@ impl<'a> xdp<'a> {
     pub fn udp_header<'b>(&self, ctx: &'b xdp_md) -> &'b udphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
-        let part = &ctx.data_slice[begin..];
-        unsafe { convert_slice_to_struct::<udphdr>(part) }
+        let end = mem::size_of::<udphdr>() + begin;
+        unsafe {
+            convert_slice_to_struct::<udphdr>(&ctx.data_slice[begin..end])
+        }
     }
 
     pub fn tcp_header(&'a self, ctx: &'a xdp_md) -> &tcphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
-        let part = &ctx.data_slice[begin..];
-        let tcp_header = unsafe { convert_slice_to_struct::<tcphdr>(part) };
+        let end = mem::size_of::<tcphdr>() + begin;
+        let tcp_header = unsafe {
+            convert_slice_to_struct::<tcphdr>(&ctx.data_slice[begin..end])
+        };
 
         tcp_header
     }
@@ -149,8 +153,8 @@ impl<'a> xdp<'a> {
     pub fn ip_header<'b>(&self, ctx: &'b xdp_md) -> &'b iphdr {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
-        let part = &ctx.data_slice[begin..];
-        unsafe { convert_slice_to_struct::<iphdr>(part) }
+        let end = mem::size_of::<iphdr>() + begin;
+        unsafe { convert_slice_to_struct::<iphdr>(&ctx.data_slice[begin..end]) }
     }
 
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b ethhdr {
@@ -175,7 +179,7 @@ impl<'a> xdp<'a> {
         };
 
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
-        let part = &mut data_slice[begin..];
+        let part = &mut data_slice[begin..begin + mem::size_of::<udphdr>()];
         let mut udp_header =
             unsafe { convert_slice_to_struct_mut::<udphdr>(part) };
 
@@ -187,6 +191,7 @@ impl<'a> xdp<'a> {
         }
         udp_header.dest = port_num.to_be();
 
+        let part = &mut data_slice[begin..begin + mem::size_of::<udphdr>()];
         let mut udp_header_2 =
             unsafe { convert_slice_to_struct_mut::<udphdr>(part) };
         unsafe {
