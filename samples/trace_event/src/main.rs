@@ -7,7 +7,7 @@ use inner_unikernel_rt::linux::bpf::*;
 use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use inner_unikernel_rt::map::*;
 use inner_unikernel_rt::perf_event::*;
-use inner_unikernel_rt::MAP_DEF;
+use inner_unikernel_rt::{entry_link, MAP_DEF};
 
 pub const TASK_COMM_LEN: usize = 16;
 
@@ -98,5 +98,5 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
     0
 }
 
-#[link_section = "inner_unikernel/perf_event"]
+#[entry_link(inner_unikernel/perf_event)]
 static PROG: perf_event = perf_event::new(iu_prog1_fn, "iu_prog1");

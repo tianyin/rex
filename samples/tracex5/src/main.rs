@@ -94,5 +94,5 @@ fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> u32 {
     }
 }
 
-#[link_section = "inner_unikernel/kprobe/__seccomp_filter"]
+#[entry_link(inner_unikernel/kprobe/__seccomp_filter)]
 static PROG: kprobe = kprobe::new(iu_prog1_fn, "iu_prog1");
