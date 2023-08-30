@@ -250,3 +250,34 @@ Thoughts on possible ways to prevent kernel stack overflow:
   resource exhaustion?
   3. What is the overhead of switching stacks and how does it affects
   performance oriented use cases such as XDP?
+
+#### Update Aug 29
+Some further (and more concrete) ideas after discussing w/ Jiyuan, Ruowen, and
+Siyuan at dinner. The ideas are listed as bullets
+
+- create a new stack per-CPU for our programs
+- switch to the new stack before program execution
+- the stack should have 2 guard pages at its lowest address
+  - the first, upper guard page is a "soft" guard page
+  - the second, lower guard page is a "hard" guard page
+  - Overflow will always hit the soft guard page first and a page fault will be
+    fired
+  - This is an important and convinient property of page fault: it always runs
+    on the same CPU as the context that triggered it (in our case it would be
+    the extention program context)
+- Two cases of stack overflow
+  - overflow in Rust code: in the interrupt handler, set the `RIP` of the
+    `pt_regs` to point to the panic handler in Rust
+  - overflow in helper functions: in the interrupt handler, map the `soft`
+    guard page in (or change its permission, this could be
+    implementation-defined) so that helper function can continue. Also,
+    overwrite the return address of the helper function to the panic handler.
+    Might need another trampoline to record the return address.
+- might need to distinguish between programs running in task context and
+  programs running in interrupt context. I guess the question is: can a
+  interrupt based program preempt task-based program? Again, this goes back to
+  the ["one program per CPU
+  assumption"](https://elixir.bootlin.com/linux/v5.15.128/source/kernel/trace/bpf_trace.c#L101))
+- Not sure how fast/slow this would be, but let's first get a working mechanism
+  out (demonstrate the feasibility).
+- This is getting more interesting than I preveious expected
