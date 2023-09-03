@@ -19,7 +19,6 @@ pub use crate::bindings::uapi::linux::r#in::{IPPROTO_TCP, IPPROTO_UDP};
 
 // pub type pt_regs = super::binding::pt_regs;
 
-#[derive(Debug)]
 pub struct xdp_md<'a> {
     // TODO check the kernel version xdp_md
     // pub regs: bpf_user_pt_regs_t,
@@ -31,7 +30,7 @@ pub struct xdp_md<'a> {
     pub ingress_ifindex: u32,
     pub rx_qeueu_index: u32,
     pub egress_ifindex: u32,
-    kptr: *const xdp_buff,
+    kptr: &'a xdp_buff,
 }
 
 // User can get the customized struct like memcached from the data_slice
@@ -153,6 +152,37 @@ impl<'a> xdp<'a> {
         let begin = mem::size_of::<ethhdr>();
         let end = mem::size_of::<iphdr>() + begin;
         unsafe { convert_slice_to_struct::<iphdr>(&ctx.data_slice[begin..end]) }
+    }
+
+    pub fn udp_header_mut<'b>(&self, ctx: &'b xdp_md) -> &'b mut udphdr {
+        // NOTE: this assumes packet has ethhdr and iphdr
+        let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
+        let end = mem::size_of::<udphdr>() + begin;
+        let data_slice = unsafe {
+            slice::from_raw_parts_mut(
+                ctx.kptr.data as *mut c_uchar,
+                ctx.data_length,
+            )
+        };
+        unsafe {
+            convert_slice_to_struct_mut::<udphdr>(&mut data_slice[begin..end])
+        }
+    }
+
+    pub fn ip_header_mut<'b>(&self, ctx: &'b xdp_md) -> &'b mut iphdr {
+        // NOTE: this assumes packet has ethhdr
+        let begin = mem::size_of::<ethhdr>();
+        let end = mem::size_of::<iphdr>() + begin;
+
+        let data_slice = unsafe {
+            slice::from_raw_parts_mut(
+                ctx.kptr.data as *mut c_uchar,
+                ctx.data_length,
+            )
+        };
+        unsafe {
+            convert_slice_to_struct_mut::<iphdr>(&mut data_slice[begin..end])
+        }
     }
 
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b ethhdr {

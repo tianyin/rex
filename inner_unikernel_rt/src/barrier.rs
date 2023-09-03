@@ -23,11 +23,11 @@ pub(crate) fn unlikely(b: bool) -> bool {
     b
 }
 
-// ERROR CONFIG_KCSAN is not defined
+// FIX: CONFIG_KCSAN is not defined
 // use crate::bindings::linux::kernel::kcsan_ctx;
 // #[inline(always)]
 // pub(crate) fn get_ctx() -> &'static kcsan_ctx {
-//     // TODO add check for interrupt context
+//     // TODO: add check for interrupt context
 //     TaskStruct::get_current_task().unwrap().kptr.kcsan_ctx
 // }
 
