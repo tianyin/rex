@@ -1,7 +1,10 @@
+//! Implementation of various routines/frameworks related to EH/termination
+
 use core::panic::PanicInfo;
 
 use crate::per_cpu::this_cpu_ptr_mut;
 use crate::stub;
+use crate::debug::printk;
 
 const ENTRIES_SIZE: usize = 64;
 
@@ -97,6 +100,30 @@ impl core::ops::IndexMut<usize> for CleanupEntries<'_> {
     fn index_mut(&mut self, index: usize) -> &mut CleanupEntry {
         &mut self.entries[index]
     }
+}
+
+// TODO: manually optimize
+// The best way to deal with this is probably insert it directly in LLVM IR as
+// an inline asm block
+#[no_mangle]
+unsafe fn __iu_check_stack() {
+    // subtract 0x2000 because only 2 pages are supposed to be used by iu progs
+    unsafe {
+        core::arch::asm!(
+            "mov r10, gs:[r10]",
+            "sub r10, 0x2000",
+            "cmp rsp, r10",
+            "ja 1f",
+            "call __iu_handle_stack_overflow",
+            "1:",
+            in("r10") stub::iu_stack_ptr_addr(),
+        );
+    }
+}
+
+#[no_mangle]
+unsafe fn __iu_handle_stack_overflow() -> ! {
+    panic!("Stack overflow in inner-unikernel program");
 }
 
 // This function is called on panic.

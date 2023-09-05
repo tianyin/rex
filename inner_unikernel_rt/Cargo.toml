@@ -61,6 +61,7 @@ ksyms = [
   'bpf_xdp_adjust_head',
   'bpf_xdp_adjust_tail',
   'iu_landingpad',
+  'iu_stack_ptr',
 ]
 
 uheaders = [
