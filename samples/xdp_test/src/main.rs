@@ -5,6 +5,7 @@
 extern crate inner_unikernel_rt;
 
 use core::mem::size_of;
+use core::num::Wrapping;
 use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::entry_link;
 use inner_unikernel_rt::linux::bpf::{
@@ -23,7 +24,7 @@ const BMC_MAX_KEY_LENGTH: u32 = 230;
 const BMC_MAX_KEY_IN_MULTIGET: u32 = 30;
 const BMC_MAX_KEY_IN_PACKET: u32 = BMC_MAX_KEY_IN_MULTIGET;
 
-const FNV_OFFSET_BASIS_32: u32 = 2166136261;
+const FNV_OFFSET_BASIS_32: Wrapping<u32> = Wrapping(2166136261);
 const FNV_PRIME_32: u32 = 16777619;
 const ETH_ALEN: usize = 6;
 
@@ -55,7 +56,7 @@ pub struct bmc_cache_entry {
 
 #[repr(C)]
 struct memcached_key {
-    hash: u32,
+    hash: Wrapping<u32>,
     data: [u8; BMC_MAX_KEY_LENGTH as usize],
     len: u32,
 }
@@ -120,7 +121,7 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
     }
 
     // get the cache entry
-    let cache_idx: u32 = key.hash % BMC_CACHE_ENTRY_COUNT;
+    let cache_idx: u32 = key.hash.0 % BMC_CACHE_ENTRY_COUNT;
     let entry = match obj.bpf_map_lookup_elem(map_kcache, cache_idx) {
         // should never happen
         None => return XDP_PASS,
@@ -129,7 +130,7 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
     // TODO: should have lock here bpf_spin_lock(&entry->lock);
 
     // potential cache hit
-    if (entry.valid == 1 && entry.hash == key.hash) {
+    if (entry.valid == 1 && entry.hash == key.hash.0) {
         // TODO: bpf_spin_unlock(&entry.lock);
         for i in pctx.read_pkt_offset..key_len {
             // end of packet
@@ -245,13 +246,12 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
                 write_pkt_offset: 0,
             };
 
+            // bpf_printk!(obj, "offset is %d\n", off as u64);
             // hash the key
             match hash_key(obj, ctx, &mut pctx, payload) {
                 XDP_PASS => return XDP_PASS,
                 _ => (),
             }
-
-            bpf_printk!(obj, "offset is %d\n", off as u64);
         }
         _ => {}
     };
