@@ -4,6 +4,7 @@
 
 extern crate inner_unikernel_rt;
 
+use core::ffi::c_void;
 use core::mem::size_of;
 use core::num::Wrapping;
 use inner_unikernel_rt::bpf_printk;
@@ -182,7 +183,12 @@ fn prepare_packet(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> u32 {
     let mut eth_tmp = [0u8; ETH_ALEN];
     let mut ip_tmp: u32;
     let mut port_tmp: u16;
+    let mut eth_header = eth_header::new(&ctx.data_slice[0..14]);
+
     // TODO: use memcpy
+    // obj.memcpy(&mut eth_tmp, &eth_header.h_source as c_void, 6);
+    // obj.memcpy(&eth_header.h_source, &eth_header.h_dest, 6);
+    // obj.memcpy(&eth_header.h_dest, &eth_tmp, 6);
     // __builtin_memcpy(tmp_mac, eth->h_source, ETH_ALEN);
     // __builtin_memcpy(eth->h_source, eth->h_dest, ETH_ALEN);
     // __builtin_memcpy(eth->h_dest, tmp_mac, ETH_ALEN);
@@ -259,6 +265,8 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
     XDP_PASS
 }
 fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> u32 {
+    // let temp: u16 = skb.protocol.into();
+    bpf_printk!(obj, "xdp_tx_filter len %d\n", skb.len.into());
     0
 }
 #[entry_link(inner_unikernel/xdp)]

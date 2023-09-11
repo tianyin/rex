@@ -4,4 +4,5 @@
 samples/*/event-trigger
 samples/*/loader
 samples/*/entry
+compile_commands.json
 

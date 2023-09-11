@@ -60,6 +60,7 @@ ksyms = [
   'bpf_snprintf',
   'bpf_xdp_adjust_head',
   'bpf_xdp_adjust_tail',
+  'memcpy',
   'iu_landingpad',
   'iu_stack_ptr',
 ]

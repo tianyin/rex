@@ -71,7 +71,7 @@ def filter_symbol(nm_line):
     if len(nm_line) != 3:
         return False;
     sym_ty = nm_line[1].lower()
-    return sym_ty == 't' or sym_ty == 'd' or sym_ty == 'b'
+    return sym_ty == 't' or sym_ty == 'd' or sym_ty == 'b' or sym_ty == 'w'
 
 def get_symbols(vmlinux):
     result = subprocess.run(['nm', vmlinux], check=True, capture_output=True)

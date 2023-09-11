@@ -243,6 +243,20 @@ impl<'a> xdp<'a> {
             unsafe { core::mem::transmute(stub::bpf_xdp_adjust_tail_addr()) };
         helper(xdp, offset)
     }
+
+    pub fn memcpy(
+        &self,
+        dst: *mut c_void,
+        src: *const c_void,
+        len: usize,
+    ) -> *mut c_void {
+        let helper: extern "C" fn(
+            *mut c_void,
+            *const c_void,
+            usize,
+        ) -> *mut c_void = unsafe { core::mem::transmute(stub::memcpy_addr()) };
+        helper(dst, src, len)
+    }
 }
 impl iu_prog for xdp<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
