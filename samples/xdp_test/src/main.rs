@@ -73,11 +73,10 @@ struct parsing_context {
     write_pkt_offset: u8,
 }
 
-MAP_DEF!(map_hash, __map_1, u32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
-MAP_DEF!(map_array, __map_2, u32, u64, BPF_MAP_TYPE_ARRAY, 256, 0);
+MAP_DEF!(map_hash, u32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
+MAP_DEF!(map_array, u32, u64, BPF_MAP_TYPE_ARRAY, 256, 0);
 MAP_DEF!(
     map_kcache,
-    __map_3,
     u32,
     bmc_cache_entry,
     BPF_MAP_TYPE_ARRAY,
@@ -86,7 +85,6 @@ MAP_DEF!(
 );
 MAP_DEF!(
     map_keys,
-    __map_4,
     u32,
     memcached_key,
     BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -95,7 +93,7 @@ MAP_DEF!(
 );
 
 fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8]) -> u32 {
-    let mut key = match obj.bpf_map_lookup_elem(map_keys, pctx.key_count) {
+    let mut key = match obj.bpf_map_lookup_elem(&map_keys, pctx.key_count) {
         None => return XDP_PASS,
         Some(k) => k,
     };
@@ -126,7 +124,7 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
 
     // get the cache entry
     let cache_idx: u32 = key.hash.0 % BMC_CACHE_ENTRY_COUNT;
-    let entry = match obj.bpf_map_lookup_elem(map_kcache, cache_idx) {
+    let entry = match obj.bpf_map_lookup_elem(&map_kcache, cache_idx) {
         // should never happen
         None => return XDP_PASS,
         Some(e) => e,
@@ -268,6 +266,7 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
     XDP_PASS
 }
 
+#[inline(always)]
 fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len: usize) -> u32 {
     let mut hash = FNV_OFFSET_BASIS_32;
 
@@ -281,7 +280,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         hash *= FNV_PRIME_32;
     }
     let cache_idx: u32 = hash.0 % BMC_CACHE_ENTRY_COUNT;
-    let bmc_cache_entry = match obj.bpf_map_lookup_elem(map_kcache, cache_idx) {
+    let bmc_cache_entry = match obj.bpf_map_lookup_elem(&map_kcache, cache_idx) {
         None => return TC_ACT_OK,
         Some(e) => e,
     };
