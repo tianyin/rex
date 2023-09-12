@@ -73,6 +73,7 @@ uheaders = [
   "linux/seccomp.h",
   "linux/unistd.h",
   "linux/in.h",
+  "linux/pkt_cls.h",
 ]
 
 kheaders = [

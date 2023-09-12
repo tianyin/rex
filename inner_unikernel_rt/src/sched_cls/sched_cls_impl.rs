@@ -6,8 +6,11 @@ use crate::bindings::linux::kernel::{
 };
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
 pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
+pub use crate::bindings::uapi::linux::pkt_cls::{TC_ACT_OK, TC_ACT_REDIRECT};
 use crate::prog_type::iu_prog;
 use crate::utils::*;
+use crate::xdp::convert_slice_to_struct;
+
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_char, c_uchar, c_uint, c_void};
 use core::{mem, slice};
@@ -47,7 +50,7 @@ pub struct __sk_buff<'a> {
     // sk: &'a &sock,
     pub data_meta: u32,
     pub data_slice: &'a [c_uchar],
-    kptr: *const sk_buff,
+    kptr: &'a sk_buff,
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -82,6 +85,32 @@ impl<'a> sched_cls<'a> {
         }
     }
 
+    // NOTE: copied from xdp impl, may change in the future
+    pub fn udp_header<'b>(&self, ctx: &'b __sk_buff) -> &'b udphdr {
+        // NOTE: this assumes packet has ethhdr and iphdr
+        let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
+        let end = mem::size_of::<udphdr>() + begin;
+        unsafe {
+            convert_slice_to_struct::<udphdr>(&ctx.data_slice[begin..end])
+        }
+    }
+
+    pub fn tcp_header<'b>(&self, ctx: &'b __sk_buff) -> &'b tcphdr {
+        // NOTE: this assumes packet has ethhdr and iphdr
+        let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
+        let end = mem::size_of::<tcphdr>() + begin;
+        unsafe {
+            convert_slice_to_struct::<tcphdr>(&ctx.data_slice[begin..end])
+        }
+    }
+
+    pub fn ip_header<'b>(&self, skb: &'b __sk_buff) -> &'b iphdr {
+        // NOTE: this assumes packet has ethhdr
+        let begin = mem::size_of::<ethhdr>();
+        let end = mem::size_of::<iphdr>() + begin;
+        unsafe { convert_slice_to_struct::<iphdr>(&skb.data_slice[begin..end]) }
+    }
+
     // Now returns a mutable ref, but since every reg is private the user prog
     // cannot change reg contents. The user should not be able to directly
     // assign this reference a new value either, given that they will not able
@@ -91,13 +120,12 @@ impl<'a> sched_cls<'a> {
             unsafe { &*core::mem::transmute::<*const (), *const sk_buff>(ctx) };
 
         let data = kptr.data as usize;
-        let data_length = kptr.data_len as usize;
+        let data_length = kptr.len as usize;
+
+        // NOTE: currently we only added const data slice for read only
         let data_slice = unsafe {
             slice::from_raw_parts(kptr.data as *const c_uchar, data_length)
         };
-        unsafe {
-            printk("data_len %d\n\0", data_length);
-        }
 
         // bindgen for C union is kind of wired, so we have to do this
         let sk: &sock = unsafe { &*kptr.__bindgen_anon_2.sk };

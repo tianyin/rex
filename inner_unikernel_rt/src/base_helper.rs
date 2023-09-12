@@ -1,4 +1,5 @@
 use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
+use crate::debug::printk;
 use crate::linux::bpf::bpf_map_type;
 use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
