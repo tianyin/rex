@@ -14,17 +14,16 @@ pub const TASK_COMM_LEN: usize = 16;
 // What if user does not use repr(C)?
 #[repr(C)]
 #[derive(Copy, Clone)]
-pub struct key_t {
+pub struct KeyT {
     pub comm: [i8; TASK_COMM_LEN],
     pub kernstack: u32,
     pub userstack: u32,
 }
 
-MAP_DEF!(counts, __counts, key_t, u64, BPF_MAP_TYPE_HASH, 10000, 0);
+MAP_DEF!(counts, KeyT, u64, BPF_MAP_TYPE_HASH, 10000, 0);
 
 MAP_DEF!(
     stackmap,
-    __stackmap,
     u32,
     [u64; PERF_MAX_STACK_DEPTH as usize],
     BPF_MAP_TYPE_STACK_TRACE,
@@ -42,7 +41,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         enabled: 0,
         running: 0,
     };
-    let mut key: key_t = key_t {
+    let mut key: KeyT = KeyT {
         comm: [0; TASK_COMM_LEN],
         kernstack: 0,
         userstack: 0,
@@ -57,8 +56,8 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         return 0;
     }
 
-    key.kernstack = obj.bpf_get_stackid_pe(ctx, stackmap, KERN_STACKID_FLAGS) as u32;
-    key.userstack = obj.bpf_get_stackid_pe(ctx, stackmap, USER_STACKID_FLAGS) as u32;
+    key.kernstack = obj.bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS) as u32;
+    key.userstack = obj.bpf_get_stackid_pe(ctx, &stackmap, USER_STACKID_FLAGS) as u32;
 
     if (key.kernstack as i32) < 0 && (key.userstack as i32) < 0 {
         obj.bpf_trace_printk(
@@ -87,9 +86,9 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         obj.bpf_trace_printk("Address recorded on event: %llx", ctx.addr, 0, 0);
     }
 
-    match obj.bpf_map_lookup_elem(counts, key) {
+    match obj.bpf_map_lookup_elem(&counts, key) {
         None => {
-            obj.bpf_map_update_elem(counts, key, 1, BPF_NOEXIST as u64);
+            obj.bpf_map_update_elem(&counts, key, 1, BPF_NOEXIST as u64);
         }
         Some(val) => {
             *val += 1;
