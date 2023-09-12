@@ -477,6 +477,7 @@ struct map_def {
 	uint32_t val_size;
 	uint32_t max_size;
 	uint32_t map_flag;
+	void *kptr;
 };
 
 class iu_map {
@@ -489,7 +490,7 @@ public:
 	iu_map(const Elf_Data *, Elf64_Addr, Elf64_Off, const char *);
 	~iu_map();
 
-	int create(const std::string &);
+	int create();
 
 	friend class iu_obj; // for debug msg
 };
@@ -516,7 +517,7 @@ iu_map::~iu_map()
 		close(map_fd);
 }
 
-int iu_map::create(const std::string &name)
+int iu_map::create()
 {
 	const auto &def = this->def;
 
@@ -551,7 +552,6 @@ class iu_obj {
 
 	std::unordered_map<Elf64_Off, iu_map> map_defs;
 	std::unordered_map<std::string, const iu_map *> name2map;
-	std::vector<std::pair<Elf64_Sym *, std::string>> map_ptrs;
 	std::unordered_map<std::string, iu_prog> progs;
 
 	Elf *elf;
@@ -580,7 +580,7 @@ class iu_obj {
 
 public:
 	iu_obj() = delete;
-	explicit iu_obj(const char *, struct bpf_object *);
+	iu_obj(const char *, struct bpf_object *);
 	iu_obj(const iu_obj &) = delete;
 	iu_obj(iu_obj &&) = delete;
 	~iu_obj();
@@ -750,7 +750,7 @@ static int cmp_progs(const void *_a, const void *_b)
 }
 
 iu_obj::iu_obj(const char *c_path, struct bpf_object *bpf_obj) : map_defs(),
-	map_ptrs(), symtab_scn(nullptr), maps_scn(nullptr), prog_fd(-1)
+	symtab_scn(nullptr), maps_scn(nullptr), prog_fd(-1)
 {
 	int fd = open(c_path, 0, O_RDONLY);
 	bpf_obj->efile.fd = fd;
@@ -922,8 +922,6 @@ int iu_obj::parse_maps(struct bpf_object *obj)
 		if (sym->st_size == sizeof(struct map_def)) {
 			map_defs.try_emplace(sym->st_value, maps, maps_shaddr,
 					sym->st_value, name);
-		} else if (sym->st_size == sizeof(struct map_def *)) {
-			map_ptrs.emplace_back(sym, name);
 		}
 
 		nr_maps++;
@@ -1009,32 +1007,6 @@ int iu_obj::parse_progs(struct bpf_object *obj)
 	return 0;
 };
 
-int iu_obj::parse_got()
-{
-	int ret;
-	Elf64_Shdr *got;
-
-	if (!this->got_scn)
-		return 0;
-
-	got = elf64_getshdr(got_scn);
-
-	if (!got) {
-		std::cerr << "elf: failed to get .got section" << std::endl;
-		return -1;
-	}
-
-	this->got_addr = got->sh_addr;
-	this->got_size = got->sh_size;
-
-	if (debug) {
-		std::clog << ".got offset=" << std::hex << this->got_addr
-			<< ", .got size=" << std::dec << this->got_size << std::endl;
-	}
-
-	return 0;
-}
-
 int iu_obj::parse_rela_dyn() {
 	int ret;
 	Elf64_Shdr *rela_dyn;
@@ -1109,7 +1081,6 @@ int iu_obj::parse_elf(struct bpf_object *obj)
 	ret = this->parse_scns(obj);
 	ret = ret < 0 ? : this->parse_maps(obj);
 	ret = ret < 0 ? : this->parse_progs(obj);
-	//ret = ret < 0 ? : this->parse_got();
 	ret = ret < 0 ? : this->parse_rela_dyn();
 
 	return ret;
@@ -1137,26 +1108,18 @@ int iu_obj::fix_maps(struct bpf_object *obj)
 		return -1;
 	}
 
-	for (const auto &ptr: map_ptrs) {
-		size_t pos = ptr.first->st_value - maps_shaddr + maps_shoff;
-		uint64_t map_addr = val_from_buf<uint64_t>(&this->file_map[pos]);
-		const auto it = map_defs.find(map_addr);
+	for (auto &def: map_defs) {
+		size_t kptr_file_off = def.first + offsetof(map_def, kptr) -
+			maps_shaddr + maps_shoff;
 		int map_fd;
 
-		if (it == map_defs.end()) {
-			std::cerr << "map def not found" << std::endl;
-			continue;
-		}
-
 		if (debug) {
-			std::clog << "map_ptr=0x" << std::hex << map_addr << std::dec
+			std::clog << "map_ptr=0x" << std::hex << def.first << std::dec
 				<< std::endl;
-			std::clog << "pointed obj name: " << it->second.name << std::endl;
-			std::clog << "map_ptr_offset=0x" << std::hex
-				<< ptr.first->st_value << std::dec << std::endl;
+			std::clog << "map_name=\"" << def.second.name << '\"' << std::endl;
 		}
 
-		map_fd = it->second.create(ptr.second);
+		map_fd = def.second.create();
 		if (map_fd < 0) {
 			perror("bpf_map_create");
 			return -1;
@@ -1164,7 +1127,7 @@ int iu_obj::fix_maps(struct bpf_object *obj)
 
 		for (int i = 0; i < obj->nr_maps; i++){
 			struct bpf_map *map = &obj->maps[i];
-			if (!strcmp(map->name, it->second.name.c_str())){
+			if (!strcmp(map->name, def.second.name.c_str())){
 				map->fd = map_fd;
 				if (debug)
 					std::clog << "map_fd added in object" << std::endl;
@@ -1172,12 +1135,12 @@ int iu_obj::fix_maps(struct bpf_object *obj)
 			}
 		}
 
-		name2map.insert(std::make_pair(std::string(ptr.second), &it->second));
+		name2map.insert(std::make_pair(def.second.name, &def.second));
 
 		if (debug)
 			std::clog << "map_fd=" << map_fd << std::endl;
 
-		val_to_buf<uint64_t>(&this->file_map[pos], map_fd);
+		val_to_buf<uint64_t>(&this->file_map[kptr_file_off], map_fd);
 	}
 
 	return 0;
@@ -1186,7 +1149,7 @@ int iu_obj::fix_maps(struct bpf_object *obj)
 int iu_obj::load(struct bpf_object *obj)
 {
 	int fd;
-	auto arr = std::make_unique<uint64_t[]>(map_ptrs.size());
+	auto arr = std::make_unique<uint64_t[]>(map_defs.size());
 	union bpf_attr attr;
 	int idx = 0, ret = 0;
 
@@ -1198,8 +1161,8 @@ int iu_obj::load(struct bpf_object *obj)
 
 	fd = open("rust.out", O_RDONLY);
 
-	for (auto &it: map_ptrs) {
-		arr[idx++] = it.first->st_value;
+	for (auto &def: map_defs) {
+		arr[idx++] = def.first + offsetof(map_def, kptr);
 	}
 
 	memset(&attr, 0, sizeof(attr));
@@ -1210,7 +1173,7 @@ int iu_obj::load(struct bpf_object *obj)
 	attr.license = reinterpret_cast<__u64>("GPL");
 
 	attr.map_offs = reinterpret_cast<__u64>(arr.get());
-	attr.map_cnt = map_ptrs.size();
+	attr.map_cnt = map_defs.size();
 
 	attr.got_off = got_addr;
 	attr.got_size = got_size;
