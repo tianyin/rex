@@ -1,6 +1,7 @@
 use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
 use crate::debug::printk;
 use crate::linux::bpf::bpf_map_type;
+use crate::linux::errno::EINVAL;
 use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
@@ -23,12 +24,16 @@ pub(crate) fn bpf_trace_printk(
 }
 
 pub(crate) fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
-    map: &IUMap<MT, K, V>,
+    map: &'static IUMap<MT, K, V>,
     key: K,
 ) -> Option<&mut V> {
-    let helper: extern "C" fn(&IUMap<MT, K, V>, *const K) -> *const V =
+    if map.kptr.is_null() {
+        return None;
+    }
+
+    let helper: extern "C" fn(*mut (), *const K) -> *const V =
         unsafe { core::mem::transmute(stub::bpf_map_lookup_elem_addr()) };
-    let value = helper(map, &key) as *mut V;
+    let value = helper(map.kptr, &key) as *mut V;
 
     if value.is_null() {
         None
@@ -38,58 +43,74 @@ pub(crate) fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
 }
 
 pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
-    map: &IUMap<MT, K, V>,
+    map: &'static IUMap<MT, K, V>,
     key: K,
     value: V,
     flags: u64,
 ) -> i64 {
-    let helper: extern "C" fn(
-        &IUMap<MT, K, V>,
-        *const K,
-        *const V,
-        u64,
-    ) -> i64 =
+    if map.kptr.is_null() {
+        return -(EINVAL as i64);
+    }
+
+    let helper: extern "C" fn(*mut (), *const K, *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_update_elem_addr()) };
-    helper(map, &key, &value, flags)
+    helper(map.kptr, &key, &value, flags)
 }
 
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
-    map: &IUMap<MT, K, V>,
+    map: &'static IUMap<MT, K, V>,
     key: K,
 ) -> i64 {
-    let helper: extern "C" fn(&IUMap<MT, K, V>, *const K) -> i64 =
+    if map.kptr.is_null() {
+        return -(EINVAL as i64);
+    }
+
+    let helper: extern "C" fn(*mut (), *const K) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_delete_elem_addr()) };
-    helper(map, &key)
+    helper(map.kptr, &key)
 }
 
 pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
-    map: &IUMap<MT, K, V>,
+    map: &'static IUMap<MT, K, V>,
     value: V,
     flags: u64,
 ) -> i64 {
-    let helper: extern "C" fn(&IUMap<MT, K, V>, *const V, u64) -> i64 =
+    if map.kptr.is_null() {
+        return -(EINVAL as i64);
+    }
+
+    let helper: extern "C" fn(*mut (), *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_push_elem_addr()) };
-    helper(map, &value, flags)
+    helper(map.kptr, &value, flags)
 }
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
-    map: &IUMap<MT, K, V>,
+    map: &'static IUMap<MT, K, V>,
     value: V,
 ) -> i64 {
-    let helper: extern "C" fn(&IUMap<MT, K, V>, *const V) -> i64 =
+    if map.kptr.is_null() {
+        return -(EINVAL as i64);
+    }
+
+    let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_pop_elem_addr()) };
-    helper(map, &value)
+    helper(map.kptr, &value)
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
-    map: &IUMap<MT, K, V>,
+    map: &'static IUMap<MT, K, V>,
     value: V,
 ) -> i64 {
-    let helper: extern "C" fn(&IUMap<MT, K, V>, *const V) -> i64 =
+    if map.kptr.is_null() {
+        return -(EINVAL as i64);
+    }
+
+    let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_peek_elem_addr()) };
-    helper(map, &value)
+    helper(map.kptr, &value)
 }
 
+/*
 pub(crate) fn bpf_for_each_map_elem<const MT: bpf_map_type, K, V>(
     map: &IUMap<MT, K, V>,
     callback_fn: *const (),
@@ -117,6 +138,7 @@ pub(crate) fn bpf_spin_unlock(lock: &mut bpf_spin_lock) -> i64 {
         unsafe { core::mem::transmute(stub::bpf_spin_unlock_addr()) };
     helper(lock as *mut bpf_spin_lock)
 }
+*/
 
 // Design decision: Make the destination a generic type so that probe read
 // kernel can directly fill in variables of certain type. This also achieves
@@ -275,7 +297,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'a IUMap<MT, K, V>,
+            map: &'static IUMap<MT, K, V>,
             key: K,
         ) -> Option<&mut V> {
             crate::base_helper::bpf_map_lookup_elem(map, key)
@@ -284,7 +306,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &IUMap<MT, K, V>,
+            map: &'static IUMap<MT, K, V>,
             key: K,
             value: V,
             flags: u64,
@@ -295,7 +317,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &IUMap<MT, K, V>,
+            map: &'static IUMap<MT, K, V>,
             key: K,
         ) -> i64 {
             crate::base_helper::bpf_map_delete_elem(map, key)
@@ -304,7 +326,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &IUMap<MT, K, V>,
+            map: &'static IUMap<MT, K, V>,
             value: V,
             flags: u64,
         ) -> i64 {
@@ -314,7 +336,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &IUMap<MT, K, V>,
+            map: &'static IUMap<MT, K, V>,
             value: V,
         ) -> i64 {
             crate::base_helper::bpf_map_pop_elem(map, value)
@@ -323,7 +345,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &IUMap<MT, K, V>,
+            map: &'static IUMap<MT, K, V>,
             value: V,
         ) -> i64 {
             crate::base_helper::bpf_map_peek_elem(map, value)
@@ -374,6 +396,7 @@ macro_rules! base_helper_defs {
             crate::base_helper::bpf_get_prandom_u32()
         }
 
+        /*
         #[inline(always)]
         pub fn bpf_spin_lock(
             &self,
@@ -389,6 +412,7 @@ macro_rules! base_helper_defs {
         ) -> i64 {
             crate::base_helper::bpf_spin_unlock(lock)
         }
+        */
 
         #[inline(always)]
         pub fn bpf_snprintf<const N: usize, const M: usize>(

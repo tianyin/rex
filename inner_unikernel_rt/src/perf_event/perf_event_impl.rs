@@ -5,6 +5,7 @@ use crate::bindings::uapi::linux::bpf::{
     bpf_map_type, bpf_perf_event_value, BPF_MAP_TYPE_STACK_TRACE,
     BPF_PROG_TYPE_PERF_EVENT,
 };
+use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
@@ -90,16 +91,20 @@ impl<'a> perf_event<'a> {
     pub fn bpf_get_stackid_pe<K, V>(
         &self,
         ctx: &bpf_perf_event_data,
-        map: &'a IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
+        map: &'static IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
         flags: u64,
     ) -> i64 {
+        if map.kptr.is_null() {
+            return -(EINVAL as i64);
+        }
+
         let helper: extern "C" fn(
             *const bpf_perf_event_data_kern,
-            &'a IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
+            *mut (),
             u64,
         ) -> i64 =
             unsafe { core::mem::transmute(stub::bpf_get_stackid_pe_addr()) };
-        helper(ctx.kptr, map, flags)
+        helper(ctx.kptr, map.kptr, flags)
     }
 
     pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {

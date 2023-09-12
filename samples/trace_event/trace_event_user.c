@@ -327,8 +327,8 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	map_fd[0] = bpf_object__find_map_fd_by_name(obj, "__counts");
-	map_fd[1] = bpf_object__find_map_fd_by_name(obj, "__stackmap");
+	map_fd[0] = bpf_object__find_map_fd_by_name(obj, "counts");
+	map_fd[1] = bpf_object__find_map_fd_by_name(obj, "stackmap");
 	if (map_fd[0] < 0 || map_fd[1] < 0) {
 		printf("finding a counts/stackmap map in obj file failed\n");
 		goto cleanup;
