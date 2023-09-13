@@ -6,6 +6,7 @@ use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
+use crate::utils::{Result, to_result};
 // use crate::timekeeping::*;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
@@ -17,10 +18,11 @@ pub(crate) fn bpf_trace_printk(
     arg1: u64,
     arg2: u64,
     arg3: u64,
-) -> i32 {
-    let code: extern "C" fn(*const u8, u32, u64, u64, u64) -> i32 =
+) -> Result {
+    let code: extern "C" fn(*const u8, u32, u64, u64, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_trace_printk_iu_addr()) };
-    code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3)
+
+    to_result(code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3))
 }
 
 pub(crate) fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
@@ -47,67 +49,72 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
     key: K,
     value: V,
     flags: u64,
-) -> i64 {
+) -> Result {
     if map.kptr.is_null() {
-        return -(EINVAL as i64);
+        return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const K, *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_update_elem_addr()) };
-    helper(map.kptr, &key, &value, flags)
+
+    to_result(helper(map.kptr, &key, &value, flags))
 }
 
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     key: K,
-) -> i64 {
+) -> Result {
     if map.kptr.is_null() {
-        return -(EINVAL as i64);
+        return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const K) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_delete_elem_addr()) };
-    helper(map.kptr, &key)
+
+    to_result((helper(map.kptr, &key)))
 }
 
 pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     value: V,
     flags: u64,
-) -> i64 {
+) -> Result {
     if map.kptr.is_null() {
-        return -(EINVAL as i64);
+        return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_push_elem_addr()) };
-    helper(map.kptr, &value, flags)
+
+    to_result(helper(map.kptr, &value, flags))
 }
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     value: V,
-) -> i64 {
+) -> Result {
     if map.kptr.is_null() {
-        return -(EINVAL as i64);
+        return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_pop_elem_addr()) };
-    helper(map.kptr, &value)
+
+    to_result(helper(map.kptr, &value))
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     value: V,
-) -> i64 {
+) -> Result {
     if map.kptr.is_null() {
-        return -(EINVAL as i64);
+        return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_peek_elem_addr()) };
-    helper(map.kptr, &value)
+
+    to_result(helper(map.kptr, &value))
 }
 
 /*
@@ -146,14 +153,14 @@ pub(crate) fn bpf_spin_unlock(lock: &mut bpf_spin_lock) -> i64 {
 pub(crate) fn bpf_probe_read_kernel<T>(
     dst: &mut T,
     unsafe_ptr: *const (),
-) -> i64 {
+) -> Result {
     let helper: extern "C" fn(*mut (), u32, *const ()) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_probe_read_kernel_addr()) };
-    helper(
+    to_result(helper(
         dst as *mut T as *mut (),
         core::mem::size_of::<T>() as u32,
         unsafe_ptr,
-    )
+    ))
 }
 
 pub(crate) fn bpf_strcmp(s1: &str, s2: &str) -> i32 {
@@ -263,16 +270,16 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     str: &mut [u8; N],
     fmt: &str,
     data: &[u64; M],
-) -> i64 {
+) -> Result {
     let helper: extern "C" fn(*mut u8, u32, *const u8, *const u64, u32) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_snprintf_addr()) };
-    helper(
+    to_result(helper(
         str.as_mut_ptr(),
         N as u32,
         fmt.as_ptr(),
         data.as_ptr(),
         M as u32,
-    )
+    ))
 }
 
 macro_rules! base_helper_defs {
@@ -289,7 +296,7 @@ macro_rules! base_helper_defs {
             arg1: u64,
             arg2: u64,
             arg3: u64,
-        ) -> i32 {
+        ) -> crate::Result {
             crate::base_helper::bpf_trace_printk(fmt, arg1, arg2, arg3)
         }
 
@@ -310,7 +317,7 @@ macro_rules! base_helper_defs {
             key: K,
             value: V,
             flags: u64,
-        ) -> i64 {
+        ) -> crate::Result {
             crate::base_helper::bpf_map_update_elem(map, key, value, flags)
         }
 
@@ -319,7 +326,7 @@ macro_rules! base_helper_defs {
             &self,
             map: &'static IUMap<MT, K, V>,
             key: K,
-        ) -> i64 {
+        ) -> crate::Result {
             crate::base_helper::bpf_map_delete_elem(map, key)
         }
 
@@ -329,7 +336,7 @@ macro_rules! base_helper_defs {
             map: &'static IUMap<MT, K, V>,
             value: V,
             flags: u64,
-        ) -> i64 {
+        ) -> crate::Result {
             crate::base_helper::bpf_map_push_elem(map, value, flags)
         }
 
@@ -338,7 +345,7 @@ macro_rules! base_helper_defs {
             &self,
             map: &'static IUMap<MT, K, V>,
             value: V,
-        ) -> i64 {
+        ) -> crate::Result {
             crate::base_helper::bpf_map_pop_elem(map, value)
         }
 
@@ -347,7 +354,7 @@ macro_rules! base_helper_defs {
             &self,
             map: &'static IUMap<MT, K, V>,
             value: V,
-        ) -> i64 {
+        ) -> crate::Result {
             crate::base_helper::bpf_map_peek_elem(map, value)
         }
 
@@ -356,7 +363,7 @@ macro_rules! base_helper_defs {
             &self,
             dst: &mut T,
             unsafe_ptr: *const (),
-        ) -> i64 {
+        ) -> crate::Result {
             crate::base_helper::bpf_probe_read_kernel(dst, unsafe_ptr)
         }
 
@@ -420,7 +427,7 @@ macro_rules! base_helper_defs {
             buf: &mut [u8; N],
             fmt: &str,
             data: &[u64; M],
-        ) -> i64 {
+        ) -> crate::Result {
             crate::base_helper::bpf_snprintf(buf, fmt, data)
         }
     };

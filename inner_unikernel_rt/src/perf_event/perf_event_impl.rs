@@ -10,6 +10,7 @@ use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
 use crate::task_struct::TaskStruct;
+use crate::utils::{Result, to_result};
 
 pub type pt_regs = super::binding::pt_regs;
 
@@ -75,7 +76,7 @@ impl<'a> perf_event<'a> {
         &self,
         ctx: &bpf_perf_event_data,
         buf: &bpf_perf_event_value,
-    ) -> i64 {
+    ) -> Result {
         let size = core::mem::size_of::<bpf_perf_event_value>() as u32;
 
         let helper: extern "C" fn(
@@ -85,7 +86,8 @@ impl<'a> perf_event<'a> {
         ) -> i64 = unsafe {
             core::mem::transmute(stub::bpf_perf_prog_read_value_addr())
         };
-        helper(ctx.kptr, buf, size)
+
+        to_result(helper(ctx.kptr, buf, size))
     }
 
     pub fn bpf_get_stackid_pe<K, V>(
@@ -93,9 +95,9 @@ impl<'a> perf_event<'a> {
         ctx: &bpf_perf_event_data,
         map: &'static IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
         flags: u64,
-    ) -> i64 {
+    ) -> Result {
         if map.kptr.is_null() {
-            return -(EINVAL as i64);
+            return Err(EINVAL as u64);
         }
 
         let helper: extern "C" fn(
@@ -104,7 +106,8 @@ impl<'a> perf_event<'a> {
             u64,
         ) -> i64 =
             unsafe { core::mem::transmute(stub::bpf_get_stackid_pe_addr()) };
-        helper(ctx.kptr, map.kptr, flags)
+
+        to_result(helper(ctx.kptr, map.kptr, flags))
     }
 
     pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {
