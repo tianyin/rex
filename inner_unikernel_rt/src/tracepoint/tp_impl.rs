@@ -5,8 +5,17 @@ use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::task_struct::TaskStruct;
 
-pub enum tp_ctx {
+use super::binding::*;
+
+pub enum tp_type {
     Void,
+    SyscallsEnterOpen,
+    SyscallsExitOpen,
+}
+pub enum tp_ctx<'a> {
+    Void,
+    SyscallsEnterOpen(&'a SyscallsEnterOpenArgs),
+    SyscallsExitOpen(&'a SyscallsExitOpenArgs),
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -21,18 +30,18 @@ pub enum tp_ctx {
 #[repr(C)]
 pub struct tracepoint<'a> {
     rtti: u64,
-    prog: fn(&Self, &tp_ctx) -> u32,
+    prog: fn(&Self, tp_ctx) -> u32,
     name: &'a str,
-    tp_type: tp_ctx,
+    tp_type: tp_type,
 }
 
 impl<'a> tracepoint<'a> {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&tracepoint<'a>, &tp_ctx) -> u32,
+        f: fn(&tracepoint<'a>, tp_ctx) -> u32,
         nm: &'a str,
-        tp_ty: tp_ctx,
+        tp_ty: tp_type,
     ) -> tracepoint<'a> {
         Self {
             rtti: BPF_PROG_TYPE_TRACEPOINT as u64,
@@ -44,7 +53,13 @@ impl<'a> tracepoint<'a> {
 
     fn convert_ctx(&self, ctx: *const ()) -> tp_ctx {
         match self.tp_type {
-            tp_ctx::Void => tp_ctx::Void,
+            tp_type::Void => tp_ctx::Void,
+            tp_type::SyscallsEnterOpen => tp_ctx::SyscallsEnterOpen(unsafe {
+                &*(ctx as *const SyscallsEnterOpenArgs)
+            }),
+            tp_type::SyscallsExitOpen => tp_ctx::SyscallsExitOpen(unsafe {
+                &*(ctx as *const SyscallsExitOpenArgs)
+            }),
         }
     }
 
@@ -56,6 +71,6 @@ impl<'a> tracepoint<'a> {
 impl iu_prog for tracepoint<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
-        (self.prog)(self, &newctx)
+        (self.prog)(self, newctx)
     }
 }
