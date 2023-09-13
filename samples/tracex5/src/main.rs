@@ -8,6 +8,7 @@ use inner_unikernel_rt::linux::seccomp::seccomp_data;
 use inner_unikernel_rt::linux::unistd::*;
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::MAP_DEF;
+use inner_unikernel_rt::entry_link;
 
 pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> u32 {
     let mut sd: seccomp_data = seccomp_data {
