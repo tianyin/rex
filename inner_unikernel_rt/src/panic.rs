@@ -4,7 +4,6 @@ use core::panic::PanicInfo;
 
 use crate::per_cpu::this_cpu_ptr_mut;
 use crate::stub;
-use crate::debug::printk;
 
 const ENTRIES_SIZE: usize = 64;
 
