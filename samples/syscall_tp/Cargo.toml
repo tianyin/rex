@@ -6,7 +6,9 @@ edition = "2021"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-rlibc = "1.0.0"
+
+[dependencies.inner_unikernel_rt]
+path = "../../inner_unikernel_rt"
 
 [profile.dev]
 panic = "abort"
@@ -15,13 +17,3 @@ debug = false
 [profile.release]
 panic = "abort"
 debug = false
-
-[inner_unikernel]
-helpers = [
-    "bpf_map_lookup_elem",
-    "bpf_map_update_elem",
-]
-
-headers = [
-    "linux/bpf.h",
-]

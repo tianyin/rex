@@ -14,7 +14,7 @@
 
 #include "libiu.h"
 
-#define EXE "./target/release/syscall_tp"
+#define EXE "./target/debug/syscall_tp"
 
 /* This program verifies bpf attachment to tracepoint sys_enter_* and sys_exit_*.
  * This requires kernel CONFIG_FTRACE_SYSCALLS to be set.
@@ -64,9 +64,9 @@ static int test(char *filename, int num_progs)
 		}
 
 		map0_fds[i] = bpf_object__find_map_fd_by_name(objs[i],
-							      "__enter_open_map");
+							      "enter_open_map");
 		map1_fds[i] = bpf_object__find_map_fd_by_name(objs[i],
-							      "__exit_open_map");
+							      "exit_open_map");
 		if (map0_fds[i] < 0 || map1_fds[i] < 0) {
 			fprintf(stderr, "finding a map in obj file failed\n");
 			goto cleanup;
