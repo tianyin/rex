@@ -7,7 +7,7 @@ use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::tracepoint::*;
 use inner_unikernel_rt::entry_link;
 
-fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
+fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> u32 {
     let option_task = obj.bpf_get_current_task();
     if let Some(task) = option_task {
         let pid = task.get_pid();
@@ -17,4 +17,4 @@ fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
 }
 
 #[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_dup)]
-static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_ctx::Void);
+static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_type::Void);
