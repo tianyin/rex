@@ -3,6 +3,7 @@
 
 extern crate inner_unikernel_rt;
 
+use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::linux::bpf::*;
 use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use inner_unikernel_rt::map::*;
@@ -56,31 +57,45 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         return 0;
     }
 
-    key.kernstack = obj.bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS) as u32;
-    key.userstack = obj.bpf_get_stackid_pe(ctx, &stackmap, USER_STACKID_FLAGS) as u32;
-
-    if (key.kernstack as i32) < 0 && (key.userstack as i32) < 0 {
-        obj.bpf_trace_printk(
-            "CPU-%d period %lld ip %llx",
-            cpu as u64,
-            ctx.sample_period,
-            ctx.regs.rip(),
-        );
-        return 0;
+    match obj.bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS) {
+        Ok(kstack) => key.kernstack = kstack as u32,
+        Err(err) => {
+            bpf_printk!(
+                obj,
+                "bpf_get_stackid_pe kernel returned %lld",
+                err.wrapping_neg()
+            );
+            return 0;
+        }
     }
 
-    let ret = obj.bpf_perf_prog_read_value(ctx, &value_buf);
-
-    if ret == 0 {
-        obj.bpf_trace_printk(
-            "Time Enabled: %llu, Time Running: %llu",
-            value_buf.enabled,
-            value_buf.running,
-            0,
-        );
-    } else {
-        obj.bpf_trace_printk("Get Time Failed, ErrCode: %d", ret as u64, 0, 0);
+    match obj.bpf_get_stackid_pe(ctx, &stackmap, USER_STACKID_FLAGS) {
+        Ok(ustack) => key.userstack = ustack as u32,
+        Err(err) => {
+            bpf_printk!(
+                obj,
+                "bpf_get_stackid_pe user returned %lld",
+                err.wrapping_neg()
+            );
+            return 0;
+        }
     }
+
+    let ret = obj.bpf_perf_prog_read_value(ctx, &value_buf).map_or_else(
+        |err| {
+            bpf_printk!(obj, "Get Time Failed, ErrCode: %d", err.wrapping_neg());
+            err.wrapping_neg()
+        },
+        |val| {
+            bpf_printk!(
+                obj,
+                "Time Enabled: %llu, Time Running: %llu",
+                value_buf.enabled,
+                value_buf.running
+            );
+            val
+        },
+    );
 
     if ctx.addr != 0 {
         obj.bpf_trace_printk("Address recorded on event: %llx", ctx.addr, 0, 0);
