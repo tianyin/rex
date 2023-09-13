@@ -62,4 +62,4 @@ define_prog_entry!(xdp);
 define_prog_entry!(sched_cls);
 
 pub use bindings::uapi::*;
-pub use utils::{Result, to_result};
+pub use utils::{to_result, Result};

@@ -6,7 +6,7 @@ use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
-use crate::utils::{Result, to_result};
+use crate::utils::{to_result, Result};
 // use crate::timekeeping::*;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
@@ -437,18 +437,22 @@ macro_rules! base_helper_defs {
 macro_rules! bpf_printk {
     ($obj:expr, $fmt:expr) => {
         $obj.bpf_trace_printk($fmt, 0, 0, 0)
+            .map_or_else(|_| (), |_| ())
     };
 
     ($obj:expr, $fmt:expr, $arg1:expr) => {
         $obj.bpf_trace_printk($fmt, $arg1, 0, 0)
+            .map_or_else(|_| (), |_| ())
     };
 
     ($obj:expr, $fmt:expr, $arg1:expr, $arg2:expr) => {
         $obj.bpf_trace_printk($fmt, $arg1, $arg2, 0)
+            .map_or_else(|_| (), |_| ())
     };
 
     ($obj:expr, $fmt:expr, $arg1:expr, $arg2:expr, $arg3:expr) => {
         $obj.bpf_trace_printk($fmt, $arg1, $arg2, $arg3)
+            .map_or_else(|_| (), |_| ())
     };
 }
 

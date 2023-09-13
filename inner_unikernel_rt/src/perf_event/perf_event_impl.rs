@@ -10,7 +10,7 @@ use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
 use crate::task_struct::TaskStruct;
-use crate::utils::{Result, to_result};
+use crate::utils::{to_result, Result};
 
 pub type pt_regs = super::binding::pt_regs;
 
