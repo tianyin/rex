@@ -88,16 +88,15 @@ fn map_test2(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
-fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> u32 {
-    map_test1(obj).unwrap_or_else(|e| {
+fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+    map_test1(obj).map_err(|e| {
         bpf_printk!(obj, "map_test1 failed with %lld.\n", e.wrapping_neg());
-        0
-    });
-    map_test2(obj).unwrap_or_else(|e| {
+        e
+    })?;
+    map_test2(obj).map_err(|e| {
         bpf_printk!(obj, "map_test2 failed with %lld.\n", e.wrapping_neg());
-        0
-    });
-    0
+        e
+    })
 }
 
 #[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_dup)]

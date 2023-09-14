@@ -57,44 +57,20 @@ pub fn func_sys_read(obj: &kprobe, ctx: &pt_regs) -> Result {
 }
 
 pub fn func_sys_mmap(obj: &kprobe, ctx: &pt_regs) -> Result {
-    let mut sd: seccomp_data = seccomp_data {
-        nr: 0,
-        arch: 0,
-        instruction_pointer: 0,
-        args: [0; 6],
-    };
-    let unsafe_ptr = ctx.rsi() as *const ();
-    obj.bpf_trace_printk("seccomp_data addr: 0x%lx", ctx.rsi(), 0, 0);
-    obj.bpf_probe_read_kernel(&mut sd, unsafe_ptr)?;
-
-    obj.bpf_trace_printk(
-        "mmap(addr=0x%lx, len=%ld, prot=%ld...)\n",
-        sd.args[0],
-        sd.args[1],
-        sd.args[2],
-    );
+    obj.bpf_trace_printk("mmap\n", 0, 0, 0);
     Ok(0)
 }
 
-fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> u32 {
+fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     match ctx.rdi() as u32 {
-        __NR_read => func_sys_read(obj, ctx).unwrap_or_else(|e| {
-            bpf_printk!(obj, "func_sys_read failed with %lld\n", e.wrapping_neg());
-            0
-        }) as u32,
-        __NR_write => func_sys_write(obj, ctx).unwrap_or_else(|e| {
-            bpf_printk!(obj, "func_sys_write failed with %lld\n", e.wrapping_neg());
-            0
-        }) as u32,
-        __NR_mmap => func_sys_mmap(obj, ctx).unwrap_or_else(|e| {
-            bpf_printk!(obj, "func_sys_mmap failed with %lld\n", e.wrapping_neg());
-            0
-        }) as u32,
+        __NR_read => func_sys_read(obj, ctx),
+        __NR_write => func_sys_write(obj, ctx),
+        __NR_mmap => func_sys_mmap(obj, ctx),
         __NR_getuid..=__NR_getsid => {
             obj.bpf_trace_printk("syscall=%d (one of get/set uid/pid/gid)\n", ctx.rdi(), 0, 0);
-            0
+            Ok(0)
         }
-        _ => 0,
+        _ => Ok(0),
     }
 }
 

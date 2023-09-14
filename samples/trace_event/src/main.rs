@@ -8,7 +8,7 @@ use inner_unikernel_rt::linux::bpf::*;
 use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use inner_unikernel_rt::map::*;
 use inner_unikernel_rt::perf_event::*;
-use inner_unikernel_rt::{entry_link, MAP_DEF};
+use inner_unikernel_rt::{entry_link, Result, MAP_DEF};
 
 pub const TASK_COMM_LEN: usize = 16;
 
@@ -35,7 +35,7 @@ MAP_DEF!(
 pub const KERN_STACKID_FLAGS: u64 = BPF_F_FAST_STACK_CMP as u64;
 pub const USER_STACKID_FLAGS: u64 = (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
-fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
+fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     let cpu: u32 = obj.bpf_get_smp_processor_id();
     let value_buf: bpf_perf_event_value = bpf_perf_event_value {
         counter: 0,
@@ -48,38 +48,37 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
         userstack: 0,
     };
     if ctx.sample_period < 10000 {
-        return 0;
+        return Ok(0);
     }
 
-    if let Some(current) = obj.bpf_get_current_task() {
-        current.get_comm(&mut key.comm);
-    } else {
-        return 0;
-    }
+    obj.bpf_get_current_task()
+        .map(|t| {
+            t.get_comm(&mut key.comm);
+            0u64
+        })
+        .ok_or_else(|| 0u64)?;
 
-    match obj.bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS) {
-        Ok(kstack) => key.kernstack = kstack as u32,
-        Err(err) => {
+    key.kernstack = obj
+        .bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS)
+        .map_err(|e| {
             bpf_printk!(
                 obj,
                 "bpf_get_stackid_pe kernel returned %lld",
-                err.wrapping_neg()
+                e.wrapping_neg()
             );
-            return 0;
-        }
-    }
+            0u64
+        })? as u32;
 
-    match obj.bpf_get_stackid_pe(ctx, &stackmap, USER_STACKID_FLAGS) {
-        Ok(ustack) => key.userstack = ustack as u32,
-        Err(err) => {
+    key.userstack = obj
+        .bpf_get_stackid_pe(ctx, &stackmap, USER_STACKID_FLAGS)
+        .map_err(|e| {
             bpf_printk!(
                 obj,
                 "bpf_get_stackid_pe user returned %lld",
-                err.wrapping_neg()
+                e.wrapping_neg()
             );
-            return 0;
-        }
-    }
+            0u64
+        })? as u32;
 
     let ret = obj.bpf_perf_prog_read_value(ctx, &value_buf).map_or_else(
         |err| {
@@ -103,13 +102,13 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> u32 {
 
     match obj.bpf_map_lookup_elem(&counts, key) {
         None => {
-            obj.bpf_map_update_elem(&counts, key, 1, BPF_NOEXIST as u64);
+            obj.bpf_map_update_elem(&counts, key, 1, BPF_NOEXIST as u64)?;
         }
         Some(val) => {
             *val += 1;
         }
     }
-    0
+    Ok(0)
 }
 
 #[entry_link(inner_unikernel/perf_event)]
