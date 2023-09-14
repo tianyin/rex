@@ -10,7 +10,7 @@ RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
 		-A non_upper_case_globals -F unsafe_code -A non_snake_case ${NO_OPT} -C iu-playground
 
-all: target/debug/syscall_tp syscall_tp_user
+all: target/debug/syscall_tp syscall_tp
 
 target/debug/syscall_tp: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}
@@ -18,10 +18,10 @@ target/debug/syscall_tp: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 target/release/syscall_tp: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv --release -- ${RUST_FLAGS}
 
-syscall_tp_user: syscall_tp_user.c
+syscall_tp: syscall_tp_user.c
 	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBBPF_DIR} -L${LIBIU_DIR}\
 		-lbpf -lelf -liu -lz -o $@
 
 clean:
 	cargo clean
-	rm -rf syscall_tp_user ./src/linux ./src/stub.rs
+	rm -rf syscall_tp ./src/linux ./src/stub.rs
