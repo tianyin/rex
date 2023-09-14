@@ -11,7 +11,7 @@ else:
     toml_flag = 'r'
 
 # https://github.com/rust-lang/rust-bindgen
-bindgen_cmd = 'bindgen --use-core --no-doc-comments '\
+bindgen_cmd = 'bindgen --use-core --no-doc-comments --rust-target=1.64 '\
         '--translate-enum-integer-types --no-layout-tests '\
         '--no-prepend-enum-name --blocklist-type pt_regs'.split()
 
@@ -28,7 +28,7 @@ kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern|xdp_buff|ethhdr|iph
 --opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
 --opaque-type kunit_try_catch --opaque-type spinlock --no-doc-comments
 --use-core --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
---no-debug '.*' -o %s --
+--no-debug '.*' --rust-target=1.64 -o %s --
 -nostdinc -I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
 -I$LINUX/include -I$LINUX/arch/x86/include/uapi
 -I$LINUX/arch/x86/include/generated/uapi -I$LINUX/include/uapi
