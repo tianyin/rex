@@ -25,17 +25,17 @@ pub(crate) fn bpf_trace_printk(
     to_result(code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3))
 }
 
-pub(crate) fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
+pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
-    key: K,
-) -> Option<&mut V> {
+    key: &'a K,
+) -> Option<&'a mut V> {
     if map.kptr.is_null() {
         return None;
     }
 
     let helper: extern "C" fn(*mut (), *const K) -> *const V =
         unsafe { core::mem::transmute(stub::bpf_map_lookup_elem_addr()) };
-    let value = helper(map.kptr, &key) as *mut V;
+    let value = helper(map.kptr, key) as *mut V;
 
     if value.is_null() {
         None
@@ -46,8 +46,8 @@ pub(crate) fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
 
 pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
-    key: K,
-    value: V,
+    key: &K,
+    value: &V,
     flags: u64,
 ) -> Result {
     if map.kptr.is_null() {
@@ -57,12 +57,12 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
     let helper: extern "C" fn(*mut (), *const K, *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_update_elem_addr()) };
 
-    to_result(helper(map.kptr, &key, &value, flags))
+    to_result(helper(map.kptr, key, value, flags))
 }
 
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
-    key: K,
+    key: &K,
 ) -> Result {
     if map.kptr.is_null() {
         return Err(EINVAL as u64);
@@ -71,12 +71,12 @@ pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
     let helper: extern "C" fn(*mut (), *const K) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_delete_elem_addr()) };
 
-    to_result((helper(map.kptr, &key)))
+    to_result((helper(map.kptr, key)))
 }
 
 pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
-    value: V,
+    value: &V,
     flags: u64,
 ) -> Result {
     if map.kptr.is_null() {
@@ -86,12 +86,12 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
     let helper: extern "C" fn(*mut (), *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_push_elem_addr()) };
 
-    to_result(helper(map.kptr, &value, flags))
+    to_result(helper(map.kptr, value, flags))
 }
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
-    value: V,
+    value: &V,
 ) -> Result {
     if map.kptr.is_null() {
         return Err(EINVAL as u64);
@@ -100,12 +100,12 @@ pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
     let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_pop_elem_addr()) };
 
-    to_result(helper(map.kptr, &value))
+    to_result(helper(map.kptr, value))
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
-    value: V,
+    value: &V,
 ) -> Result {
     if map.kptr.is_null() {
         return Err(EINVAL as u64);
@@ -114,7 +114,7 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_peek_elem_addr()) };
 
-    to_result(helper(map.kptr, &value))
+    to_result(helper(map.kptr, value))
 }
 
 /*
@@ -302,11 +302,11 @@ macro_rules! base_helper_defs {
 
         // Self should already have impl<'a>
         #[inline(always)]
-        pub fn bpf_map_lookup_elem<const MT: bpf_map_type, K, V>(
+        pub fn bpf_map_lookup_elem<'b, const MT: bpf_map_type, K, V>(
             &self,
             map: &'static IUMap<MT, K, V>,
-            key: K,
-        ) -> Option<&mut V> {
+            key: &'b K,
+        ) -> Option<&'b mut V> {
             crate::base_helper::bpf_map_lookup_elem(map, key)
         }
 
@@ -314,8 +314,8 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static IUMap<MT, K, V>,
-            key: K,
-            value: V,
+            key: &K,
+            value: &V,
             flags: u64,
         ) -> crate::Result {
             crate::base_helper::bpf_map_update_elem(map, key, value, flags)
@@ -325,7 +325,7 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static IUMap<MT, K, V>,
-            key: K,
+            key: &K,
         ) -> crate::Result {
             crate::base_helper::bpf_map_delete_elem(map, key)
         }
@@ -334,7 +334,7 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static IUMap<MT, K, V>,
-            value: V,
+            value: &V,
             flags: u64,
         ) -> crate::Result {
             crate::base_helper::bpf_map_push_elem(map, value, flags)
@@ -344,7 +344,7 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static IUMap<MT, K, V>,
-            value: V,
+            value: &V,
         ) -> crate::Result {
             crate::base_helper::bpf_map_pop_elem(map, value)
         }
@@ -353,7 +353,7 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static IUMap<MT, K, V>,
-            value: V,
+            value: &V,
         ) -> crate::Result {
             crate::base_helper::bpf_map_peek_elem(map, value)
         }
