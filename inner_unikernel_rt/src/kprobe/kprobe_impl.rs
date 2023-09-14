@@ -2,6 +2,7 @@ use crate::bindings::uapi::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_KPROBE};
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
+use crate::Result;
 
 pub type pt_regs = super::binding::pt_regs;
 
@@ -17,7 +18,7 @@ pub type pt_regs = super::binding::pt_regs;
 #[repr(C)]
 pub struct kprobe<'a> {
     rtti: u64,
-    prog: fn(&Self, &mut pt_regs) -> u32,
+    prog: fn(&Self, &mut pt_regs) -> Result,
     name: &'a str,
 }
 
@@ -25,7 +26,7 @@ impl<'a> kprobe<'a> {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&kprobe<'a>, &mut pt_regs) -> u32,
+        f: fn(&kprobe<'a>, &mut pt_regs) -> Result,
         nm: &'a str,
     ) -> kprobe<'a> {
         Self {
@@ -56,6 +57,6 @@ impl<'a> kprobe<'a> {
 impl iu_prog for kprobe<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
-        (self.prog)(self, newctx)
+        ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32
     }
 }

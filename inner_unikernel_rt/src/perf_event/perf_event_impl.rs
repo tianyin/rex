@@ -34,7 +34,7 @@ pub struct bpf_perf_event_data {
 #[repr(C)]
 pub struct perf_event<'a> {
     rtti: u64,
-    prog: fn(&Self, &bpf_perf_event_data) -> u32,
+    prog: fn(&Self, &bpf_perf_event_data) -> Result,
     name: &'a str,
 }
 
@@ -42,7 +42,7 @@ impl<'a> perf_event<'a> {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&perf_event<'a>, &bpf_perf_event_data) -> u32,
+        f: fn(&perf_event<'a>, &bpf_perf_event_data) -> Result,
         nm: &'a str,
     ) -> perf_event<'a> {
         Self {
@@ -118,6 +118,6 @@ impl<'a> perf_event<'a> {
 impl iu_prog for perf_event<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
-        (self.prog)(self, &newctx)
+        ((self.prog)(self, &newctx)).unwrap_or_else(|_| 0) as u32
     }
 }

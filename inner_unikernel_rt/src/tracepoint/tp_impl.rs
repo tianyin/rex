@@ -4,6 +4,7 @@ use crate::bindings::uapi::linux::bpf::{
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::task_struct::TaskStruct;
+use crate::Result;
 
 use super::binding::*;
 
@@ -30,7 +31,7 @@ pub enum tp_ctx<'a> {
 #[repr(C)]
 pub struct tracepoint<'a> {
     rtti: u64,
-    prog: fn(&Self, tp_ctx) -> u32,
+    prog: fn(&Self, tp_ctx) -> Result,
     name: &'a str,
     tp_type: tp_type,
 }
@@ -39,7 +40,7 @@ impl<'a> tracepoint<'a> {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&tracepoint<'a>, tp_ctx) -> u32,
+        f: fn(&tracepoint<'a>, tp_ctx) -> Result,
         nm: &'a str,
         tp_ty: tp_type,
     ) -> tracepoint<'a> {
@@ -71,6 +72,8 @@ impl<'a> tracepoint<'a> {
 impl iu_prog for tracepoint<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
-        (self.prog)(self, newctx)
+
+        // Return 0 if Err, i.e. discard event
+        ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32
     }
 }
