@@ -75,13 +75,13 @@ impl<'a> perf_event<'a> {
     pub fn bpf_perf_prog_read_value(
         &self,
         ctx: &bpf_perf_event_data,
-        buf: &bpf_perf_event_value,
+        buf: &mut bpf_perf_event_value,
     ) -> Result {
         let size = core::mem::size_of::<bpf_perf_event_value>() as u32;
 
         let helper: extern "C" fn(
             *const bpf_perf_event_data_kern,
-            &bpf_perf_event_value,
+            &mut bpf_perf_event_value,
             u32,
         ) -> i64 = unsafe {
             core::mem::transmute(stub::bpf_perf_prog_read_value_addr())
