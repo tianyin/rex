@@ -1,8 +1,6 @@
 #![no_std]
-#![feature(const_mut_refs)]
-#![feature(panic_info_message)]
-#![feature(c_variadic)]
-#![allow(non_camel_case_types)]
+#![feature(const_mut_refs, panic_info_message, c_variadic)]
+#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, unused)]
 
 pub mod kprobe;
 pub mod map;
