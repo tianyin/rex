@@ -8,9 +8,7 @@ use inner_unikernel_rt::entry_link;
 use inner_unikernel_rt::kprobe::*;
 use inner_unikernel_rt::linux::seccomp::seccomp_data;
 use inner_unikernel_rt::linux::unistd::*;
-use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::Result;
-use inner_unikernel_rt::MAP_DEF;
 
 pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> Result {
     let mut sd: seccomp_data = seccomp_data {
@@ -24,11 +22,12 @@ pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> Result {
     obj.bpf_probe_read_kernel(&mut sd, unsafe_ptr)?;
 
     if sd.args[2] == 512 {
-        obj.bpf_trace_printk(
+        bpf_printk!(
+            obj,
             "write(fd=%d, buf=%p, size=%d)\n",
             sd.args[0],
             sd.args[1],
-            sd.args[2],
+            sd.args[2]
         );
     }
     Ok(0)
@@ -46,28 +45,30 @@ pub fn func_sys_read(obj: &kprobe, ctx: &pt_regs) -> Result {
     obj.bpf_probe_read_kernel(&mut sd, unsafe_ptr)?;
 
     if sd.args[2] > 128 && sd.args[2] <= 1024 {
-        obj.bpf_trace_printk(
+        bpf_printk!(
+            obj,
             "read(fd=%d, buf=%p, size=%d)\n",
             sd.args[0],
             sd.args[1],
-            sd.args[2],
+            sd.args[2]
         );
     }
     Ok(0)
 }
 
-pub fn func_sys_mmap(obj: &kprobe, ctx: &pt_regs) -> Result {
-    obj.bpf_trace_printk("mmap\n", 0, 0, 0);
+pub fn func_sys_mmap(obj: &kprobe, _: &pt_regs) -> Result {
+    bpf_printk!(obj, "mmap\n");
     Ok(0)
 }
 
+#[allow(non_upper_case_globals)]
 fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     match ctx.rdi() as u32 {
         __NR_read => func_sys_read(obj, ctx),
         __NR_write => func_sys_write(obj, ctx),
         __NR_mmap => func_sys_mmap(obj, ctx),
         __NR_getuid..=__NR_getsid => {
-            obj.bpf_trace_printk("syscall=%d (one of get/set uid/pid/gid)\n", ctx.rdi(), 0, 0);
+            bpf_printk!(obj, "syscall=%d (one of get/set uid/pid/gid)\n", ctx.rdi());
             Ok(0)
         }
         _ => Ok(0),

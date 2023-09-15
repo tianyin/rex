@@ -33,7 +33,7 @@ fn map_test1(obj: &tracepoint) -> Result {
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
     obj.bpf_map_update_elem(&map_hash, &key, &(pid as i64), BPF_ANY as u64)?;
-    obj.bpf_trace_printk("Map Updated\n", 0, 0, 0);
+    bpf_printk!(obj, "Map Updated\n");
 
     match obj.bpf_map_lookup_elem(&map_hash, &key) {
         None => {
@@ -72,7 +72,7 @@ fn map_test2(obj: &tracepoint) -> Result {
 
     // Add a new element
     obj.bpf_map_update_elem(&map_array, &key, &(pid as u64), BPF_ANY as u64)?;
-    obj.bpf_trace_printk("Map Updated\n", 0, 0, 0);
+    bpf_printk!(obj, "Map Updated\n");
 
     match obj.bpf_map_lookup_elem(&map_array, &key) {
         None => {
