@@ -37,7 +37,7 @@ pub const USER_STACKID_FLAGS: u64 = (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as
 
 fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     let cpu: u32 = obj.bpf_get_smp_processor_id();
-    let value_buf: bpf_perf_event_value = bpf_perf_event_value {
+    let mut value_buf: bpf_perf_event_value = bpf_perf_event_value {
         counter: 0,
         enabled: 0,
         running: 0,
@@ -80,29 +80,31 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
             0u64
         })? as u32;
 
-    let ret = obj.bpf_perf_prog_read_value(ctx, &value_buf).map_or_else(
-        |err| {
-            bpf_printk!(obj, "Get Time Failed, ErrCode: %d", err.wrapping_neg());
-            err.wrapping_neg()
-        },
-        |val| {
-            bpf_printk!(
-                obj,
-                "Time Enabled: %llu, Time Running: %llu",
-                value_buf.enabled,
-                value_buf.running
-            );
-            val
-        },
-    );
+    let ret = obj
+        .bpf_perf_prog_read_value(ctx, &mut value_buf)
+        .map_or_else(
+            |err| {
+                bpf_printk!(obj, "Get Time Failed, ErrCode: %d", err.wrapping_neg());
+                err.wrapping_neg()
+            },
+            |val| {
+                bpf_printk!(
+                    obj,
+                    "Time Enabled: %llu, Time Running: %llu",
+                    value_buf.enabled,
+                    value_buf.running
+                );
+                val
+            },
+        );
 
     if ctx.addr != 0 {
         obj.bpf_trace_printk("Address recorded on event: %llx", ctx.addr, 0, 0);
     }
 
-    match obj.bpf_map_lookup_elem(&counts, key) {
+    match obj.bpf_map_lookup_elem(&counts, &key) {
         None => {
-            obj.bpf_map_update_elem(&counts, key, 1, BPF_NOEXIST as u64)?;
+            obj.bpf_map_update_elem(&counts, &key, &1, BPF_NOEXIST as u64)?;
         }
         Some(val) => {
             *val += 1;

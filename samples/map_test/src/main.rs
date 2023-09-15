@@ -16,7 +16,7 @@ fn map_test1(obj: &tracepoint) -> Result {
 
     bpf_printk!(obj, "Map Testing 1 Start with key %u\n", key as u64);
 
-    match obj.bpf_map_lookup_elem(&map_hash, key) {
+    match obj.bpf_map_lookup_elem(&map_hash, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -32,10 +32,10 @@ fn map_test1(obj: &tracepoint) -> Result {
     };
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
-    obj.bpf_map_update_elem(&map_hash, key, pid as i64, BPF_ANY as u64)?;
+    obj.bpf_map_update_elem(&map_hash, &key, &(pid as i64), BPF_ANY as u64)?;
     obj.bpf_trace_printk("Map Updated\n", 0, 0, 0);
 
-    match obj.bpf_map_lookup_elem(&map_hash, key) {
+    match obj.bpf_map_lookup_elem(&map_hash, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -44,10 +44,10 @@ fn map_test1(obj: &tracepoint) -> Result {
         }
     }
 
-    obj.bpf_map_delete_elem(&map_hash, key)?;
+    obj.bpf_map_delete_elem(&map_hash, &key)?;
     bpf_printk!(obj, "Map delete key\n");
 
-    match obj.bpf_map_lookup_elem(&map_hash, key) {
+    match obj.bpf_map_lookup_elem(&map_hash, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -71,10 +71,10 @@ fn map_test2(obj: &tracepoint) -> Result {
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
     // Add a new element
-    obj.bpf_map_update_elem(&map_array, key, pid as u64, BPF_ANY as u64)?;
+    obj.bpf_map_update_elem(&map_array, &key, &(pid as u64), BPF_ANY as u64)?;
     obj.bpf_trace_printk("Map Updated\n", 0, 0, 0);
 
-    match obj.bpf_map_lookup_elem(&map_array, key) {
+    match obj.bpf_map_lookup_elem(&map_array, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }

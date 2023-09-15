@@ -15,16 +15,15 @@ MAP_DEF!(exit_open_map, u32, u32, BPF_MAP_TYPE_ARRAY, 1, 0);
 type SyscallTpMap = IUMap<BPF_MAP_TYPE_ARRAY, u32, u32>;
 
 fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
-    let (key, init_val): (u32, u32) = (0, 1);
-    let mut value: u32;
-    match obj.bpf_map_lookup_elem(map, key) {
+    match obj.bpf_map_lookup_elem(map, &0) {
         None => {
-            obj.bpf_map_update_elem(map, key, init_val, BPF_NOEXIST.into())?;
+            obj.bpf_map_update_elem(map, &0, &1, BPF_NOEXIST.into())?;
         }
         Some(val) => {
             *val += 1;
         }
     }
+
     Ok(0)
 }
 
