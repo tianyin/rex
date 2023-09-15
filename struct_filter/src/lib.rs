@@ -2,10 +2,7 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{
-    parse_macro_input, parse_quote, Attribute, Data, DeriveInput, Field, Fields, ItemStatic, Type,
-    TypePath,
-};
+use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, ItemStatic, Type, TypePath};
 
 fn type_checking(type_path: &TypePath) -> bool {
     let type_name = type_path.path.segments.last().unwrap().ident.to_string();
@@ -30,8 +27,10 @@ pub fn entry_link(attr: TokenStream, item: TokenStream) -> TokenStream {
     let mut ast = parse_macro_input!(item as ItemStatic);
     let link_para: String = attr.into_iter().map(|x| x.to_string()).collect();
     let link_section = parse_quote!(#[link_section = #link_para]);
+    let used = parse_quote!(#[used]);
 
     ast.attrs.push(link_section);
+    ast.attrs.push(used);
     TokenStream::from(quote! { #ast })
 }
 
