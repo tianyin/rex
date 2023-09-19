@@ -6,7 +6,7 @@ LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unik
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
 
-all: target/debug/map_test loader event-trigger
+all: target/release/map_test loader event-trigger
 
 target/debug/map_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}
@@ -15,8 +15,8 @@ target/release/map_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv --release -- ${RUST_FLAGS}
 
 
-llvm-ir: ./src/*.rs prep_interface.py ${LINUX}/vmlinux
-	cargo rustc -vv -- ${RUST_FLAGS} --emit llvm-ir
+llvm-ir: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+	cargo rustc -vv --release -- ${RUST_FLAGS} --emit llvm-ir
 
 mir: ./src/*.rs prep_interface.py ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS} --emit mir

@@ -14,7 +14,7 @@
 
 #include "libiu.h"
 
-#define EXE "./target/debug/syscall_tp"
+#define EXE "./target/release/syscall_tp"
 
 /* This program verifies bpf attachment to tracepoint sys_enter_* and sys_exit_*.
  * This requires kernel CONFIG_FTRACE_SYSCALLS to be set.

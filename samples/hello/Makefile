@@ -6,7 +6,7 @@ LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unik
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
 
-all: target/debug/hello loader event-trigger
+all: target/release/hello loader event-trigger
 
 target/debug/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}

@@ -13,3 +13,7 @@ path = "../../inner_unikernel_rt"
 [profile.dev]
 panic = "abort"
 debug = false
+
+[profile.release]
+panic = "abort"
+debug = false

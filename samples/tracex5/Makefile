@@ -6,7 +6,7 @@ LIBIU_DIR = "../../libiu"
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
 
-all: target/debug/tracex5 tracex5
+all: target/release/tracex5 tracex5
 
 target/debug/tracex5: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}

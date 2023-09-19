@@ -11,7 +11,7 @@
 #include "libiu.h"
 #include <libbpf.h>
 
-#define EXE "./target/debug/map_test"
+#define EXE "./target/release/map_test"
 
 int main(void)
 {

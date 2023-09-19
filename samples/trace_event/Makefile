@@ -7,10 +7,13 @@ LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unik
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
 
 
-all: target/debug/trace_event_kern trace_event
+all: target/release/trace_event_kern trace_event
 
 target/debug/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}
+
+target/release/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+	cargo rustc -vv --release -- ${RUST_FLAGS}
 
 trace_helpers.o: trace_helpers.c
 	clang -I${LINUX_INC} -g -c $^ -o $@

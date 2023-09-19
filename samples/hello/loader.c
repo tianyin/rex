@@ -11,7 +11,7 @@
 #include "libiu.h"
 #include <libbpf.h>
 
-#define EXE "./target/debug/hello"
+#define EXE "./target/release/hello"
 
 int main(void)
 {
