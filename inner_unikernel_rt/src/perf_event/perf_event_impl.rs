@@ -96,7 +96,8 @@ impl<'a> perf_event<'a> {
         map: &'static IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
         flags: u64,
     ) -> Result {
-        if map.kptr.is_null() {
+        let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+        if map_kptr.is_null() {
             return Err(EINVAL as u64);
         }
 
@@ -107,7 +108,7 @@ impl<'a> perf_event<'a> {
         ) -> i64 =
             unsafe { core::mem::transmute(stub::bpf_get_stackid_pe_addr()) };
 
-        to_result(helper(ctx.kptr, map.kptr, flags))
+        to_result(helper(ctx.kptr, map_kptr, flags))
     }
 
     pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {

@@ -29,13 +29,14 @@ pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     key: &'a K,
 ) -> Option<&'a mut V> {
-    if map.kptr.is_null() {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if map_kptr.is_null() {
         return None;
     }
 
     let helper: extern "C" fn(*mut (), *const K) -> *const V =
         unsafe { core::mem::transmute(stub::bpf_map_lookup_elem_addr()) };
-    let value = helper(map.kptr, key) as *mut V;
+    let value = helper(map_kptr, key) as *mut V;
 
     if value.is_null() {
         None
@@ -50,28 +51,30 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
     value: &V,
     flags: u64,
 ) -> Result {
-    if map.kptr.is_null() {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if map_kptr.is_null() {
         return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const K, *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_update_elem_addr()) };
 
-    to_result(helper(map.kptr, key, value, flags))
+    to_result(helper(map_kptr, key, value, flags))
 }
 
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     key: &K,
 ) -> Result {
-    if map.kptr.is_null() {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if map_kptr.is_null() {
         return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const K) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_delete_elem_addr()) };
 
-    to_result((helper(map.kptr, key)))
+    to_result((helper(map_kptr, key)))
 }
 
 pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
@@ -79,42 +82,45 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
     value: &V,
     flags: u64,
 ) -> Result {
-    if map.kptr.is_null() {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if map_kptr.is_null() {
         return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const V, u64) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_push_elem_addr()) };
 
-    to_result(helper(map.kptr, value, flags))
+    to_result(helper(map_kptr, value, flags))
 }
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     value: &V,
 ) -> Result {
-    if map.kptr.is_null() {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if map_kptr.is_null() {
         return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_pop_elem_addr()) };
 
-    to_result(helper(map.kptr, value))
+    to_result(helper(map_kptr, value))
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     map: &'static IUMap<MT, K, V>,
     value: &V,
 ) -> Result {
-    if map.kptr.is_null() {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if map_kptr.is_null() {
         return Err(EINVAL as u64);
     }
 
     let helper: extern "C" fn(*mut (), *const V) -> i64 =
         unsafe { core::mem::transmute(stub::bpf_map_peek_elem_addr()) };
 
-    to_result(helper(map.kptr, value))
+    to_result(helper(map_kptr, value))
 }
 
 /*
