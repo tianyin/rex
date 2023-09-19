@@ -90,11 +90,11 @@ fn map_test2(obj: &tracepoint) -> Result {
 
 fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     map_test1(obj).map_err(|e| {
-        bpf_printk!(obj, "map_test1 failed with %lld.\n", e.wrapping_neg());
+        bpf_printk!(obj, "map_test1 failed with %lld.\n", e as u64);
         e
     })?;
     map_test2(obj).map_err(|e| {
-        bpf_printk!(obj, "map_test2 failed with %lld.\n", e.wrapping_neg());
+        bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
         e
     })
 }
