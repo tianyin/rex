@@ -65,7 +65,7 @@ pub struct __sk_buff<'a> {
 #[repr(C)]
 pub struct sched_cls<'a> {
     rtti: u64,
-    prog: fn(&Self, &__sk_buff) -> u32,
+    prog: fn(&Self, &__sk_buff) -> Result,
     name: &'a str,
 }
 
@@ -74,7 +74,7 @@ impl<'a> sched_cls<'a> {
 
     pub const fn new(
         // TODO update based on signature
-        f: fn(&sched_cls<'a>, &__sk_buff) -> u32,
+        f: fn(&sched_cls<'a>, &__sk_buff) -> Result,
         nm: &'a str,
         rtti: u64,
     ) -> sched_cls<'a> {
@@ -162,6 +162,8 @@ impl<'a> sched_cls<'a> {
 impl iu_prog for sched_cls<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
-        (self.prog)(self, &mut newctx)
+        // return TC_ACT_OK if error
+        ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| TC_ACT_OK as i32)
+            as u32
     }
 }

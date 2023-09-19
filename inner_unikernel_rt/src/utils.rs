@@ -1,3 +1,5 @@
+use core::ffi::c_int;
+
 #[repr(transparent)]
 pub struct u16be(pub(crate) u16);
 
@@ -44,17 +46,22 @@ pub fn direct_packet_access_ok<T: DirectPacketAccessOk>() {}
 /// To be used as the return type for functions that may fail.
 ///
 /// Ref: linux/rust/kernel/error.rs
-pub type Result = core::result::Result<u64, u64>;
+pub type Result = core::result::Result<c_int, c_int>;
 
 /// Converts an integer as returned by a C kernel function to an error if it's
 /// negative, and `Ok(val)` otherwise.
 ///
 /// Ref: linux/rust/kernel/error.rs
-#[inline(always)]
-pub fn to_result(retval: i64) -> Result {
-    if retval < 0 {
-        Err((-retval) as u64)
-    } else {
-        Ok(retval as u64)
-    }
+// genetic specialization to Macro
+#[macro_export]
+macro_rules! to_result {
+    ($retval:expr) => {
+        if $retval < 0 {
+            Err($retval as i32)
+        } else {
+            Ok($retval as i32)
+        }
+    };
 }
+
+pub(crate) use to_result;

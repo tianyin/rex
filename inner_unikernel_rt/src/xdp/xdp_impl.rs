@@ -66,7 +66,7 @@ pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
 pub struct xdp<'a> {
     rtti: u64,
     // TODO update it
-    prog: fn(&Self, &xdp_md) -> u32,
+    prog: fn(&Self, &xdp_md) -> Result,
     name: &'a str,
 }
 
@@ -75,7 +75,7 @@ impl<'a> xdp<'a> {
 
     pub const fn new(
         // TODO update based on signature
-        f: fn(&xdp<'a>, &xdp_md) -> u32,
+        f: fn(&xdp<'a>, &xdp_md) -> Result,
         nm: &'a str,
         rtti: u64,
     ) -> xdp<'a> {
@@ -261,6 +261,8 @@ impl<'a> xdp<'a> {
 impl iu_prog for xdp<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
-        (self.prog)(self, &mut newctx)
+        // Return XDP_PASS if Err, i.e. discard event
+        ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| XDP_PASS as i32)
+            as u32
     }
 }
