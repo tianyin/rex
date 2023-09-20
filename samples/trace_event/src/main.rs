@@ -56,7 +56,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
             t.get_comm(&mut key.comm);
             0u64
         })
-        .ok_or_else(|| 0u64)?;
+        .ok_or_else(|| 0i32)?;
 
     key.kernstack = obj
         .bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS)
@@ -68,7 +68,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
                 ctx.sample_period,
                 ctx.regs.rip()
             );
-            0u64
+            0i32
         })? as u32;
 
     key.userstack = obj
@@ -81,14 +81,14 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
                 ctx.sample_period,
                 ctx.regs.rip()
             );
-            0u64
+            0i32
         })? as u32;
 
     obj.bpf_perf_prog_read_value(ctx, &mut value_buf)
         .map_or_else(
             |err| {
-                bpf_printk!(obj, "Get Time Failed, ErrCode: %d", err.wrapping_neg());
-                err.wrapping_neg()
+                bpf_printk!(obj, "Get Time Failed, ErrCode: %d", err as u64);
+                err as u64
             },
             |val| {
                 bpf_printk!(
@@ -97,7 +97,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
                     value_buf.enabled,
                     value_buf.running
                 );
-                val
+                val as u64
             },
         );
 
