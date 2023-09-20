@@ -92,11 +92,9 @@ MAP_DEF!(
     0
 );
 
-fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8]) -> u32 {
-    let mut key = match obj.bpf_map_lookup_elem(&map_keys, pctx.key_count) {
-        None => return XDP_PASS,
-        Some(k) => k,
-    };
+fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8]) -> Result {
+    let mut key = obj.bpf_map_lookup_elem(&map_keys, &pctx.key_count)
+        .ok_or_else(|| 0i32)?;
 
     key.hash = FNV_OFFSET_BASIS_32;
 
@@ -119,16 +117,15 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
 
     // no key found
     if (key_len == 0 || key_len as usize > BMC_MAX_KEY_LENGTH) {
-        return XDP_PASS;
+        return Ok(XDP_PASS as i32);
     }
 
     // get the cache entry
     let cache_idx: u32 = key.hash.0 % BMC_CACHE_ENTRY_COUNT;
-    let entry = match obj.bpf_map_lookup_elem(&map_kcache, cache_idx) {
-        // should never happen
-        None => return XDP_PASS,
-        Some(e) => e,
-    };
+    let entry = obj
+        .bpf_map_lookup_elem(&map_kcache, &cache_idx)
+        .ok_or_else(|| 0i32)?;
+
     // TODO: should have lock here bpf_spin_lock(&entry->lock);
 
     // potential cache hit
@@ -158,7 +155,7 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
 
     if (done_parsing == 1) {
         if (pctx.key_count > 0) {
-            return prepare_packet(obj, ctx, payload);
+            prepare_packet(obj, ctx, payload)?;
         }
     } else {
         // process more keys
@@ -167,10 +164,10 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
         hash_key(obj, ctx, pctx, payload);
     }
 
-    XDP_PASS
+    Ok(XDP_PASS as i32)
 }
 
-fn prepare_packet(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> u32 {
+fn prepare_packet(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
     // exchange src and dst ip and mac
 
     // if (payload >= data_end || old_payload + 1 >= data_end)
@@ -207,11 +204,11 @@ fn prepare_packet(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> u32 {
     write_pkt_reply(obj, ctx, payload)
 }
 
-fn write_pkt_reply(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> u32 {
-    return XDP_PASS;
+fn write_pkt_reply(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
+    Ok(XDP_PASS as i32)
 }
 
-fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
+fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> Result {
     let header_len = size_of::<ethhdr>()
         + size_of::<iphdr>()
         + size_of::<udphdr>()
@@ -231,12 +228,12 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
             // check if using the memcached port
             // check if the payload has enough space for a memcached request
             if (port != 11211 || payload.len() < 4) {
-                return XDP_PASS;
+                return Ok(XDP_PASS as i32);
             }
 
             // check if a get command
             if !payload.starts_with(b"get ") {
-                return XDP_PASS;
+                return Ok(XDP_PASS as i32);
             }
 
             let mut off = 4;
@@ -255,19 +252,16 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> u32 {
 
             // bpf_printk!(obj, "offset is %d\n", off as u64);
             // hash the key
-            match hash_key(obj, ctx, &mut pctx, payload) {
-                XDP_PASS => return XDP_PASS,
-                _ => (),
-            }
+            hash_key(obj, ctx, &mut pctx, payload);
         }
         _ => {}
     };
 
-    XDP_PASS
+    Ok(XDP_PASS as i32)
 }
 
 #[inline(always)]
-fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len: usize) -> u32 {
+fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len: usize) -> Result {
     let mut hash = FNV_OFFSET_BASIS_32;
 
     let mut off = 0usize;
@@ -280,10 +274,11 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         hash *= FNV_PRIME_32;
     }
     let cache_idx: u32 = hash.0 % BMC_CACHE_ENTRY_COUNT;
-    let bmc_cache_entry = match obj.bpf_map_lookup_elem(&map_kcache, cache_idx) {
-        None => return TC_ACT_OK,
-        Some(e) => e,
-    };
+
+    let bmc_cache_entry = obj
+        .bpf_map_lookup_elem(&map_kcache, &cache_idx)
+        // return TC_ACT_OK if the cache is not found or map error
+        .ok_or_else(|| 0i32)?;
     bpf_printk!(obj, "key hash function\n");
 
     //   NOTE:  bpf_spin_lock(&entry->lock);
@@ -307,7 +302,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         if diff == 0 {
             //NOTE: bpf_spin_unlock(&entry->lock);
             bpf_printk!(obj, "cache is up-to-date\n");
-            return TC_ACT_OK;
+            return Ok(TC_ACT_OK as i32);
         }
     }
 
@@ -334,11 +329,9 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     } else {
         // TODO: bpf_spin_unlock(&entry->lock);
     }
-
-    TC_ACT_OK
+    return Ok(TC_ACT_OK as i32);
 }
-fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> u32 {
-    let mut ret = TC_ACT_OK;
+fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> Result {
 
     let header_len = size_of::<iphdr>()
         + size_of::<eth_header>()
@@ -347,7 +340,7 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> u32 {
 
     // check if the packet is long enough
     if (skb.len as usize <= header_len) {
-        return TC_ACT_OK;
+        return Ok(TC_ACT_OK as i32);
     }
 
     let eth_header = eth_header::new(&skb.data_slice[0..14]);
@@ -361,24 +354,21 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> u32 {
 
             // confirm if using the memcached port
             if (src_port != 11211 && payload.len() < 6) {
-                return TC_ACT_OK;
+                return Ok(TC_ACT_OK as i32);
             }
 
             // check if a VALUE command
             if !payload.starts_with(b"VALUE ") {
-                return TC_ACT_OK;
+                return Ok(TC_ACT_OK as i32);
             }
 
             // update cache map based on the packet
-            ret = match bmc_update_cache(obj, skb, &payload[6..], header_len) {
-                TC_ACT_OK => return TC_ACT_OK,
-                e => e,
-            };
+            bmc_update_cache(obj, skb, &payload[6..], header_len)?;
         }
         _ => {}
     }
 
-    ret
+    Ok(TC_ACT_OK as i32)
 }
 #[entry_link(inner_unikernel/xdp)]
 static PROG1: xdp = xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
