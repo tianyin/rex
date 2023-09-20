@@ -55,13 +55,14 @@ pub type Result = core::result::Result<c_int, c_int>;
 // genetic specialization to Macro
 #[macro_export]
 macro_rules! to_result {
-    ($retval:expr) => {
-        if $retval < 0 {
-            Err($retval as i32)
+    ($retval:expr) => {{
+        let val = $retval;
+        if val < 0 {
+            Err(val as i32)
         } else {
-            Ok($retval as i32)
+            Ok(val as i32)
         }
-    };
+    }};
 }
 
 pub(crate) use to_result;
