@@ -97,9 +97,9 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
     // You can still derive other traits, or just generate an empty implementation
     let gen = quote! {
         impl #struct_name {
-            fn new(data: &[u8]) -> &#struct_name{
+            fn new(data: &mut [u8]) -> &mut #struct_name{
              #(#fields_token)*
-             unsafe { convert_slice_to_struct::<#struct_name>(data) }
+             unsafe { convert_slice_to_struct_mut::<#struct_name>(data) }
             }
         }
     };

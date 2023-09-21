@@ -20,7 +20,7 @@
 #define STATS_PATH "/tmp/bmc_stats.txt"
 #define STATS_INTERVAL_PATH "/tmp/bmc_stats_interval.txt"
 
-#define EXE "./target/release/xdp_test"
+#define EXE "./target/debug/xdp_test"
 
 static int nr_cpus = 0;
 

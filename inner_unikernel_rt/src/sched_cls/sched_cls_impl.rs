@@ -86,6 +86,14 @@ impl<'a> sched_cls<'a> {
     }
 
     // NOTE: copied from xdp impl, may change in the future
+    pub fn eth_header<'b>(&self, ctx: &'b __sk_buff) -> &'b ethhdr {
+        direct_packet_access_ok::<[u8; 6]>();
+        direct_packet_access_ok::<[u8; 6]>();
+        direct_packet_access_ok::<u16>();
+
+        unsafe { convert_slice_to_struct::<ethhdr>(&ctx.data_slice[0..14]) }
+    }
+
     pub fn udp_header<'b>(&self, ctx: &'b __sk_buff) -> &'b udphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();

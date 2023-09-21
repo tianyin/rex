@@ -10,7 +10,7 @@ RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
 		-A non_upper_case_globals -F unsafe_code -A non_snake_case ${NO_OPT} -C iu-playground
 
-all: target/release/xdp_test entry
+all: target/debug/xdp_test entry
 
 target/debug/xdp_test: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc -vv -- ${RUST_FLAGS}

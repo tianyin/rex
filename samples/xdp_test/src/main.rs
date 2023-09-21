@@ -5,7 +5,7 @@
 extern crate inner_unikernel_rt;
 
 use core::ffi::c_void;
-use core::mem::size_of;
+use core::mem::{size_of, swap};
 use core::num::Wrapping;
 use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::entry_link;
@@ -29,9 +29,19 @@ const BMC_MAX_CACHE_DATA_SIZE: usize =
 const BMC_MAX_KEY_IN_MULTIGET: u32 = 30;
 const BMC_MAX_KEY_IN_PACKET: u32 = BMC_MAX_KEY_IN_MULTIGET;
 
-const FNV_OFFSET_BASIS_32: Wrapping<u32> = Wrapping(2166136261);
-const FNV_PRIME_32: u32 = 16777619;
+// const FNV_OFFSET_BASIS_32: Wrapping<u32> = Wrapping(2166136261);
+// const FNV_PRIME_32: u32 = 16777619;
+const FNV_OFFSET_BASIS_32: u32 = 5;
+const FNV_PRIME_32: u32 = 5;
 const ETH_ALEN: usize = 6;
+
+// FIX: use simple hash function, ned update in the future
+macro_rules! hash_func {
+    ($hash:expr, $value:expr) => {
+        // $hash = $hash.wrapping_pow($value as u32);
+        $hash = $hash.wrapping_mul(FNV_PRIME_32);
+    };
+}
 
 #[derive(FieldTransmute)]
 #[repr(C, packed)]
@@ -61,7 +71,7 @@ pub struct bmc_cache_entry {
 
 #[repr(C)]
 struct memcached_key {
-    hash: Wrapping<u32>,
+    hash: u32,
     data: [u8; BMC_MAX_KEY_LENGTH],
     len: u32,
 }
@@ -93,14 +103,16 @@ MAP_DEF!(
 );
 
 fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8]) -> Result {
-    let mut key = obj.bpf_map_lookup_elem(&map_keys, &pctx.key_count)
+    let mut key = obj
+        .bpf_map_lookup_elem(&map_keys, &pctx.key_count)
         .ok_or_else(|| 0i32)?;
 
     key.hash = FNV_OFFSET_BASIS_32;
 
     let (mut off, mut done_parsing, mut key_len) = (0usize, 0u32, 0u8);
 
-    while off < BMC_MAX_KEY_LENGTH + 1 && pctx.read_pkt_offset as usize + off + 1 <= ctx.data_length
+    while (off < (BMC_MAX_KEY_LENGTH + 1))
+        && ((pctx.read_pkt_offset as usize + off + 1) <= ctx.data_length)
     {
         if (payload[off] == b'\r') {
             done_parsing = 1;
@@ -108,10 +120,10 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
         } else if (payload[off] == b' ') {
             break;
         } else if (payload[off] != b' ') {
-            key.hash ^= payload[off] as u32;
-            key.hash *= FNV_PRIME_32;
+            hash_func!(key.hash, payload[off]);
             key_len += 1;
         }
+        bpf_printk!(obj, "current hash %d\n", key.hash as u64);
         off += 1;
     }
 
@@ -121,7 +133,8 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
     }
 
     // get the cache entry
-    let cache_idx: u32 = key.hash.0 % BMC_CACHE_ENTRY_COUNT;
+    let cache_idx: u32 = key.hash % BMC_CACHE_ENTRY_COUNT;
+    bpf_printk!(obj, "rx hash idx %d\n", cache_idx as u64);
     let entry = obj
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         .ok_or_else(|| 0i32)?;
@@ -129,7 +142,8 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
     // TODO: should have lock here bpf_spin_lock(&entry->lock);
 
     // potential cache hit
-    if (entry.valid == 1 && entry.hash == key.hash.0) {
+    if (entry.valid == 1 && entry.hash == key.hash) {
+        bpf_printk!(obj, "potential cache hit\n");
         // TODO: bpf_spin_unlock(&entry.lock);
         for i in pctx.read_pkt_offset..key_len {
             // end of packet
@@ -167,6 +181,14 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
     Ok(XDP_PASS as i32)
 }
 
+macro_rules! swap_field {
+    ($field1:expr, $field2:expr, $size:ident) => {
+        for i in 0..$size {
+            swap(&mut $field1[i], &mut $field2[i])
+        }
+    };
+}
+
 fn prepare_packet(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
     // exchange src and dst ip and mac
 
@@ -178,25 +200,27 @@ fn prepare_packet(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
     // 	sizeof(*eth) + sizeof(*ip) + sizeof(*udp) +
     // 		sizeof(*memcached_udp_hdr));
     //
-    let mut eth_tmp = [0u8; ETH_ALEN];
     let mut ip_tmp: u32;
     let mut port_tmp: u16;
-    let mut eth_header = eth_header::new(&ctx.data_slice[0..14]);
+    let data_slice = obj.data_slice_mut(ctx);
 
-    // TODO: use memcpy
-    // obj.memcpy(&mut eth_tmp, &eth_header.h_source as c_void, 6);
-    // obj.memcpy(&eth_header.h_source, &eth_header.h_dest, 6);
-    // obj.memcpy(&eth_header.h_dest, &eth_tmp, 6);
-    // __builtin_memcpy(tmp_mac, eth->h_source, ETH_ALEN);
-    // __builtin_memcpy(eth->h_source, eth->h_dest, ETH_ALEN);
-    // __builtin_memcpy(eth->h_dest, tmp_mac, ETH_ALEN);
+    let eth_header = eth_header::new(&mut data_slice[0..14]);
+
+    // TODO: use swap
+    swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
 
     let ip_header_mut = obj.ip_header_mut(ctx);
     let udp_header_mut = obj.udp_header_mut(ctx);
+
     ip_tmp = ip_header_mut.saddr;
     ip_header_mut.saddr = ip_header_mut.daddr;
     ip_header_mut.daddr = ip_tmp;
 
+    bpf_printk!(
+        obj,
+        "udp_header source port before changed %d\n",
+        u16::from_be(udp_header_mut.source) as u64
+    );
     port_tmp = udp_header_mut.source;
     udp_header_mut.source = udp_header_mut.dest;
     udp_header_mut.dest = port_tmp;
@@ -205,6 +229,14 @@ fn prepare_packet(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
 }
 
 fn write_pkt_reply(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
+    let ip_header_mut = obj.ip_header_mut(ctx);
+    let udp_header_mut = obj.udp_header_mut(ctx);
+
+    bpf_printk!(
+        obj,
+        "write_pkt_reply, udp_header source port %d\n",
+        u16::from_be(udp_header_mut.source) as u64
+    );
     Ok(XDP_PASS as i32)
 }
 
@@ -213,7 +245,8 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> Result {
         + size_of::<iphdr>()
         + size_of::<udphdr>()
         + size_of::<memcached_udp_header>();
-    let eth_header = eth_header::new(&ctx.data_slice[0..14]);
+    let data_slice = obj.data_slice_mut(ctx);
+    let eth_header = eth_header::new(&mut data_slice[0..14]);
     let ip_header = obj.ip_header(ctx);
 
     match u8::from_be(ip_header.protocol) as u32 {
@@ -252,7 +285,7 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> Result {
 
             // bpf_printk!(obj, "offset is %d\n", off as u64);
             // hash the key
-            hash_key(obj, ctx, &mut pctx, payload);
+            hash_key(obj, ctx, &mut pctx, &ctx.data_slice[off..]);
         }
         _ => {}
     };
@@ -270,21 +303,22 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         && payload[off] != b' ')
     {
         off += 1;
-        hash ^= payload[off] as u32;
-        hash *= FNV_PRIME_32;
+        hash_func!(hash, payload[off]);
+        bpf_printk!(obj, "current tx hash %d\n", hash as u64);
     }
-    let cache_idx: u32 = hash.0 % BMC_CACHE_ENTRY_COUNT;
+    let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
+    bpf_printk!(obj, "tx key cache idx %d\n", cache_idx as u64);
 
     let bmc_cache_entry = obj
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         // return TC_ACT_OK if the cache is not found or map error
         .ok_or_else(|| 0i32)?;
-    bpf_printk!(obj, "key hash function\n");
+    // bpf_printk!(obj, "key hash function\n");
 
     //   NOTE:  bpf_spin_lock(&entry->lock);
 
     // check if the cache is up-to-date
-    if (bmc_cache_entry.valid == 1 || bmc_cache_entry.hash == hash.0) {
+    if (bmc_cache_entry.valid == 1 || bmc_cache_entry.hash == hash) {
         let mut diff = 0;
         off = 0;
         while off < BMC_MAX_KEY_LENGTH
@@ -321,9 +355,9 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
 
     // finished copying
     if count == 2 {
-        bpf_printk!(obj, "copying key success\n");
+        // bpf_printk!(obj, "copying key success\n");
         bmc_cache_entry.valid = 1;
-        bmc_cache_entry.hash = hash.0;
+        bmc_cache_entry.hash = hash;
         // TODO: bpf_spin_unlock(&entry->lock);
         // TODO: add stats here
     } else {
@@ -331,8 +365,8 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     }
     return Ok(TC_ACT_OK as i32);
 }
-fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> Result {
 
+fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> Result {
     let header_len = size_of::<iphdr>()
         + size_of::<eth_header>()
         + size_of::<udphdr>()
@@ -343,7 +377,7 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> Result {
         return Ok(TC_ACT_OK as i32);
     }
 
-    let eth_header = eth_header::new(&skb.data_slice[0..14]);
+    let eth_header = obj.eth_header(skb);
     let ip_header = obj.ip_header(skb);
 
     match u8::from_be(ip_header.protocol) as u32 {

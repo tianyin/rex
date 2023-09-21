@@ -244,18 +244,16 @@ impl<'a> xdp<'a> {
         helper(xdp, offset)
     }
 
-    pub fn memcpy(
-        &self,
-        dst: *mut c_void,
-        src: *const c_void,
-        len: usize,
-    ) -> *mut c_void {
-        let helper: extern "C" fn(
-            *mut c_void,
-            *const c_void,
-            usize,
-        ) -> *mut c_void = unsafe { core::mem::transmute(stub::memcpy_addr()) };
-        helper(dst, src, len)
+    pub fn data_slice_mut(&self, ctx: &xdp_md) -> &mut [c_uchar] {
+        let kptr = unsafe { *(ctx.kptr) };
+        // may not work since directly truncate the pointer
+        let data = kptr.data as usize;
+        let data_end = kptr.data_end as usize;
+        let data_length = data_end - data;
+        let data_slice = unsafe {
+            slice::from_raw_parts_mut(data as *mut c_uchar, data_length)
+        };
+        data_slice
     }
 }
 impl iu_prog for xdp<'_> {
