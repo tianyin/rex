@@ -29,16 +29,16 @@ const BMC_MAX_CACHE_DATA_SIZE: usize =
 const BMC_MAX_KEY_IN_MULTIGET: u32 = 30;
 const BMC_MAX_KEY_IN_PACKET: u32 = BMC_MAX_KEY_IN_MULTIGET;
 
-// const FNV_OFFSET_BASIS_32: Wrapping<u32> = Wrapping(2166136261);
-// const FNV_PRIME_32: u32 = 16777619;
-const FNV_OFFSET_BASIS_32: u32 = 5;
-const FNV_PRIME_32: u32 = 5;
+// const FNV_OFFSET_BASIS_32: Wrapping<u32> = Wrapping(216613);
+const FNV_OFFSET_BASIS_32: u32 = 2166136261;
+const FNV_PRIME_32: u32 = 16777619;
+// const FNV_PRIME_32: u32 = 5;
 const ETH_ALEN: usize = 6;
 
 // FIX: use simple hash function, ned update in the future
 macro_rules! hash_func {
     ($hash:expr, $value:expr) => {
-        // $hash = $hash.wrapping_pow($value as u32);
+        $hash = $hash.wrapping_pow($value as u32);
         $hash = $hash.wrapping_mul(FNV_PRIME_32);
     };
 }
@@ -123,7 +123,7 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
             hash_func!(key.hash, payload[off]);
             key_len += 1;
         }
-        bpf_printk!(obj, "current hash %d\n", key.hash as u64);
+        // bpf_printk!(obj, "current hash %d payload %d\n", key.hash as u64, payload[off] as u64);
         off += 1;
     }
 
@@ -134,7 +134,6 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
 
     // get the cache entry
     let cache_idx: u32 = key.hash % BMC_CACHE_ENTRY_COUNT;
-    bpf_printk!(obj, "rx hash idx %d\n", cache_idx as u64);
     let entry = obj
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         .ok_or_else(|| 0i32)?;
@@ -237,7 +236,7 @@ fn write_pkt_reply(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
         "write_pkt_reply, udp_header source port %d\n",
         u16::from_be(udp_header_mut.source) as u64
     );
-    Ok(XDP_PASS as i32)
+    Ok(XDP_TX as i32)
 }
 
 fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> Result {
@@ -302,12 +301,12 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         && header_len + off + 1 <= skb.len as usize
         && payload[off] != b' ')
     {
-        off += 1;
         hash_func!(hash, payload[off]);
-        bpf_printk!(obj, "current tx hash %d\n", hash as u64);
+        // bpf_printk!(obj, "current tx hash %d payload %d\n", hash as u64, payload[off] as u64);
+        off += 1;
     }
     let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
-    bpf_printk!(obj, "tx key cache idx %d\n", cache_idx as u64);
+    // bpf_printk!(obj, "tx key cache idx %d\n", cache_idx as u64);
 
     let bmc_cache_entry = obj
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
