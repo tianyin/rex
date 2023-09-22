@@ -139,18 +139,6 @@ pub(crate) fn bpf_for_each_map_elem<const MT: bpf_map_type, K, V>(
         unsafe { core::mem::transmute(stub::bpf_for_each_map_elem_addr()) };
     helper(map, callback_fn, callback_ctx, flags)
 }
-
-pub(crate) fn bpf_spin_lock(lock: &mut bpf_spin_lock) -> i64 {
-    let helper: extern "C" fn(*mut bpf_spin_lock) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_spin_lock_addr()) };
-    helper(lock as *mut bpf_spin_lock)
-}
-
-pub(crate) fn bpf_spin_unlock(lock: &mut bpf_spin_lock) -> i64 {
-    let helper: extern "C" fn(*mut bpf_spin_lock) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_spin_unlock_addr()) };
-    helper(lock as *mut bpf_spin_lock)
-}
 */
 
 // Design decision: Make the destination a generic type so that probe read
@@ -408,24 +396,6 @@ macro_rules! base_helper_defs {
         pub fn bpf_get_prandom_u32(&self) -> u32 {
             crate::base_helper::bpf_get_prandom_u32()
         }
-
-        /*
-        #[inline(always)]
-        pub fn bpf_spin_lock(
-            &self,
-            lock: &mut crate::bindings::uapi::linux::bpf::bpf_spin_lock,
-        ) -> i64 {
-            crate::base_helper::bpf_spin_lock(lock)
-        }
-
-        #[inline(always)]
-        pub fn bpf_spin_unlock(
-            &self,
-            lock: &mut crate::bindings::uapi::linux::bpf::bpf_spin_lock,
-        ) -> i64 {
-            crate::base_helper::bpf_spin_unlock(lock)
-        }
-        */
 
         #[inline(always)]
         pub fn bpf_snprintf<const N: usize, const M: usize>(
