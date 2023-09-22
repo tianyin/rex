@@ -3,11 +3,11 @@
 
 extern crate inner_unikernel_rt;
 
-use inner_unikernel_rt::{entry_link, Result, MAP_DEF};
-use inner_unikernel_rt::tracepoint::*;
 use inner_unikernel_rt::linux::bpf::{bpf_spin_lock, BPF_MAP_TYPE_ARRAY};
-use inner_unikernel_rt::spinlock::iu_spinlock_guard;
 use inner_unikernel_rt::map::IUMap;
+use inner_unikernel_rt::spinlock::iu_spinlock_guard;
+use inner_unikernel_rt::tracepoint::*;
+use inner_unikernel_rt::{entry_link, Result, MAP_DEF};
 
 #[repr(C)]
 struct MapEntry {
