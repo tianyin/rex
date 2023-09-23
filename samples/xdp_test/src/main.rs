@@ -10,10 +10,11 @@ use core::num::Wrapping;
 use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::entry_link;
 use inner_unikernel_rt::linux::bpf::{
-    BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_PERCPU_ARRAY,
+    bpf_spin_lock, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_PERCPU_ARRAY,
 };
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::sched_cls::*;
+use inner_unikernel_rt::spinlock::*;
 use inner_unikernel_rt::utils::*;
 use inner_unikernel_rt::xdp::*;
 use inner_unikernel_rt::FieldTransmute;
@@ -62,7 +63,7 @@ pub struct eth_header {
 
 #[repr(C)]
 pub struct bmc_cache_entry {
-    // struct bpf_spin_lock lock;
+    lock: bpf_spin_lock,
     pub len: u32,
     pub valid: u8,
     pub hash: u32,
@@ -138,10 +139,14 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         .ok_or_else(|| 0i32)?;
 
-    // TODO: should have lock here bpf_spin_lock(&entry->lock);
+    let mut entry_valid;
+    {
+        let _guard = iu_spinlock_guard::new(&mut entry.lock);
+        entry_valid = entry.valid == 1 && entry.hash == key.hash
+    }
 
     // potential cache hit
-    if (entry.valid == 1 && entry.hash == key.hash) {
+    if (entry_valid) {
         bpf_printk!(obj, "potential cache hit\n");
         // TODO: bpf_spin_unlock(&entry.lock);
         for i in pctx.read_pkt_offset..key_len {
@@ -168,7 +173,7 @@ fn hash_key(obj: &xdp, ctx: &xdp_md, pctx: &mut parsing_context, payload: &[u8])
 
     if (done_parsing == 1) {
         if (pctx.key_count > 0) {
-            prepare_packet(obj, ctx, payload)?;
+            return prepare_packet(obj, ctx, payload);
         }
     } else {
         // process more keys
@@ -231,11 +236,8 @@ fn write_pkt_reply(obj: &xdp, ctx: &xdp_md, payload: &[u8]) -> Result {
     let ip_header_mut = obj.ip_header_mut(ctx);
     let udp_header_mut = obj.udp_header_mut(ctx);
 
-    bpf_printk!(
-        obj,
-        "write_pkt_reply, udp_header source port %d\n",
-        u16::from_be(udp_header_mut.source) as u64
-    );
+    let memcached_key = obj.bpf_map_lookup_elem(&map_keys, &0).ok_or_else(|| 0i32)?;
+
     Ok(XDP_TX as i32)
 }
 
@@ -283,8 +285,8 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &xdp_md) -> Result {
             };
 
             // bpf_printk!(obj, "offset is %d\n", off as u64);
-            // hash the key
-            hash_key(obj, ctx, &mut pctx, &ctx.data_slice[off..]);
+            // TODO: not sure if there is a better way
+            return hash_key(obj, ctx, &mut pctx, &ctx.data_slice[off..]);
         }
         _ => {}
     };
@@ -308,23 +310,23 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
     // bpf_printk!(obj, "tx key cache idx %d\n", cache_idx as u64);
 
-    let bmc_cache_entry = obj
+    let entry = obj
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         // return TC_ACT_OK if the cache is not found or map error
         .ok_or_else(|| 0i32)?;
     // bpf_printk!(obj, "key hash function\n");
 
-    //   NOTE:  bpf_spin_lock(&entry->lock);
+    let _guard = iu_spinlock_guard::new(&mut entry.lock);
 
     // check if the cache is up-to-date
-    if (bmc_cache_entry.valid == 1 || bmc_cache_entry.hash == hash) {
+    if (entry.valid == 1 || entry.hash == hash) {
         let mut diff = 0;
         off = 0;
         while off < BMC_MAX_KEY_LENGTH
             && header_len + off + 1 <= skb.len as usize
-            && (payload[off] != b' ' || bmc_cache_entry.data[off] != b' ')
+            && (payload[off] != b' ' || entry.data[off] != b' ')
         {
-            if (bmc_cache_entry.data[off] != payload[off]) {
+            if (entry.data[off] != payload[off]) {
                 diff = 1;
                 break;
             }
@@ -333,7 +335,6 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
 
         // cache is up-to-date, no need to update
         if diff == 0 {
-            //NOTE: bpf_spin_unlock(&entry->lock);
             bpf_printk!(obj, "cache is up-to-date\n");
             return Ok(TC_ACT_OK as i32);
         }
@@ -342,10 +343,10 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     // cache is not up-to-date, update it
 
     let (mut count, mut i) = (0usize, 0usize);
-    bmc_cache_entry.len = 0;
+    entry.len = 0;
     while i < BMC_MAX_CACHE_DATA_SIZE && header_len + i + 1 <= skb.len as usize && count < 2 {
-        bmc_cache_entry.data[i] = payload[i];
-        bmc_cache_entry.len += 1;
+        entry.data[i] = payload[i];
+        entry.len += 1;
         if (payload[i] == b'\n') {
             count += 1;
         }
@@ -355,13 +356,11 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     // finished copying
     if count == 2 {
         // bpf_printk!(obj, "copying key success\n");
-        bmc_cache_entry.valid = 1;
-        bmc_cache_entry.hash = hash;
-        // TODO: bpf_spin_unlock(&entry->lock);
+        entry.valid = 1;
+        entry.hash = hash;
         // TODO: add stats here
-    } else {
-        // TODO: bpf_spin_unlock(&entry->lock);
     }
+
     return Ok(TC_ACT_OK as i32);
 }
 
