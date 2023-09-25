@@ -11,7 +11,7 @@
 #include "libiu.h"
 #include <libbpf.h>
 
-#define EXE "./target/release/spinlock_test"
+#define EXE "./target/x86_64-unknown-linux-gnu/release/spinlock_test"
 
 int main(void)
 {

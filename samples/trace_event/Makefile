@@ -5,15 +5,25 @@ LIBBPF_DIR = ${LINUX}/tools/lib/bpf
 LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unikernels/libiu"; else echo "../../libiu"; fi)
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
+CARGO_FLAGS = -Zbuild-std=core --target x86_64-unknown-linux-gnu
 
+V ?= 0
 
-all: target/release/trace_event_kern trace_event
+ifeq ($(V),1)
+CARGO_FLAGS += -v
+endif
 
-target/debug/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
-	cargo rustc -vv -- ${RUST_FLAGS}
+ifeq ($(V),2)
+CARGO_FLAGS += -vv
+endif
 
-target/release/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
-	cargo rustc -vv --release -- ${RUST_FLAGS}
+all: target/x86_64-unknown-linux-gnu/release/trace_event_kern trace_event
+
+target/x86_64-unknown-linux-gnu/debug/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
+
+target/x86_64-unknown-linux-gnu/release/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 trace_helpers.o: trace_helpers.c
 	clang -I${LINUX_INC} -g -c $^ -o $@

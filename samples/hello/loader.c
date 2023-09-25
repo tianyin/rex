@@ -11,7 +11,7 @@
 #include "libiu.h"
 #include <libbpf.h>
 
-#define EXE "./target/release/hello"
+#define EXE "./target/x86_64-unknown-linux-gnu/release/hello"
 
 int main(void)
 {
