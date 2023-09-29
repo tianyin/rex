@@ -213,7 +213,7 @@ git remote set-url origin git@github.com:rosalab/inner_unikernels.git
 #+END_SRC
 
 To update the Linux submodule link, do the following 2 steps:
-1. Backport commit [[69680052549b][https://github.com/rosalab/inner_unikernels/commit/69680052549ba993049c05bcb6e3573b3bc23dc3.patch]]
+1. Backport commit [[https://github.com/rosalab/inner_unikernels/commit/69680052549ba993049c05bcb6e3573b3bc23dc3.patch][69680052549b]]
 2. Sync submodule
 #+BEGIN_SRC bash
 git submodule sync
