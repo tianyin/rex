@@ -204,3 +204,17 @@ Continuing.
 - Q: What can I do if I encounter network error when doing the apt update?
 - A: In the ~./docker/docker-linux-builder/Makefile~, add ~--network=host~ in the docker command. ~docker build --progress=plain --network=host -t runtime~.
 
+** Migration to ROSA lab
+
+If you haven't update your remote url, you need to update it:
+#+BEGIN_SRC bash
+# Assuming the remote is called "origin"
+git remote set-url origin git@github.com:rosalab/inner_unikernels.git
+#+END_SRC
+
+To update the Linux submodule link, do the following 2 steps:
+1. Backport commit [[69680052549b][https://github.com/rosalab/inner_unikernels/commit/69680052549ba993049c05bcb6e3573b3bc23dc3.patch]]
+2. Sync submodule
+#+BEGIN_SRC bash
+git submodule sync
+#+END_SRC
