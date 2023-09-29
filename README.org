@@ -15,7 +15,7 @@ reduced escape hatches, and ultimately improve the safety of kernel extensions.
 The basic ideas are documented in [[docs/rust-kernel-ext.pdf][a workshop paper]].
 
 *** Relevant github repos:
-- Linux Kernel: [[https://github.com/djwillia/linux/tree/inner_unikernels]]
+- Linux Kernel: [[https://github.com/rosalab/linux/tree/inner_unikernels]]
 - Rust Toolchain: [[https://github.com/xlab-uiuc/rust]]
 - LLVM CodeGen for Rust: [[https://github.com/xlab-uiuc/llvm-rust]]
 
