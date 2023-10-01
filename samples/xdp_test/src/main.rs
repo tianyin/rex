@@ -199,6 +199,7 @@ macro_rules! swap_field {
 }
 
 // payload after header and 'get '
+#[inline(always)]
 fn prepare_packet(
     obj: &xdp,
     ctx: &mut xdp_md,

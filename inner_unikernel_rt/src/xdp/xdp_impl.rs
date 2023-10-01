@@ -145,6 +145,7 @@ impl<'a> xdp<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn udp_header<'b>(&self, ctx: &'b xdp_md) -> &'b udphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
@@ -154,6 +155,7 @@ impl<'a> xdp<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn tcp_header(&'a self, ctx: &'a xdp_md) -> &tcphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
@@ -165,6 +167,7 @@ impl<'a> xdp<'a> {
         tcp_header
     }
 
+    #[inline(always)]
     pub fn ip_header<'b>(&self, ctx: &'b xdp_md) -> &'b iphdr {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
@@ -172,6 +175,7 @@ impl<'a> xdp<'a> {
         unsafe { convert_slice_to_struct::<iphdr>(&ctx.data_slice[begin..end]) }
     }
 
+    #[inline(always)]
     pub fn udp_header_mut<'b>(&self, ctx: &'b xdp_md) -> &'b mut udphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
@@ -187,6 +191,7 @@ impl<'a> xdp<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn ip_header_mut<'b>(&self, ctx: &'b xdp_md) -> &'b mut iphdr {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
@@ -203,6 +208,7 @@ impl<'a> xdp<'a> {
         }
     }
 
+    #[inline(always)]
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b ethhdr {
         direct_packet_access_ok::<[u8; 6]>();
         direct_packet_access_ok::<[u8; 6]>();
@@ -259,6 +265,7 @@ impl<'a> xdp<'a> {
     }
 
     // WARN: this function is unsafe
+    #[inline(always)]
     pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> i32 {
         let kptr = unsafe { ctx.kptr as *const xdp_buff as *mut xdp_buff };
 
@@ -291,6 +298,7 @@ impl<'a> xdp<'a> {
         0
     }
 
+    #[inline(always)]
     pub fn data_slice_mut(&self, ctx: &xdp_md) -> &mut [c_uchar] {
         let kptr = unsafe { *(ctx.kptr) };
         // may not work since directly truncate the pointer
