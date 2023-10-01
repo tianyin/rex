@@ -65,8 +65,7 @@ pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
 #[repr(C)]
 pub struct xdp<'a> {
     rtti: u64,
-    // TODO update it
-    prog: fn(&Self, &xdp_md) -> Result,
+    prog: fn(&Self, &mut xdp_md) -> Result,
     name: &'a str,
 }
 
@@ -74,8 +73,7 @@ impl<'a> xdp<'a> {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        // TODO update based on signature
-        f: fn(&xdp<'a>, &xdp_md) -> Result,
+        f: fn(&xdp<'a>, &mut xdp_md) -> Result,
         nm: &'a str,
         rtti: u64,
     ) -> xdp<'a> {
@@ -207,6 +205,9 @@ impl<'a> xdp<'a> {
         };
 
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
+        let mut off = begin + mem::size_of::<udphdr>();
+        data_slice[off] = b'0';
+
         let part = &mut data_slice[begin..begin + mem::size_of::<udphdr>()];
         let mut udp_header =
             unsafe { convert_slice_to_struct_mut::<udphdr>(part) };
@@ -237,11 +238,37 @@ impl<'a> xdp<'a> {
         helper(xdp, offset)
     }
 
-    // FIX: update based on xdp_md to convert to xdp_buff
-    pub fn bpf_xdp_adjust_tail(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
+    // WARN: this function is unsafe
+    pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> i32 {
+        let kptr = unsafe { ctx.kptr as *const xdp_buff as *mut xdp_buff };
+
         let helper: extern "C" fn(*mut xdp_buff, i32) -> i32 =
             unsafe { core::mem::transmute(stub::bpf_xdp_adjust_tail_addr()) };
-        helper(xdp, offset)
+        let ret = helper(kptr, offset);
+        if ret != 0 {
+            return ret;
+        }
+
+        let kptr = ctx.kptr;
+
+        // BUG may not work since directly truncate the pointer
+        ctx.data = kptr.data as usize;
+        ctx.data_end = kptr.data_end as usize;
+        ctx.data_meta = kptr.data_meta as usize;
+        ctx.data_length = ctx.data_end - ctx.data;
+
+        ctx.data_slice = unsafe {
+            slice::from_raw_parts_mut(
+                kptr.data as *mut c_uchar,
+                ctx.data_length,
+            )
+        };
+
+        ctx.ingress_ifindex = kptr.rxq as u32;
+        ctx.rx_qeueu_index = unsafe { (*kptr.rxq).queue_index };
+        ctx.egress_ifindex = 0;
+
+        0
     }
 
     pub fn data_slice_mut(&self, ctx: &xdp_md) -> &mut [c_uchar] {
@@ -260,6 +287,7 @@ impl iu_prog for xdp<'_> {
     fn prog_run(&self, ctx: *const ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // Return XDP_PASS if Err, i.e. discard event
+        // FIX:map the error as XDP_PASS or err code
         ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| XDP_PASS as i32)
             as u32
     }
