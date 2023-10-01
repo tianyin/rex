@@ -9,7 +9,7 @@ use crate::prog_type::iu_prog;
 use crate::utils::*;
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_uchar, c_uint, c_void};
-use core::{mem, slice};
+use core::{mem, mem::size_of, slice};
 
 // expose the following constants to the user
 pub use crate::bindings::uapi::linux::bpf::{
@@ -51,6 +51,26 @@ pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
     );
 
     unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
+}
+
+#[inline(always)]
+pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
+    let mut sum: u32 = 0;
+    let mut checksum: u16 = 0;
+    ip_header.check = 0;
+
+    let count = size_of::<iphdr>() >> 1;
+
+    let u16_slice = unsafe {
+        core::slice::from_raw_parts(ip_header as *const _ as *const u16, count)
+    };
+
+    for &word in u16_slice {
+        sum += word as u32;
+    }
+
+    sum = (sum & 0xffff) + (sum >> 16);
+    return !sum as u16;
 }
 
 // First 3 fields should always be rtti, prog_fn, and name

@@ -47,12 +47,12 @@ static struct bpf_progs_desc progs[] = {
     // BMC_PROG_TC_UPDATE_CACHE, NULL},
 };
 
-static int libbpf_print_fn(enum libbpf_print_level level, const char *format, va_list args)
-{
-    if (level == LIBBPF_DEBUG || level == LIBBPF_INFO) {
-        return vfprintf(stderr, format, args);
-    }
-    return 0;
+static int libbpf_print_fn(enum libbpf_print_level level, const char *format,
+                           va_list args) {
+  if (level == LIBBPF_DEBUG || level == LIBBPF_INFO) {
+    return vfprintf(stderr, format, args);
+  }
+  return 0;
 }
 
 int main(int argc, char *argv[]) {
@@ -114,6 +114,7 @@ int main(int argc, char *argv[]) {
   }
 
   xdp_flags |= XDP_FLAGS_DRV_MODE;
+  /* xdp_flags |= XDP_FLAGS_SKB_MODE; */
   for (int i = 0; i < interface_count; i++) {
     if (bpf_set_link_xdp_fd(interfaces_idx[i], xdp_main_prog_fd, xdp_flags) <
         0) {

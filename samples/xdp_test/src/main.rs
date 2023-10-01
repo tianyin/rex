@@ -154,7 +154,7 @@ fn hash_key(
 
     // potential cache hit
     if (entry_valid) {
-        bpf_printk!(obj, "potential cache hit\n");
+        // bpf_printk!(obj, "potential cache hit\n");
         for i in pctx.read_pkt_offset..key_len {
             // end of packet
             if (i as usize + 1 > ctx.data_length) {
@@ -243,25 +243,6 @@ fn prepare_packet(
     write_pkt_reply(obj, ctx, payload_index, pctx)
 }
 
-#[inline(always)]
-fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
-    let mut sum: u32 = 0;
-    let mut checksum: u16 = 0;
-    ip_header.check = 0;
-
-    let count = size_of::<iphdr>() >> 1;
-
-    let u16_slice =
-        unsafe { core::slice::from_raw_parts(ip_header as *const _ as *const u16, count) };
-
-    for &word in u16_slice {
-        sum += word as u32;
-    }
-
-    sum = (sum & 0xffff) + (sum >> 16);
-    return !sum as u16;
-}
-
 // payload after headers and 'get '
 #[inline(always)]
 fn write_pkt_reply(
@@ -281,7 +262,7 @@ fn write_pkt_reply(
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         .ok_or_else(|| XDP_DROP as i32)?;
 
-    // let _guard = iu_spinlock_guard::new(&mut entry.lock);
+    let _guard = iu_spinlock_guard::new(&mut entry.lock);
     if entry.valid == 1 && entry.hash == memcached_key.hash {
         cache_hit = 1;
 
@@ -311,10 +292,10 @@ fn write_pkt_reply(
 
     // copy cache data
     if cache_hit == 1 {
-        bpf_printk!(obj, "cache hit\n");
+        // bpf_printk!(obj, "cache hit\n");
         let mut off = 0usize;
 
-        bpf_printk!(obj, "length before %d\n", ctx.data_length as u64);
+        // bpf_printk!(obj, "length before %d\n", ctx.data_length as u64);
         const U64_SIZE: usize = size_of::<u64>();
         // NOTE: data end is determined by slice length limit, may changed in future
         // while off + U64_SIZE < BMC_MAX_CACHE_DATA_SIZE && off + U64_SIZE <= entry.len as usize {}
@@ -334,16 +315,11 @@ fn write_pkt_reply(
                 return Ok(XDP_DROP as i32);
             }
         }
-        bpf_printk!(obj, "length after %d\n", ctx.data_length as u64);
+        // bpf_printk!(obj, "length after %d\n", ctx.data_length as u64);
 
         // FIX: currently only support single key and no check
         let data_slice = obj.data_slice_mut(ctx);
         let payload = &mut data_slice[payload_index - 4..];
-
-        if !payload.starts_with(b"get ") {
-            bpf_printk!(obj, "not start with get\n");
-            return Ok(XDP_PASS as i32);
-        }
 
         // // udp check not required
         let ip_header_mut = obj.ip_header_mut(ctx);
@@ -357,6 +333,11 @@ fn write_pkt_reply(
 
         for i in 0..entry.len as usize {
             payload[i] = entry.data[i];
+        }
+
+        let end = b"END\r\n";
+        for i in entry.len as usize..(entry.len + 5) as usize {
+            payload[i] = end[i - entry.len as usize];
         }
     }
 
@@ -458,7 +439,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
 
         // cache is up-to-date, no need to update
         if diff == 0 {
-            bpf_printk!(obj, "cache is up-to-date\n");
+            // bpf_printk!(obj, "cache is up-to-date\n");
             return Ok(TC_ACT_OK as i32);
         }
     }
@@ -478,11 +459,11 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
 
     // finished copying
     if count == 2 {
-        bpf_printk!(
-            obj,
-            "copying key success with data length %d\n",
-            entry.len as u64
-        );
+        // bpf_printk!(
+        //     obj,
+        //     "copying key success with data length %d\n",
+        //     entry.len as u64
+        // );
         entry.valid = 1;
         entry.hash = hash;
         // TODO: add stats here
