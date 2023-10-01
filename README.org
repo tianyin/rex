@@ -212,10 +212,10 @@ If you haven't update your remote url, you need to update it:
 git remote set-url origin git@github.com:rosalab/inner_unikernels.git
 #+END_SRC
 
-To update the Linux submodule link in case you are not on `main`,
-do the following 2 steps:
-1. Backport commit [[https://github.com/rosalab/inner_unikernels/commit/69680052549ba993049c05bcb6e3573b3bc23dc3.patch][69680052549b]]
-2. Sync submodule
+To update the Linux submodule link in case you are not on `main`, you need to
+backport commit [[https://github.com/rosalab/inner_unikernels/commit/69680052549ba993049c05bcb6e3573b3bc23dc3.patch][69680052549b]]
+
+No matter you are on `main` or not, you need to sync submodules again:
 #+BEGIN_SRC bash
 git submodule sync
 #+END_SRC
