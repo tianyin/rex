@@ -21,7 +21,7 @@ use inner_unikernel_rt::FieldTransmute;
 use inner_unikernel_rt::MAP_DEF;
 
 const BMC_MAX_PACKET_LENGTH: usize = 1500;
-const BMC_CACHE_ENTRY_COUNT: u32 = 250000;
+const BMC_CACHE_ENTRY_COUNT: u32 = 3250000;
 const BMC_MAX_KEY_LENGTH: usize = 230;
 const BMC_MAX_VAL_LENGTH: usize = 1000;
 const BMC_MAX_ADDITIONAL_PAYLOAD_BYTES: usize = 53;

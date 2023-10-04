@@ -1,11 +1,8 @@
-#include <assert.h>
 #include <bpf/bpf.h>
 #include <bpf/libbpf.h>
-#include <errno.h>
 #include <linux/bpf.h>
 #include <linux/if_link.h>
 #include <linux/limits.h>
-#include <signal.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -128,7 +125,7 @@ int main(int argc, char *argv[]) {
   }
 
   char prog_name[256] = "xdp_tx_filter";
-  tx_prog = bpf_object__find_program_by_name(obj, "xdp_tx_filter");
+  tx_prog = bpf_object__find_program_by_name(obj, prog_name);
   if (!tx_prog) {
     fprintf(stderr, "tx_prog not found\n");
     exit(1);
