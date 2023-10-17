@@ -209,12 +209,18 @@ impl<'a> xdp<'a> {
     }
 
     #[inline(always)]
-    pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b ethhdr {
+    pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b mut ethhdr {
         direct_packet_access_ok::<[u8; 6]>();
         direct_packet_access_ok::<[u8; 6]>();
         direct_packet_access_ok::<u16>();
 
-        unsafe { convert_slice_to_struct::<ethhdr>(&ctx.data_slice[0..14]) }
+        let data_slice = unsafe {
+            slice::from_raw_parts_mut(
+                ctx.kptr.data as *mut c_uchar,
+                ctx.data_length,
+            )
+        };
+        unsafe { convert_slice_to_struct_mut::<ethhdr>(&mut data_slice[0..14]) }
     }
 
     pub fn bpf_change_udp_port(&self, ctx: &xdp_md, port_num: u16) {
@@ -265,7 +271,7 @@ impl<'a> xdp<'a> {
     }
 
     // WARN: this function is unsafe
-    #[inline(always)]
+    // #[inline(always)]
     pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> i32 {
         let kptr = unsafe { ctx.kptr as *const xdp_buff as *mut xdp_buff };
 
