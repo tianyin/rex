@@ -1,10 +1,17 @@
 LINUX ?= $(HOME)/linux
 
-CXX = clang++
-CXXFLAGS = -g -pipe -std=c++17 -fPIC -I${LINUX}/tools/lib -I${LINUX}/tools/include -I${LINUX}/usr/include -I${LINUX}/tools/include/uapi
-LDFLAGS = -Wl,--as-needed -L${LINUX}/tools/lib/bpf -lbpf
-LD = clang++
-AR = llvm-ar
+CXX = g++
+LD = g++
+AR = gcc-ar
+
+INC += -I${LINUX}/tools/lib -I${LINUX}/tools/include -I${LINUX}/usr/include
+INC += -I${LINUX}/tools/include/uapi
+
+CXXFLAGS += -O2 -march=native -pipe -std=gnu++17 -fPIC -fno-exceptions
+CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
+
+LDFLAGS += -fuse-ld=mold -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
+LDFLAGS += -L${LINUX}/tools/lib/bpf -lbpf
 
 all: libiu.a libiu.so
 
@@ -15,7 +22,7 @@ libiu.so: libiu.o
 	${LD} ${LDFLAGS} -shared $< -lelf -o $@
 
 libiu.o: libiu.cpp libiu.h
-	${CXX} ${CXXFLAGS} -c libiu.cpp -o $@
+	${CXX} ${INC} ${CXXFLAGS} -c libiu.cpp -o $@
 
 clean:
 	rm -f libiu.o libiu.a libiu.so
