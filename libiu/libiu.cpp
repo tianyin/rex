@@ -1,3 +1,18 @@
+#define _DEFAULT_SOURCE
+
+#include <bpf/libbpf.h>
+#include <fcntl.h>
+#include <gelf.h>
+#include <libelf.h>
+#include <libgen.h>
+#include <linux/bpf.h>
+#include <linux/types.h>
+#include <linux/unistd.h>
+#include <sys/mman.h>
+#include <sys/stat.h>
+#include <sys/utsname.h>
+#include <unistd.h>
+
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -9,23 +24,8 @@
 #include <utility>
 #include <vector>
 
-#include <fcntl.h>
-#include <sys/mman.h>
-#include <sys/stat.h>
-#include <unistd.h>
-
-#include "compiler.h"
-#include <linux/bpf.h>
-#include <linux/unistd.h>
-
 #include "libiu.h"
 #include "list.h"
-#include <bpf/libbpf.h>
-#include <gelf.h>
-#include <libelf.h>
-#include <libgen.h>
-#include <linux/types.h>
-#include <sys/utsname.h>
 
 #ifdef ARRAY_SIZE
 // Kernel ARRAY_SIZE generates compiler errors
@@ -511,17 +511,16 @@ class iu_obj {
 
   Elf *elf;
   Elf_Scn *symtab_scn;
+  Elf_Scn *dynsym_scn;
   Elf_Scn *maps_scn;
 
   // Global Offset Table for PIE
   Elf_Scn *got_scn;
-  uint64_t got_addr;
-  uint64_t got_size;
 
   // Dynamic relocation for PIE
   Elf_Scn *rela_dyn_scn;
-  std::unique_ptr<iu_rela_dyn[]> dyn_relas;
-  uint64_t nr_dyn_relas;
+  std::vector<iu_rela_dyn> dyn_relas;
+  std::vector<iu_dyn_sym> dyn_syms;
 
   size_t file_size;
   unsigned char *file_map;
@@ -703,7 +702,8 @@ static int cmp_progs(const void *_a, const void *_b) {
 }
 
 iu_obj::iu_obj(const char *c_path, struct bpf_object *bpf_obj)
-    : map_defs(), symtab_scn(nullptr), maps_scn(nullptr), prog_fd(-1) {
+    : map_defs(), symtab_scn(nullptr), dynsym_scn(nullptr), maps_scn(nullptr),
+      prog_fd(-1) {
   int fd = open(c_path, 0, O_RDONLY);
   bpf_obj->efile.fd = fd;
   this->elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
@@ -766,7 +766,7 @@ int iu_obj::parse_scns(struct bpf_object *obj) {
     if (debug)
       std::clog << "section " << name << ", idx=" << idx << std::endl;
 
-    if (sh->sh_type == SHT_SYMTAB) {
+    if (sh->sh_type == SHT_SYMTAB && !strcmp(".symtab", name)) {
       data = elf_getdata(scn, 0);
       if (!data) {
         std::cerr << "elf: failed to get section(" << idx << ") data from "
@@ -777,6 +777,8 @@ int iu_obj::parse_scns(struct bpf_object *obj) {
       obj->efile.symbols_shndx = idx;
       obj->efile.strtabidx = sh->sh_link;
       this->symtab_scn = scn;
+    } else if (sh->sh_type == SHT_DYNSYM && !strcmp(".dynsym", name)) {
+      this->dynsym_scn = scn;
     } else if (!strcmp(".maps", name)) {
       obj->efile.maps_shndx = idx;
       this->maps_scn = scn;
@@ -793,17 +795,12 @@ int iu_obj::parse_scns(struct bpf_object *obj) {
       obj->efile.st_ops_shndx = idx;
     else if (!(strcmp(name, ".bss")))
       obj->efile.bss_shndx = idx;
-    else if (!strcmp(".got", name))
-      this->got_scn = scn;
     else if (sh->sh_type == SHT_RELA && !strcmp(".rela.dyn", name))
       this->rela_dyn_scn = scn;
   }
 
   if (!this->maps_scn && debug)
     std::clog << "section .maps not found" << std::endl;
-
-  if (!this->got_scn && debug)
-    std::clog << "section .got not found" << std::endl;
 
   if (!this->rela_dyn_scn && debug)
     std::clog << "section .rela.dyn not found" << std::endl;
@@ -964,8 +961,8 @@ int iu_obj::parse_rela_dyn() {
   int ret;
   Elf64_Shdr *rela_dyn;
   iu_rela_dyn *rela_dyn_data;
-  uint64_t rela_dyn_addr, rela_dyn_size;
-  int idx, cnt;
+  uint64_t rela_dyn_addr, rela_dyn_size, nr_dyn_relas;
+  int idx;
 
   if (!this->rela_dyn_scn)
     return 0;
@@ -992,31 +989,49 @@ int iu_obj::parse_rela_dyn() {
     return -1;
   }
 
-  // Get the number of relocs in the section
   nr_dyn_relas = rela_dyn_size / sizeof(iu_rela_dyn);
 
-  // Need to skip the map relocs, these are handled differently in the kernel
-  for (idx = 0, cnt = 0; idx < nr_dyn_relas; idx++) {
-    if (map_defs.find(rela_dyn_data[idx].value) == map_defs.end())
-      cnt++;
-  }
+  for (idx = 0; idx < nr_dyn_relas; idx++) {
+    // Need to skip the map relocs, these are handled differently in the kernel
+    if (map_defs.find(rela_dyn_data[idx].addend) != map_defs.end())
+      continue;
 
-  dyn_relas = std::make_unique<iu_rela_dyn[]>(cnt);
-  for (idx = 0, cnt = 0; idx < nr_dyn_relas; idx++) {
-    if (map_defs.find(rela_dyn_data[idx].value) == map_defs.end())
-      dyn_relas[cnt++] = rela_dyn_data[idx];
-  }
+    if (ELF64_R_TYPE(rela_dyn_data[idx].info) == R_X86_64_RELATIVE) {
+      dyn_relas.push_back(rela_dyn_data[idx]);
+    } else if (ELF64_R_TYPE(rela_dyn_data[idx].info) == R_X86_64_GLOB_DAT) {
+      uint32_t dynsym_idx = ELF64_R_SYM(rela_dyn_data[idx].info);
+      Elf_Data *syms = elf_getdata(dynsym_scn, 0);
+      size_t strtabidx = elf64_getshdr(dynsym_scn)->sh_link;
+      Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + dynsym_idx;
+      iu_dyn_sym dyn_sym = {0};
+      char *name = strdup(elf_strptr(elf, strtabidx, sym->st_name));
 
-  // set the correct number of relocs, excluding maps
-  nr_dyn_relas = cnt;
+      if (!name) {
+        std::cerr << "failed to alloc symbol name" << std::endl;
+        return -1;
+      }
+
+      dyn_sym.offset = rela_dyn_data[idx].offset;
+      dyn_sym.symbol = reinterpret_cast<__u64>(name);
+
+      dyn_syms.push_back(dyn_sym);
+    } else {
+      std::cerr << "elf: relocation type not supported" << std::endl;
+      return -1;
+    }
+  }
 
   if (debug) {
-    std::cerr << ".rela.dyn: " << std::hex << std::endl;
-    for (int i = 0; i < nr_dyn_relas; i++) {
-      std::cerr << "0x" << dyn_relas[i].addr << ", 0x" << dyn_relas[i].type
-                << ", 0x" << dyn_relas[i].value << std::endl;
+    std::clog << ".rela.dyn: " << std::hex << std::endl;
+    for (auto &dyn_rela : dyn_relas) {
+      std::clog << "0x" << dyn_rela.offset << ", 0x" << dyn_rela.info << ", 0x"
+                << dyn_rela.addend << std::endl;
     }
-    std::cerr << std::dec;
+    for (auto &dyn_sym : dyn_syms) {
+      std::clog << "0x" << dyn_sym.offset << ", "
+                << reinterpret_cast<char *>(dyn_sym.symbol) << std::endl;
+    }
+    std::clog << std::dec;
   }
 
   return 0;
@@ -1100,7 +1115,7 @@ int iu_obj::fix_maps(struct bpf_object *obj) {
 int iu_obj::load(struct bpf_object *obj) {
   int fd;
   auto arr = std::make_unique<uint64_t[]>(map_defs.size());
-  union bpf_attr attr;
+  union bpf_attr attr = {0};
   int idx = 0, ret = 0;
 
   // TODO: Will have race condition if multiple objs loaded at same time
@@ -1111,11 +1126,8 @@ int iu_obj::load(struct bpf_object *obj) {
 
   fd = open("rust.out", O_RDONLY);
 
-  for (auto &def : map_defs) {
+  for (auto &def : map_defs)
     arr[idx++] = def.first + offsetof(map_def, kptr);
-  }
-
-  memset(&attr, 0, sizeof(attr));
 
   attr.prog_type = BPF_PROG_TYPE_IU_BASE;
   memcpy(attr.prog_name, "map_test", sizeof("map_test"));
@@ -1125,11 +1137,11 @@ int iu_obj::load(struct bpf_object *obj) {
   attr.map_offs = reinterpret_cast<__u64>(arr.get());
   attr.map_cnt = map_defs.size();
 
-  attr.got_off = got_addr;
-  attr.got_size = got_size;
+  attr.dyn_relas = reinterpret_cast<__u64>(dyn_relas.data());
+  attr.nr_dyn_relas = dyn_relas.size();
 
-  attr.dyn_relas = reinterpret_cast<__u64>(dyn_relas.get());
-  attr.nr_dyn_relas = nr_dyn_relas;
+  attr.dyn_syms = reinterpret_cast<__u64>(dyn_syms.data());
+  attr.nr_dyn_syms = dyn_syms.size();
 
   ret = bpf(BPF_PROG_LOAD_IU_BASE, &attr, sizeof(attr));
 
@@ -1287,10 +1299,6 @@ struct bpf_object *iu_object__open(char *path) {
   if (base_fd < 0) {
     bpf_object__close(obj);
     return NULL;
-  }
-
-  if (debug) {
-    std::clog << "base_fd: \"" << base_fd << "\"" << std::endl;
   }
 
   return obj;
