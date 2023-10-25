@@ -1,6 +1,7 @@
 #![feature(exit_status_error)]
 
 use std::env;
+use std::fs;
 use std::process::Command;
 use std::string::String;
 
@@ -13,7 +14,7 @@ fn main() {
         .arg(&linux_dir)
         .arg(&out_dir)
         .output()
-        .expect("failed to execute process");
+        .expect("failed to run build.py");
 
     output
         .status
@@ -22,6 +23,17 @@ fn main() {
         .map_err(|_| panic!("\n{}", String::from_utf8_lossy(&output.stderr)))
         .unwrap();
 
+    let iustub_pathbuf = fs::canonicalize("./libiustub").unwrap();
+    let iustub_path = iustub_pathbuf.to_str().unwrap();
+    Command::new("make")
+        .arg("-C")
+        .arg(iustub_path)
+        .output()
+        .expect("failed to build libiustub");
+
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=./src/*");
+    println!("cargo:rerun-if-changed=./libiustub/*");
+    println!("cargo:rustc-link-lib=dylib=iustub");
+    println!("cargo:rustc-link-search=native={}", iustub_path);
 }
