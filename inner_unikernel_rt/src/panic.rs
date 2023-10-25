@@ -54,8 +54,9 @@ impl<'a> CleanupEntries<'a> {
     pub(crate) fn cleanup_entries_this_cpu() -> CleanupEntries<'a> {
         let entries: &mut [CleanupEntry];
         unsafe {
-            let entries_ptr: *mut CleanupEntry =
-                this_cpu_ptr_mut(stub::iu_cleanup_entries_addr());
+            let entries_ptr: *mut CleanupEntry = this_cpu_ptr_mut(
+                &stub::iu_cleanup_entries as *const *mut () as u64,
+            );
             entries =
                 core::slice::from_raw_parts_mut(entries_ptr, ENTRIES_SIZE);
         }
@@ -115,7 +116,7 @@ unsafe fn __iu_check_stack() {
             "ja 1f",
             "call __iu_handle_stack_overflow",
             "1:",
-            in("r10") stub::iu_stack_ptr_addr(),
+            in("r10") &stub::iu_stack_ptr as *const u64 as u64,
         );
     }
 }
@@ -151,9 +152,5 @@ fn panic(info: &PanicInfo) -> ! {
         msg[..s.len()].copy_from_slice(s.as_bytes());
     }
 
-    unsafe {
-        let landingpad: unsafe extern "C" fn(*const u8) -> ! =
-            core::mem::transmute(stub::iu_landingpad_addr());
-        landingpad(msg.as_ptr())
-    }
+    unsafe { stub::iu_landingpad(msg.as_ptr()) }
 }

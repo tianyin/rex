@@ -2,15 +2,11 @@ use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
 use crate::stub;
 
 pub(crate) fn bpf_spin_lock(lock: &mut bpf_spin_lock) -> i64 {
-    let helper: extern "C" fn(*mut bpf_spin_lock) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_spin_lock_addr()) };
-    helper(lock)
+    unsafe { stub::bpf_spin_lock(lock) }
 }
 
 pub(crate) fn bpf_spin_unlock(lock: &mut bpf_spin_lock) -> i64 {
-    let helper: extern "C" fn(*mut bpf_spin_lock) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_spin_unlock_addr()) };
-    helper(lock)
+    unsafe { stub::bpf_spin_unlock(lock) }
 }
 
 /// An RAII implementation of a "scoped lock" of a bpf spinlock. When this
