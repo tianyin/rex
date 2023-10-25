@@ -11,8 +11,9 @@ use inner_unikernel_rt::Result;
 fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     let option_task = obj.bpf_get_current_task();
     if let Some(task) = option_task {
+        let cpu = obj.bpf_get_smp_processor_id();
         let pid = task.get_pid();
-        bpf_printk!(obj, "Rust triggered from PID %u.\n", pid as u64);
+        bpf_printk!(obj, "Rust triggered from PID %u on CPU %u.\n", pid as u64, cpu as u64);
     }
     Ok(0)
 }
