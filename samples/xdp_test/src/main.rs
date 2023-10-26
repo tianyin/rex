@@ -36,7 +36,7 @@ const FNV_PRIME_32: u32 = 16777619;
 // const FNV_PRIME_32: u32 = 5;
 const ETH_ALEN: usize = 6;
 
-// FIX: use simple hash function, ned update in the future
+// FIX: use simple hash function, may need update in the future
 macro_rules! hash_func {
     ($hash:expr, $value:expr) => {
         $hash = $hash.wrapping_pow($value as u32);
