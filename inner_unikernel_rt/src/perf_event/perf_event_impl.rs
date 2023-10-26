@@ -79,15 +79,9 @@ impl<'a> perf_event<'a> {
     ) -> Result {
         let size = core::mem::size_of::<bpf_perf_event_value>() as u32;
 
-        let helper: extern "C" fn(
-            *const bpf_perf_event_data_kern,
-            &mut bpf_perf_event_value,
-            u32,
-        ) -> i64 = unsafe {
-            core::mem::transmute(stub::bpf_perf_prog_read_value_addr())
-        };
-
-        to_result!(helper(ctx.kptr, buf, size))
+        unsafe {
+            to_result!(stub::bpf_perf_prog_read_value(ctx.kptr, buf, size))
+        }
     }
 
     pub fn bpf_get_stackid_pe<K, V>(
@@ -101,14 +95,9 @@ impl<'a> perf_event<'a> {
             return Err(EINVAL as i32);
         }
 
-        let helper: extern "C" fn(
-            *const bpf_perf_event_data_kern,
-            *mut (),
-            u64,
-        ) -> i64 =
-            unsafe { core::mem::transmute(stub::bpf_get_stackid_pe_addr()) };
-
-        to_result!(helper(ctx.kptr, map_kptr, flags))
+        unsafe {
+            to_result!(stub::bpf_get_stackid_pe(ctx.kptr, map_kptr, flags))
+        }
     }
 
     pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {

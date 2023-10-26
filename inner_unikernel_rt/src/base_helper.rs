@@ -10,7 +10,7 @@ use crate::utils::{to_result, Result};
 // use crate::timekeeping::*;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
-    unsafe { this_cpu_read(stub::cpu_number_addr()) }
+    unsafe { this_cpu_read(&stub::cpu_number as *const i32 as u64) }
 }
 
 pub(crate) fn bpf_trace_printk(
@@ -19,10 +19,15 @@ pub(crate) fn bpf_trace_printk(
     arg2: u64,
     arg3: u64,
 ) -> Result {
-    let code: extern "C" fn(*const u8, u32, u64, u64, u64) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_trace_printk_iu_addr()) };
-
-    to_result!(code(fmt.as_ptr(), fmt.len() as u32, arg1, arg2, arg3))
+    unsafe {
+        to_result!(stub::bpf_trace_printk_iu(
+            fmt.as_ptr(),
+            fmt.len() as u32,
+            arg1,
+            arg2,
+            arg3
+        ))
+    }
 }
 
 pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
@@ -34,9 +39,10 @@ pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
         return None;
     }
 
-    let helper: extern "C" fn(*mut (), *const K) -> *const V =
-        unsafe { core::mem::transmute(stub::bpf_map_lookup_elem_addr()) };
-    let value = helper(map_kptr, key) as *mut V;
+    let value = unsafe {
+        stub::bpf_map_lookup_elem(map_kptr, key as *const K as *const ())
+            as *mut V
+    };
 
     if value.is_null() {
         None
@@ -56,10 +62,14 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    let helper: extern "C" fn(*mut (), *const K, *const V, u64) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_map_update_elem_addr()) };
-
-    to_result!(helper(map_kptr, key, value, flags) as i32)
+    unsafe {
+        to_result!(stub::bpf_map_update_elem(
+            map_kptr,
+            key as *const K as *const (),
+            value as *const V as *const (),
+            flags
+        ) as i32)
+    }
 }
 
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
@@ -71,10 +81,12 @@ pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    let helper: extern "C" fn(*mut (), *const K) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_map_delete_elem_addr()) };
-
-    to_result!((helper(map_kptr, key)) as i32)
+    unsafe {
+        to_result!(stub::bpf_map_delete_elem(
+            map_kptr,
+            key as *const K as *const ()
+        ) as i32)
+    }
 }
 
 pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
@@ -87,10 +99,13 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    let helper: extern "C" fn(*mut (), *const V, u64) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_map_push_elem_addr()) };
-
-    to_result!(helper(map_kptr, value, flags) as i32)
+    unsafe {
+        to_result!(stub::bpf_map_push_elem(
+            map_kptr,
+            value as *const V as *const (),
+            flags
+        ) as i32)
+    }
 }
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
@@ -102,10 +117,12 @@ pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    let helper: extern "C" fn(*mut (), *const V) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_map_pop_elem_addr()) };
-
-    to_result!(helper(map_kptr, value) as i32)
+    unsafe {
+        to_result!(stub::bpf_map_pop_elem(
+            map_kptr,
+            value as *const V as *const ()
+        ) as i32)
+    }
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
@@ -117,10 +134,12 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    let helper: extern "C" fn(*mut (), *const V) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_map_peek_elem_addr()) };
-
-    to_result!(helper(map_kptr, value) as i32)
+    unsafe {
+        to_result!(stub::bpf_map_peek_elem(
+            map_kptr,
+            value as *const V as *const ()
+        ) as i32)
+    }
 }
 
 /*
@@ -148,13 +167,13 @@ pub(crate) fn bpf_probe_read_kernel<T>(
     dst: &mut T,
     unsafe_ptr: *const (),
 ) -> Result {
-    let helper: extern "C" fn(*mut (), u32, *const ()) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_probe_read_kernel_addr()) };
-    to_result!(helper(
-        dst as *mut T as *mut (),
-        core::mem::size_of::<T>() as u32,
-        unsafe_ptr,
-    ))
+    unsafe {
+        to_result!(stub::bpf_probe_read_kernel(
+            dst as *mut T as *mut (),
+            core::mem::size_of::<T>() as u32,
+            unsafe_ptr,
+        ))
+    }
 }
 
 pub(crate) fn bpf_strcmp(s1: &str, s2: &str) -> i32 {
@@ -218,27 +237,24 @@ pub(crate) fn bpf_strncmp(s1: &str, s2: &str, cnt: usize) -> i32 {
 }
 
 pub(crate) fn bpf_jiffies64() -> u64 {
-    unsafe { core::ptr::read_volatile(stub::jiffies_addr() as *const u64) }
+    unsafe { core::ptr::read_volatile(&stub::jiffies) }
 }
 
 /// Assumes `CONFIG_USE_PERCPU_NUMA_NODE_ID`
 pub(crate) fn bpf_get_numa_node_id() -> i64 {
-    let id = unsafe { this_cpu_read::<u64>(stub::numa_node_addr()) };
+    let id =
+        unsafe { this_cpu_read::<u64>(&stub::numa_node as *const i32 as u64) };
     id as i64
 }
 
 // This two functions call the original helper directly, so that confirm the
 // return value is correct
 pub(crate) fn bpf_ktime_get_ns_origin() -> u64 {
-    let helper: extern "C" fn() -> u64 =
-        unsafe { core::mem::transmute(stub::ktime_get_mono_fast_ns_addr()) };
-    helper()
+    unsafe { stub::ktime_get_mono_fast_ns() }
 }
 
 pub(crate) fn bpf_ktime_get_boot_ns_origin() -> u64 {
-    let helper: extern "C" fn() -> u64 =
-        unsafe { core::mem::transmute(stub::ktime_get_boot_fast_ns_addr()) };
-    helper()
+    unsafe { stub::ktime_get_boot_fast_ns() }
 }
 
 /*
@@ -265,15 +281,15 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     fmt: &str,
     data: &[u64; M],
 ) -> Result {
-    let helper: extern "C" fn(*mut u8, u32, *const u8, *const u64, u32) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_snprintf_addr()) };
-    to_result!(helper(
-        str.as_mut_ptr(),
-        N as u32,
-        fmt.as_ptr(),
-        data.as_ptr(),
-        M as u32,
-    ) as i32)
+    unsafe {
+        to_result!(stub::bpf_snprintf(
+            str.as_mut_ptr(),
+            N as u32,
+            fmt.as_ptr(),
+            data.as_ptr(),
+            M as u32,
+        ) as i32)
+    }
 }
 
 macro_rules! base_helper_defs {

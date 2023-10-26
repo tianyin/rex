@@ -49,7 +49,7 @@ impl<'a> kprobe<'a> {
     // not safe to expose to the user progs
     pub fn bpf_override_return(&self, regs: &mut pt_regs, rc: u64) -> i32 {
         regs.rax = rc;
-        regs.rip = unsafe { stub::just_return_func_addr() };
+        regs.rip = unsafe { stub::just_return_func as *const () as u64 };
         return 0;
     }
 }

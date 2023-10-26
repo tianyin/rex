@@ -106,13 +106,11 @@ pub(crate) unsafe fn this_cpu_read<T: PerCPURead<T>>(pcp_addr: u64) -> T {
 /// This is more expensive (in terms of # of insns)
 #[inline(always)]
 unsafe fn __this_cpu_ptr(pcp_addr: u64) -> u64 {
-    let cpu_id =
-        unsafe { this_cpu_read::<u32>(stub::cpu_number_addr()) as usize };
+    let cpu_id = unsafe {
+        this_cpu_read::<u32>(&stub::cpu_number as *const i32 as u64) as usize
+    };
     let __per_cpu_offset = unsafe {
-        core::slice::from_raw_parts(
-            stub::__per_cpu_offset_addr() as *const u64,
-            NR_CPUS as usize,
-        )
+        core::slice::from_raw_parts(stub::__per_cpu_offset, NR_CPUS as usize)
     };
     let this_cpu_offset = __per_cpu_offset[cpu_id];
     pcp_addr + this_cpu_offset

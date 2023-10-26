@@ -64,32 +64,6 @@ kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern|xdp_buff|ethhdr|iph
 def gen_inc_directive(header):
     return '#include <%s>\n' % header
 
-# These 2 functions are from the old fixup_addrs.py
-def filter_symbol(nm_line):
-    # T/t means text(code) symbol
-    # D/d means data
-    if len(nm_line) != 3:
-        return False;
-    sym_ty = nm_line[1].lower()
-    return sym_ty == 't' or sym_ty == 'd' or sym_ty == 'b' or sym_ty == 'w'
-
-def get_symbols(vmlinux):
-    result = subprocess.run(['nm', vmlinux], check=True, capture_output=True)
-    return map(lambda l: l.strip().split(),
-            result.stdout.decode('utf-8').split('\n'))
-
-def gen_stubs(vmlinux, helpers, out_dir):
-    if len(helpers) == 0:
-        return
-
-    # Construct a func -> addr map
-    text_syms = dict(map(lambda l: (l[2], l[0]),
-                         filter(filter_symbol, get_symbols(vmlinux))))
-    stubs = '\n'.join(map(lambda h: stub_skel % h.lower(), helpers))
-    output = stubs % tuple(map(lambda f: text_syms[f], helpers))
-    with open(os.path.join(out_dir, 'stub.rs'), 'w') as stub_f:
-        stub_f.write(output)
-
 # Generates Rust binding from C/C++ header
 def bindgen(header):
     p = subprocess.run([*bindgen_cmd, header], check=True, capture_output=True)
@@ -115,12 +89,11 @@ def parse_cargo_toml(cargo_toml_path):
 
     assert 'inner_unikernel' in cargo_toml, "no inner_unikernel config found"
 
-    ksyms = cargo_toml['inner_unikernel'].get('ksyms', [])
     uheaders = cargo_toml['inner_unikernel'].get('uheaders', [])
     kheaders = cargo_toml['inner_unikernel'].get('kheaders', [])
     kconfigs = cargo_toml['inner_unikernel'].get('kconfigs', [])
 
-    return ksyms, uheaders, kheaders, kconfigs
+    return uheaders, kheaders, kconfigs
 
 def prep_kernel_headers(headers, linux_path, out_dir):
     bindings_h = os.path.join(out_dir, 'bindings.h')
@@ -156,9 +129,7 @@ def main(argv):
     target_path = os.getcwd()
 
     result = parse_cargo_toml(os.path.join(target_path, 'Cargo.toml'))
-    ksyms, uheaders, kheaders, kconfigs = result
-
-    gen_stubs(os.path.join(linux_path, 'vmlinux'), ksyms, out_dir)
+    uheaders, kheaders, kconfigs = result
 
     u_out_dir = os.path.join(out_dir, 'uapi')
     prep_headers(os.path.join(linux_path, 'usr/include'), uheaders, u_out_dir)

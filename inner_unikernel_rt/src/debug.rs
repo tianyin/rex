@@ -9,7 +9,5 @@ use crate::stub;
 #[allow(improper_ctypes_definitions)]
 #[no_mangle]
 pub(crate) unsafe extern "C" fn printk(fmt: &str, mut ap: ...) -> c_int {
-    let printk_kern: extern "C" fn(*const c_uchar, VaList) -> i32 =
-        unsafe { core::mem::transmute(stub::vprintk_addr()) };
-    printk_kern(fmt.as_ptr() as *const c_uchar, ap.as_va_list())
+    unsafe { stub::vprintk(fmt.as_ptr() as *const c_uchar, ap.as_va_list()) }
 }

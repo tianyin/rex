@@ -20,7 +20,5 @@ pub(crate) fn prandom_u32_state(state: &mut rnd_state) -> u32 {
 #[inline(always)]
 pub(crate) fn bpf_user_rnd_u32() -> u32 {
     // directly use get_random_u32
-    let helper: extern "C" fn() -> u32 =
-        unsafe { core::mem::transmute(stub::get_random_u32_addr()) };
-    helper()
+    unsafe { stub::get_random_u32() }
 }

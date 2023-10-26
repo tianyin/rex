@@ -25,8 +25,9 @@ impl TaskStruct {
 
     /// Currently returns u64 until `task_struct` binding is generated
     pub(crate) fn get_current_task() -> Option<Self> {
-        let current: *const task_struct =
-            unsafe { this_cpu_read(stub::current_task_addr()) };
+        let current: *const task_struct = unsafe {
+            this_cpu_read(&stub::current_task as *const *const () as u64)
+        };
 
         if current.is_null() {
             None
