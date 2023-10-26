@@ -110,81 +110,82 @@ fn hash_key(
     pctx: &mut parsing_context,
     payload_index: usize,
 ) -> Result {
+    let (mut off, mut done_parsing, mut key_len) = (0usize, false, 0u8);
     let payload = &mut ctx.data_slice[payload_index..];
-    let mut key = obj
-        .bpf_map_lookup_elem(&map_keys, &pctx.key_count)
-        .ok_or_else(|| 0i32)?;
 
-    key.hash = FNV_OFFSET_BASIS_32;
+    while (!done_parsing) {
+        let mut key = obj
+            .bpf_map_lookup_elem(&map_keys, &pctx.key_count)
+            .ok_or_else(|| 0i32)?;
 
-    let (mut off, mut done_parsing, mut key_len) = (0usize, 0u32, 0u8);
+        key.hash = FNV_OFFSET_BASIS_32;
 
-    while (off < (BMC_MAX_KEY_LENGTH + 1))
-        && ((pctx.read_pkt_offset as usize + off + 1) <= ctx.data_length)
-    {
-        if (payload[off] == b'\r') {
-            done_parsing = 1;
-            break;
-        } else if (payload[off] == b' ') {
-            break;
-        } else if (payload[off] != b' ') {
-            hash_func!(key.hash, payload[off]);
-            key_len += 1;
-        }
-        // bpf_printk!(obj, "current hash %d payload %d\n", key.hash as u64, payload[off] as u64);
-        off += 1;
-    }
-
-    // no key found
-    if (key_len == 0 || key_len as usize > BMC_MAX_KEY_LENGTH) {
-        return Ok(XDP_PASS as i32);
-    }
-
-    // get the cache entry
-    let cache_idx: u32 = key.hash % BMC_CACHE_ENTRY_COUNT;
-    let entry = obj
-        .bpf_map_lookup_elem(&map_kcache, &cache_idx)
-        .ok_or_else(|| 0i32)?;
-
-    let mut entry_valid;
-    {
-        let _guard = iu_spinlock_guard::new(&mut entry.lock);
-        entry_valid = entry.valid == 1 && entry.hash == key.hash
-    }
-
-    // potential cache hit
-    if (entry_valid) {
-        // bpf_printk!(obj, "potential cache hit\n");
-        for i in pctx.read_pkt_offset..key_len {
-            // end of packet
-            if (i as usize + 1 > ctx.data_length) {
+        while (off < (BMC_MAX_KEY_LENGTH + 1))
+            && ((pctx.read_pkt_offset as usize + off + 1) <= ctx.data_length)
+        {
+            if (payload[off] == b'\r') {
+                done_parsing = true;
                 break;
+            } else if (payload[off] == b' ') {
+                break;
+            } else if (payload[off] != b' ') {
+                hash_func!(key.hash, payload[off]);
+                key_len += 1;
             }
-            key.data[i as usize] = payload[i as usize];
+            // bpf_printk!(obj, "current hash %d payload %d\n", key.hash as u64, payload[off] as u64);
+            off += 1;
         }
-        key.len = key_len as u32;
-        pctx.key_count += 1;
-    } else {
-        // cache miss
-        // TODO: add stats here
-        // 		bpf_spin_unlock(&entry->lock);
-        // 		struct bmc_stats *stats =
-        // 			bpf_map_lookup_elem(&map_stats, &zero);
-        // 		if (!stats) {
-        // 			return XDP_PASS;
-        // 		}
-        // 		stats->miss_count++;
-    }
 
-    if done_parsing == 1 {
-        if (pctx.key_count > 0) {
-            return prepare_packet(obj, ctx, payload_index, pctx);
+        // no key found
+        if (key_len == 0 || key_len as usize > BMC_MAX_KEY_LENGTH) {
+            return Ok(XDP_PASS as i32);
         }
-    } else {
-        // process more keys
-        off += 1;
-        pctx.read_pkt_offset += off as u8;
-        hash_key(obj, ctx, pctx, payload_index);
+
+        // get the cache entry
+        let cache_idx: u32 = key.hash % BMC_CACHE_ENTRY_COUNT;
+        let entry = obj
+            .bpf_map_lookup_elem(&map_kcache, &cache_idx)
+            .ok_or_else(|| 0i32)?;
+
+        let mut entry_valid;
+        {
+            let _guard = iu_spinlock_guard::new(&mut entry.lock);
+            entry_valid = entry.valid == 1 && entry.hash == key.hash
+        }
+
+        // potential cache hit
+        if (entry_valid) {
+            // bpf_printk!(obj, "potential cache hit\n");
+            for i in pctx.read_pkt_offset..key_len {
+                // end of packet
+                if (i as usize + 1 > ctx.data_length) {
+                    break;
+                }
+                key.data[i as usize] = payload[i as usize];
+            }
+            key.len = key_len as u32;
+            pctx.key_count += 1;
+        } else {
+            // cache miss
+            // TODO: add stats here
+            // 		bpf_spin_unlock(&entry->lock);
+            // 		struct bmc_stats *stats =
+            // 			bpf_map_lookup_elem(&map_stats, &zero);
+            // 		if (!stats) {
+            // 			return XDP_PASS;
+            // 		}
+            // 		stats->miss_count++;
+        }
+
+        if done_parsing {
+            if (pctx.key_count > 0) {
+                return prepare_packet(obj, ctx, payload_index, pctx);
+            }
+        } else {
+            // process more keys
+            off += 1;
+            pctx.read_pkt_offset += off as u8;
+        }
     }
 
     Ok(XDP_PASS as i32)
