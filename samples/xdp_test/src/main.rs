@@ -104,6 +104,7 @@ MAP_DEF!(
 );
 
 // payload after header and 'get '
+#[inline(always)]
 fn hash_key(
     obj: &xdp,
     ctx: &mut xdp_md,

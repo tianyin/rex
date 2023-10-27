@@ -35,6 +35,7 @@ pub struct xdp_md<'a> {
 
 // User can get the customized struct like memcached from the data_slice
 // TODO: add a bound checking for this function, add size check
+#[inline(always)]
 pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
     assert!(
         slice.len() >= mem::size_of::<T>(),
@@ -44,6 +45,7 @@ pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
     unsafe { &*(slice.as_ptr() as *const T) }
 }
 
+#[inline(always)]
 pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
     assert!(
         slice.len() >= mem::size_of::<T>(),
@@ -108,6 +110,7 @@ impl<'a> xdp<'a> {
     // cannot change reg contents. The user should not be able to directly
     // assign this reference a new value either, given that they will not able
     // to create another instance of pt_regs (private fields, no pub ctor)
+    #[inline(always)]
     fn convert_ctx(&self, ctx: *const ()) -> xdp_md {
         let kptr: &xdp_buff = unsafe {
             &*core::mem::transmute::<*const (), *const xdp_buff>(ctx)
@@ -269,7 +272,7 @@ impl<'a> xdp<'a> {
     }
 
     // WARN: this function is unsafe
-    // #[inline(always)]
+    #[inline(always)]
     pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> i32 {
         let kptr = unsafe { ctx.kptr as *const xdp_buff as *mut xdp_buff };
         let ret = unsafe { stub::bpf_xdp_adjust_tail(kptr, offset) };

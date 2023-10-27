@@ -127,6 +127,7 @@ impl<'a> sched_cls<'a> {
     // cannot change reg contents. The user should not be able to directly
     // assign this reference a new value either, given that they will not able
     // to create another instance of pt_regs (private fields, no pub ctor)
+    #[inline(always)]
     fn convert_ctx(&self, ctx: *const ()) -> __sk_buff {
         let kptr: &sk_buff =
             unsafe { &*core::mem::transmute::<*const (), *const sk_buff>(ctx) };
