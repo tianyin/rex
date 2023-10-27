@@ -104,6 +104,5 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
             }
         }
     };
-    println!("generated code is:\n {}", gen.to_string());
     gen.into()
 }
