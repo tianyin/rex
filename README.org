@@ -32,10 +32,9 @@ The following tools/libraries are required. Older versions are not guaranteed
 to (or guaranteed not to) work. This list does not include standard kernel
 build dependencies.
 - binutils >= 2.38
-- clang+LLVM >= 14.0.0
 - elfutils
 - pahole
-- python toml package (might move to builtin ~toml~ module in python 3.11)
+- python toml package (not needed if python >= 3.11)
 - cmake
 - ninja
 - QEMU
@@ -67,7 +66,7 @@ Since ~libiu~ loader library depends on the ~libbpf~ shipped with the kernel,
 ~libbpf~ needs to be built first:
 #+BEGIN_SRC bash
 cd linux/tools/lib/bpf
-make -j`nproc` LLVM=1
+make -j`nproc`
 cd -
 #+END_SRC
 
