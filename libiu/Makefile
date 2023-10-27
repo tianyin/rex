@@ -10,7 +10,8 @@ INC += -I${LINUX}/tools/include/uapi
 CXXFLAGS += -O2 -march=native -pipe -std=gnu++17 -fPIC -fno-exceptions
 CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
 
-LDFLAGS += -Wl,--as-needed -Wl,-O1 -L${LINUX}/tools/lib/bpf -lbpf
+LDFLAGS += -Wl,--as-needed -Wl,-O1
+EXTRA_LDFLAGS += -L${LINUX}/tools/lib/bpf -lbpf -lelf
 
 all: libiu.a libiu.so
 
@@ -18,10 +19,10 @@ libiu.a: libiu.o
 	${AR} rcs $@ $<
 
 libiu.so: libiu.o
-	${LD} ${CXXFLAGS} ${LDFLAGS} -shared $< -o $@
+	${LD} ${CXXFLAGS} ${LDFLAGS} -shared -o $@ $< ${EXTRA_LDFLAGS}
 
 libiu.o: libiu.cpp libiu.h
-	${CXX} ${INC} ${CXXFLAGS} -c libiu.cpp -o $@
+	${CXX} ${INC} ${CXXFLAGS} -o $@ -c libiu.cpp
 
 clean:
 	rm -f libiu.o libiu.a libiu.so

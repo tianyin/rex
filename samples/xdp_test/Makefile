@@ -1,7 +1,7 @@
 LINUX ?= $(HOME)/linux
 
 LINUX_INC = ${LINUX}/usr/include
-LIBBPF_DIR = ${LINUX}/tools/lib
+LIBBPF_DIR = ${LINUX}/tools/lib/bpf
 LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unikernels/libiu"; else echo "../../libiu"; fi)
 
 NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
@@ -10,6 +10,15 @@ RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
 		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
 		-A non_upper_case_globals -F unsafe_code -A non_snake_case ${NO_OPT} -C iu-playground
 CARGO_FLAGS = -Zbuild-std=core --target x86_64-unknown-linux-gnu
+
+CC = gcc
+
+CFLAGS += -O2 -march=native -pipe -std=gnu11
+CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
+LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
+
+LOADER_INC += -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}
+LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBIU_DIR} -lbpf -liu
 
 V ?= 0
 
@@ -33,8 +42,7 @@ llvm-ir: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS} --emit llvm-ir
 
 entry: entry.c
-	clang -g -Wl,--as-needed -I. -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}  -o $@ $< ${LIBBPF_DIR}/bpf/libbpf.a  \
-		-L${LIBBPF_DIR} -l:libbpf.a -L${LIBIU_DIR} -lelf -liu -lz
+	${CC} ${LOADER_INC} ${CFLAGS} ${LDFLAGS} -o $@ $< ${LOADER_LDFLAGS}
 
 clean:
 	cargo clean

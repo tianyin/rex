@@ -7,6 +7,15 @@ LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unik
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
 CARGO_FLAGS = -Zbuild-std=core --target x86_64-unknown-linux-gnu
 
+CC = gcc
+
+CFLAGS += -O2 -march=native -pipe -std=gnu11
+CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
+LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
+
+LOADER_INC += -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}
+LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBIU_DIR} -lbpf -liu
+
 V ?= 0
 
 ifeq ($(V),1)
@@ -25,12 +34,11 @@ target/x86_64-unknown-linux-gnu/debug/trace_event_kern: Cargo.toml ./src/*.rs ${
 target/x86_64-unknown-linux-gnu/release/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
-trace_helpers.o: trace_helpers.c
-	clang -I${LINUX_INC} -g -c $^ -o $@
+%.o: %.c
+	${CC} ${LOADER_INC} ${CFLAGS} -o $@ -c $<
 
-trace_event: trace_event_user.c trace_helpers.o
-	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $^ -L${LIBBPF_DIR} -L${LIBIU_DIR}\
-		-lbpf -lelf -liu -lz -o $@
+trace_event: trace_event_user.o trace_helpers.o
+	${CC} ${LOADER_INC} ${CFLAGS} ${LDFLAGS} -o $@ $^ ${LOADER_LDFLAGS}
 
 clean:
 	cargo clean
