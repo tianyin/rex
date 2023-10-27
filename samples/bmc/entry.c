@@ -17,7 +17,7 @@
 #define STATS_PATH "/tmp/bmc_stats.txt"
 #define STATS_INTERVAL_PATH "/tmp/bmc_stats_interval.txt"
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/xdp_test"
+#define EXE "./target/x86_64-unknown-linux-gnu/release/bmc"
 
 static int nr_cpus = 0;
 
@@ -30,7 +30,7 @@ struct bpf_progs_desc {
 };
 
 static struct bpf_progs_desc progs[] = {
-    {"bmc_rx_filter", BPF_PROG_TYPE_XDP, 0, -1, NULL},
+    {"xdp_rx_filter", BPF_PROG_TYPE_XDP, 0, -1, NULL},
     // {"bmc_hash_keys", BPF_PROG_TYPE_XDP, 0, BMC_PROG_XDP_HASH_KEYS, NULL},
     // {"bmc_prepare_packet", BPF_PROG_TYPE_XDP, 0,
     // BMC_PROG_XDP_PREPARE_PACKET, NULL},
