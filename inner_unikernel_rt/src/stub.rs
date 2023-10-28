@@ -134,6 +134,16 @@ extern "C" {
     /// kernel is using it fine it should be safe for an FFI call using C ABI
     #[allow(improper_ctypes)]
     pub(crate) fn bpf_xdp_adjust_tail(xdp: *mut xdp_buff, offset: i32) -> i32;
+
+    /// void *bpf_ringbuf_reserve(void *ringbuf, u64 size, u64 flags)
+    pub(crate) fn bpf_ringbuf_reserve(
+        ringbuf: *mut (),
+        size: u64,
+        flags: u64,
+    ) -> *mut ();
+
+    /// void bpf_ringbuf_submit(void *data, u64 flags)
+    pub(crate) fn bpf_ringbuf_submit(data: *mut (), flags: u64);
 }
 
 /// Global variables

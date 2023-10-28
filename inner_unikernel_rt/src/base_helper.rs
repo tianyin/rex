@@ -1,6 +1,6 @@
 use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
 use crate::debug::printk;
-use crate::linux::bpf::bpf_map_type;
+use crate::linux::bpf::{bpf_map_type, BPF_MAP_TYPE_RINGBUF};
 use crate::linux::errno::EINVAL;
 use crate::map::IUMap;
 use crate::per_cpu::this_cpu_read;
@@ -292,6 +292,34 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     }
 }
 
+pub(crate) fn bpf_ringbuf_reserve(
+    map: &'static IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>,
+    size: u64,
+    flags: u64,
+) -> Option<&mut [u8]> {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if map_kptr.is_null() {
+        return None;
+    }
+
+    let data = unsafe { stub::bpf_ringbuf_reserve(map_kptr, size, flags) };
+
+    if data.is_null() {
+        None
+    } else {
+        unsafe {
+            Some(core::slice::from_raw_parts_mut(
+                data as *mut u8,
+                size as usize,
+            ))
+        }
+    }
+}
+
+pub(crate) fn bpf_ringbuf_submit(data: &mut [u8], flags: u64) {
+    unsafe { stub::bpf_ringbuf_submit(data.as_mut_ptr() as *mut (), flags) }
+}
+
 macro_rules! base_helper_defs {
     () => {
         #[inline(always)]
@@ -421,6 +449,21 @@ macro_rules! base_helper_defs {
             data: &[u64; M],
         ) -> crate::Result {
             crate::base_helper::bpf_snprintf(buf, fmt, data)
+        }
+
+        #[inline(always)]
+        pub fn bpf_ringbuf_reserve(
+            &self,
+            map: &'static IUMap<{crate::linux::bpf::BPF_MAP_TYPE_RINGBUF}, (), ()>,
+            size: u64,
+            flags: u64,
+        ) -> Option<&mut [u8]> {
+            crate::base_helper::bpf_ringbuf_reserve(map, size, flags)
+        }
+
+        #[inline(always)]
+        pub fn bpf_ringbuf_submit(&self, data: &mut [u8], flags: u64) {
+            crate::base_helper::bpf_ringbuf_submit(data, flags)
         }
     };
 }
