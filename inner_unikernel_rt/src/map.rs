@@ -41,6 +41,6 @@ macro_rules! MAP_DEF {
         #[no_mangle]
         #[used]
         #[link_section = ".maps"]
-        static $n: IUMap<$mt, $k, $v> = IUMap::new($ms, $mf);
+        pub(crate) static $n: IUMap<$mt, $k, $v> = IUMap::new($ms, $mf);
     };
 }
