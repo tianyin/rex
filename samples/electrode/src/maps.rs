@@ -13,24 +13,24 @@ use inner_unikernel_rt::FieldTransmute;
 use inner_unikernel_rt::MAP_DEF;
 
 #[repr(C)]
-struct paxos_quorum {
+pub(crate) struct paxos_quorum {
     view: u32,
     opnum: u32,
     bitset: u32,
 }
 
 #[repr(C)]
-struct paxos_ctr_state {
-    state: ReplicaStatus,
-    my_idx: u32,
-    leader_idx: u32,
-    batch_size: u32,
-    view: u64,
-    last_op: u64,
+pub(crate) struct paxos_ctr_state {
+    pub(crate) state: ReplicaStatus,
+    pub(crate) my_idx: u32,
+    pub(crate) leader_idx: u32,
+    pub(crate) batch_size: u32,
+    pub(crate) view: u64,
+    pub(crate) last_op: u64,
 }
 
 #[repr(C)]
-struct paxos_batch {
+pub(crate) struct paxos_batch {
     counter: u32,
     lock: bpf_spin_lock,
 }
