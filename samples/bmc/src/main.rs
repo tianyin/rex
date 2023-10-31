@@ -227,21 +227,16 @@ fn prepare_packet(
     // TODO: use swap
     swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
 
-    let ip_header_mut = obj.ip_header_mut(ctx);
-    let udp_header_mut = obj.udp_header_mut(ctx);
+    let ip_header_mut = obj.ip_header(ctx);
+    let udp_header = obj.udp_header(ctx);
 
     ip_tmp = ip_header_mut.saddr;
     ip_header_mut.saddr = ip_header_mut.daddr;
     ip_header_mut.daddr = ip_tmp;
 
-    // bpf_printk!(
-    //     obj,
-    //     "udp_header source port before changed %d\n",
-    //     u16::from_be(udp_header_mut.source) as u64
-    // );
-    port_tmp = udp_header_mut.source;
-    udp_header_mut.source = udp_header_mut.dest;
-    udp_header_mut.dest = port_tmp;
+    port_tmp = udp_header.source;
+    udp_header.source = udp_header.dest;
+    udp_header.dest = port_tmp;
 
     write_pkt_reply(obj, ctx, payload_index, pctx)
 }
@@ -325,14 +320,14 @@ fn write_pkt_reply(
         let payload = &mut data_slice[payload_index - 4..];
 
         // // udp check not required
-        let ip_header_mut = obj.ip_header_mut(ctx);
-        let udp_header_mut = obj.udp_header_mut(ctx);
+        let ip_header_mut = obj.ip_header(ctx);
+        let udp_header = obj.udp_header(ctx);
 
         ip_header_mut.tot_len = (u16::from_be(ip_header_mut.tot_len) + padding as u16).to_be();
         ip_header_mut.check = compute_ip_checksum(ip_header_mut);
 
-        udp_header_mut.len = (u16::from_be(udp_header_mut.len) + padding as u16).to_be();
-        udp_header_mut.check = 0;
+        udp_header.len = (u16::from_be(udp_header.len) + padding as u16).to_be();
+        udp_header.check = 0;
 
         for i in 0..entry.len as usize {
             payload[i] = entry.data[i];
@@ -354,7 +349,7 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
         + size_of::<memcached_udp_header>();
     let data_slice = obj.data_slice_mut(ctx);
     let eth_header = eth_header::new(&mut data_slice[0..14]);
-    let ip_header_mut = obj.ip_header_mut(ctx);
+    let ip_header_mut = obj.ip_header(ctx);
 
     match u8::from_be(ip_header_mut.protocol) as u32 {
         IPPROTO_TCP => {
