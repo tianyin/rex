@@ -149,16 +149,6 @@ impl<'a> xdp<'a> {
     }
 
     #[inline(always)]
-    pub fn udp_header<'b>(&self, ctx: &'b xdp_md) -> &'b udphdr {
-        // NOTE: this assumes packet has ethhdr and iphdr
-        let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
-        let end = mem::size_of::<udphdr>() + begin;
-        unsafe {
-            convert_slice_to_struct::<udphdr>(&ctx.data_slice[begin..end])
-        }
-    }
-
-    #[inline(always)]
     pub fn tcp_header(&'a self, ctx: &'a xdp_md) -> &tcphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
@@ -171,15 +161,7 @@ impl<'a> xdp<'a> {
     }
 
     #[inline(always)]
-    pub fn ip_header<'b>(&self, ctx: &'b xdp_md) -> &'b iphdr {
-        // NOTE: this assumes packet has ethhdr
-        let begin = mem::size_of::<ethhdr>();
-        let end = mem::size_of::<iphdr>() + begin;
-        unsafe { convert_slice_to_struct::<iphdr>(&ctx.data_slice[begin..end]) }
-    }
-
-    #[inline(always)]
-    pub fn udp_header_mut<'b>(&self, ctx: &'b xdp_md) -> &'b mut udphdr {
+    pub fn udp_header<'b>(&self, ctx: &'b xdp_md) -> &'b mut udphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<udphdr>() + begin;
@@ -195,7 +177,7 @@ impl<'a> xdp<'a> {
     }
 
     #[inline(always)]
-    pub fn ip_header_mut<'b>(&self, ctx: &'b xdp_md) -> &'b mut iphdr {
+    pub fn ip_header<'b>(&self, ctx: &'b xdp_md) -> &'b mut iphdr {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let end = mem::size_of::<iphdr>() + begin;
