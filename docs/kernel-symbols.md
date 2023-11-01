@@ -6,6 +6,10 @@ The `inner_unikernel_rt` crate serves as an interface for the extension
 programs to interact with the kernel. To accomplish this, the crate will need
 to access kernel symbols. For example, invoking kernel helper functions
 requires knowing the kernel address of the target helper function symbol.
+These kernel symbols includes not only BPF helper functions, but also certain
+per-cpu variables and other kernel functions (these comes partly from our
+previous effort on rewriting kernel helpers, but it is also used by the stack
+unwind/protection and panic cleanup mechanism).
 
 Before [36b91e1aab92: ("libiu: support dynamic symbol
 relocation")](https://github.com/rosalab/inner_unikernels/commit/36b91e1aab92a28cf341852c1ffd187597736d60),
@@ -67,7 +71,7 @@ The new implementation involves the following:
    link against this library dynamically so that a dynamic relocation entry is
    generated for each kernel symbol and the linker will not complain about
    undefined symbols. For example, dumping relocations for the
-   [trace\_event](https://github.com/rosalab/inner_unikernels/tree/main/samples/trace_event)
+   [`trace_event`](https://github.com/rosalab/inner_unikernels/tree/main/samples/trace_event)
    sample gives the following:
 
    ```console
@@ -90,18 +94,52 @@ The new implementation involves the following:
    0000000000003ff8 R_X86_64_GLOB_DAT  bpf_map_lookup_elem
    ```
 
-   The library exists solely for the generate of relocations, it is never map
-   into the kernel with the program and the symbols defined in the library are
-   therefore never accessed. At the same time, because the symbols are not
-   accessed, their types are not relevant, only the name matters. The build
-   script automatically builds the library and adds the needed linker flags so
-   that users can still use `cargo` to build the programs.
+   The relocations with type `R_X86_64_GLOB_DAT` are the kernel symbol
+   relocations generated from dynamic linking, where the `OFFSET` denotes the
+   address offset within the binary and the `VALUE` specifies the actual symbol
+   name.
+
+   Other relocations with type `R_X86_64_RELATIVE` are a result from
+   position-independent executables (PIE).  In PIE, function invocations
+   involve a IP-relative call that indexes into the global offset table (GOT)
+   that stores the absolute address of the function. The GOT entries are
+   generated as relocations that are patched at the program load time. For
+   example, `3fc0 R_X86_64_RELATIVE  *ABS*+0x1270` specifies that the value at
+   offset `3fc0` of the binary needs to be patched to the absolute start
+   address of the binary (after it is mapped into memory) plus `0x1270`.
+
+   The library exists solely for the generation of relocations, it is never
+   mapped into the kernel with the program and the symbols defined in the
+   library are therefore never accessed. At the same time, because the symbols
+   are not accessed, their types are not relevant, only the name matters. The
+   build script automatically builds the library and adds the needed linker
+   flags so that users can still use `cargo` to build the programs.
 
 3. At load time, libiu parses the relocation entries to find out the offsets
    and symbol names (accessible by symbol table index), and send them to the
-   kernel.  The kernel queries the symbol name against `kallsyms` to lookup the
-   in-kernel address of the symbol, it then patches the value at the specified
-   offset to that address.
+   kernel. The decision to let the loader library parse the relocation entries
+   is to reduce the complexity of code in the kernel and take advantage of the
+   existing userspace ELF libraries (we use `elfutils`, the same library used
+   by `libbpf`).  Each dynamic symbol relocation is the stored in an
+   [`iu_dyn_sym`](https://github.com/rosalab/linux/blob/9f4f764a7dd743478d604660e64e943ca7463973/include/uapi/linux/bpf.h#L1265C1-L1268C3)
+   struct:
+
+   ```C
+   struct iu_dyn_sym {
+       __u64	offset; // symbol offset
+       __u64	symbol; // symbol name string (actually a char *)
+   };
+   ```
+
+   When invoking the `bpf(2)` syscall to load the program, the library will
+   pass an array of `struct iu_dyn_sym` to the kernel (by setting pointer to
+   the start address and the size in the
+   [`bpf_attr`](https://github.com/rosalab/linux/blob/9f4f764a7dd743478d604660e64e943ca7463973/include/uapi/linux/bpf.h#L1358C5-L1359C59)
+   union).
+
+   The kernel copies the array into kernel space and queries each symbol name
+   against `kallsyms` to lookup the in-kernel address of the symbol, it then
+   patches the value at the specified offset to that address.
 
 The whole set of commits can be found here:
 <https://github.com/rosalab/inner_unikernels/pull/61>
