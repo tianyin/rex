@@ -1,4 +1,7 @@
-use crate::linux::bpf::bpf_map_type;
+use crate::linux::bpf::{
+    bpf_map_type, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_RINGBUF,
+    BPF_MAP_TYPE_STACK_TRACE,
+};
 use core::{marker::PhantomData, mem, ptr};
 
 #[repr(C)]
@@ -44,3 +47,8 @@ macro_rules! MAP_DEF {
         pub(crate) static $n: IUMap<$mt, $k, $v> = IUMap::new($ms, $mf);
     };
 }
+
+pub type IUArrayMap<K, V> = IUMap<BPF_MAP_TYPE_ARRAY, K, V>;
+pub type IUHashMap<K, V> = IUMap<BPF_MAP_TYPE_HASH, K, V>;
+pub type IURingBuf = IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
+pub type IUStackMap<K, V> = IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>;

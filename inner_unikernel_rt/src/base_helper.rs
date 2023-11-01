@@ -2,7 +2,7 @@ use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
 use crate::debug::printk;
 use crate::linux::bpf::{bpf_map_type, BPF_MAP_TYPE_RINGBUF};
 use crate::linux::errno::EINVAL;
-use crate::map::IUMap;
+use crate::map::*;
 use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
@@ -293,7 +293,7 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
 }
 
 pub(crate) fn bpf_ringbuf_reserve(
-    map: &'static IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>,
+    map: &'static IURingBuf,
     size: u64,
     flags: u64,
 ) -> Option<&mut [u8]> {
@@ -342,7 +342,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_lookup_elem<'b, const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static IUMap<MT, K, V>,
+            map: &'static crate::map::IUMap<MT, K, V>,
             key: &'b K,
         ) -> Option<&'b mut V> {
             crate::base_helper::bpf_map_lookup_elem(map, key)
@@ -351,7 +351,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static IUMap<MT, K, V>,
+            map: &'static crate::map::IUMap<MT, K, V>,
             key: &K,
             value: &V,
             flags: u64,
@@ -362,7 +362,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static IUMap<MT, K, V>,
+            map: &'static crate::map::IUMap<MT, K, V>,
             key: &K,
         ) -> crate::Result {
             crate::base_helper::bpf_map_delete_elem(map, key)
@@ -371,7 +371,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static IUMap<MT, K, V>,
+            map: &'static crate::map::IUMap<MT, K, V>,
             value: &V,
             flags: u64,
         ) -> crate::Result {
@@ -381,7 +381,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static IUMap<MT, K, V>,
+            map: &'static crate::map::IUMap<MT, K, V>,
             value: &V,
         ) -> crate::Result {
             crate::base_helper::bpf_map_pop_elem(map, value)
@@ -390,7 +390,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static IUMap<MT, K, V>,
+            map: &'static crate::map::IUMap<MT, K, V>,
             value: &V,
         ) -> crate::Result {
             crate::base_helper::bpf_map_peek_elem(map, value)
@@ -454,7 +454,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_ringbuf_reserve(
             &self,
-            map: &'static IUMap<{crate::linux::bpf::BPF_MAP_TYPE_RINGBUF}, (), ()>,
+            map: &'static IURingBuf,
             size: u64,
             flags: u64,
         ) -> Option<&mut [u8]> {

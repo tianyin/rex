@@ -87,7 +87,7 @@ impl<'a> perf_event<'a> {
     pub fn bpf_get_stackid_pe<K, V>(
         &self,
         ctx: &bpf_perf_event_data,
-        map: &'static IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>,
+        map: &'static IUStackMap<K, V>,
         flags: u64,
     ) -> Result {
         let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
