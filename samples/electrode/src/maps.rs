@@ -14,9 +14,9 @@ use inner_unikernel_rt::MAP_DEF;
 
 #[repr(C)]
 pub(crate) struct paxos_quorum {
-    view: u32,
-    opnum: u32,
-    bitset: u32,
+    pub(crate) view: u32,
+    pub(crate) opnum: u32,
+    pub(crate) bitset: u32,
 }
 
 #[repr(C)]

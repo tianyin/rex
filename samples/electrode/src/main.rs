@@ -58,7 +58,7 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
             }
 
             // check the message type
-            return handle_udp_fast_paxok(obj, ctx);
+            return handle_udp_fast_paxos(obj, ctx);
         }
         _ => {}
     };
@@ -86,7 +86,7 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &__sk_buff) -> Result {
 }
 
 #[inline(always)]
-fn handle_udp_fast_paxok(obj: &xdp, ctx: &mut xdp_md) -> Result {
+fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let data_slice = obj.data_slice_mut(ctx);
     let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
     let payload = &mut ctx.data_slice[header_len + MAGIC_LEN + size_of::<u64>()..];
@@ -153,6 +153,7 @@ fn compute_message_type(payload: &[u8]) -> FastProgXdp {
 
 #[inline(always)]
 fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
+    // payload_index = header_len + MAGIC_LEN + size_of::<u64>() + PREPARE_TYPE_LEN
     // point to extra data
     let payload = &mut ctx.data_slice[payload_index..];
 
@@ -186,7 +187,7 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
 
     // Resend the prepareOK message
     if msg_last_op <= ctr_state.last_op {
-        // call FAST_PROG_XDP_PREPARE_REPLY
+        return prepare_fast_reply(obj, ctx, payload_index);
     }
 
     // rare case, to user-space.
@@ -194,10 +195,43 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
         return Ok(XDP_PASS as i32);
     }
 
-    ctr_state.last_op = payload_index as u64;
-    // call FAST_PROG_XDP_WRITE_BUFFER
+    ctr_state.last_op = msg_last_op;
+    write_buffer(obj, ctx, payload_index)
+}
 
-    return Ok(XDP_PASS as i32);
+#[inline(always)]
+fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
+    // payload_index = header_len + MAGIC_LEN + size_of::<u64>() + PREPARE_TYPE_LEN
+    let data_slice = obj.data_slice_mut(ctx);
+    // check the end of the payload
+    if data_slice.len() < payload_index + FAST_PAXOS_DATA_LEN {
+        return Ok(XDP_PASS as i32);
+    }
+
+    let payload = &mut data_slice[payload_index + FAST_PAXOS_DATA_LEN..];
+
+    if payload.len() < MAX_DATA_LEN {
+        return Ok(XDP_PASS as i32);
+    }
+
+    // buffer not enough, offload to user-space.
+    // It's easy to avoid cause VR sends `CommitMessage` make followers keep up
+    // with the leader.
+    let pt = obj
+        .bpf_ringbuf_reserve(&map_prepare_buffer, MAX_DATA_LEN, 0)
+        .ok_or_else(|| 0i32)?;
+
+    // for (int i = 0; i < MAX_DATA_LEN; ++i)
+    // if (payload + i + 1 <= data_end) pt[i] = payload[i];
+    // bpf_ringbuf_submit(pt, 0);  // guarantee to succeed.
+    // bpf_tail_call(ctx, &map_progs_xdp, FAST_PROG_XDP_PREPARE_REPLY);
+
+    for i in 0..MAX_DATA_LEN {
+        pt[i] = payload[i];
+        obj.bpf_ringbuf_submit(pt, 0); // guarantee to succeed.
+    }
+
+    prepare_fast_reply(obj, ctx, payload_index)
 }
 
 #[inline(always)]
@@ -258,10 +292,10 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
     payload[24..28].copy_from_slice(&ctr_state.my_idx.to_ne_bytes());
     // move the slice start by size_of::<u64>() * 3 + size_of::<u32>()
     let size = (size_of::<u64>() * 3 + size_of::<u32>()) as u64;
-    payload = &mut payload[size..];
+    payload = &mut payload[size as usize..];
 
-    let useless_len = payload.len();
-    let new_len = ctx.data_length - useless_len;
+    let useless_len = payload.len() as u16;
+    let new_len = ctx.data_length as u16 - useless_len;
 
     let eth_header = obj.eth_header(ctx);
     let ip_header = obj.ip_header(ctx);
@@ -282,19 +316,50 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
 
     // FIX: need to consider the positive offset
     // but the original code check the length before adjust the tail
-    match obj.bpf_xdp_adjust_tail(ctx, new_len - ctx.data_length) {
-        0i32 => {}
-        _ => {
-            bpf_printk!(obj, "adjust tail failed\n");
-            return Ok(XDP_DROP as i32);
-        }
+    if obj.bpf_xdp_adjust_tail(ctx, new_len as i32 - ctx.data_length as i32) != 0 {
+        bpf_printk!(obj, "adjust tail failed\n");
+        return Ok(XDP_DROP as i32);
     }
 
-    return Ok(XDP_PASS as i32);
+    return Ok(XDP_TX as i32);
 }
 
 #[inline(always)]
 fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
+    // payload_index = header_len + MAGIC_LEN + size_of::<u64>()
+    let data_slice = obj.data_slice_mut(ctx);
+    let mut payload = &mut data_slice[payload_index..];
+    let mut len = payload.len();
+
+    if len <= FAST_PAXOS_DATA_LEN {
+        return Ok(XDP_DROP as i32);
+    }
+
+    let msg_view = u32::from_ne_bytes(payload[0..4].try_into().unwrap());
+    let msg_opnum = u32::from_ne_bytes(payload[4..8].try_into().unwrap());
+    let msg_replica_idx = u32::from_ne_bytes(payload[8..12].try_into().unwrap());
+    let idx = msg_opnum & (QUORUM_BITSET_ENTRY - 1);
+
+    let entry = obj
+        .bpf_map_lookup_elem(&map_quorum, &idx)
+        .ok_or_else(|| 0i32)?;
+
+    if (entry.view != msg_view || entry.opnum != msg_opnum) {
+        return Ok(XDP_PASS as i32);
+    }
+
+    entry.bitset |= 1 << msg_replica_idx;
+
+    if entry.bitset.count_ones() != QUORUM_SIZE - 1 {
+        return Ok(XDP_DROP as i32);
+    }
+
+    // *context = (void *)payload + typeLen - data;
+    if obj.bpf_xdp_adjust_tail(ctx, -(payload_index as i32)) != 0 {
+        bpf_printk!(obj, "adjust tail failed\n");
+        return Ok(XDP_DROP as i32);
+    }
+
     return Ok(XDP_PASS as i32);
 }
 
