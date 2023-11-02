@@ -12,6 +12,8 @@
 
 pub(crate) const ETH_ALEN: usize = 6; // Octets in one ethernet addr
 pub(crate) const MTU: u64 = 1500;
+pub(crate) const MAX_DATA_LEN:usize = 64;
+
 
 pub(crate) const CLUSTER_SIZE: u32 = 3;
 pub(crate) const FAST_REPLICA_MAX: u32 = 100; // max # of replicas.

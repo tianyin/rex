@@ -218,7 +218,7 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
     // It's easy to avoid cause VR sends `CommitMessage` make followers keep up
     // with the leader.
     let pt = obj
-        .bpf_ringbuf_reserve(&map_prepare_buffer, MAX_DATA_LEN, 0)
+        .bpf_ringbuf_reserve(&map_prepare_buffer, MAX_DATA_LEN as u64, 0)
         .ok_or_else(|| 0i32)?;
 
     // for (int i = 0; i < MAX_DATA_LEN; ++i)
