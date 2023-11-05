@@ -5,10 +5,8 @@ import sys
 
 if sys.version_info >= (3, 11):
     import tomllib
-    toml_flag = 'rb'
 else:
-    import toml as tomllib
-    toml_flag = 'r'
+    import tomli as tomllib
 
 # https://github.com/rust-lang/rust-bindgen
 bindgen_cmd = 'bindgen --use-core --no-doc-comments --rust-target=1.64 '\
@@ -84,7 +82,7 @@ def prep_headers(usr_include, headers, out_dir):
             bind_f.write(output)
 
 def parse_cargo_toml(cargo_toml_path):
-    with open(cargo_toml_path, toml_flag) as toml_f:
+    with open(cargo_toml_path, 'rb') as toml_f:
         cargo_toml = tomllib.load(toml_f)
 
     assert 'inner_unikernel' in cargo_toml, "no inner_unikernel config found"

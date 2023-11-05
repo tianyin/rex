@@ -34,7 +34,7 @@ build dependencies.
 - binutils >= 2.38
 - elfutils
 - pahole
-- python toml package (not needed if python >= 3.11)
+- python tomli package (not needed if python >= 3.11)
 - cmake
 - ninja
 - QEMU
