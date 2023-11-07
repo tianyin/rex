@@ -165,12 +165,14 @@ impl<'a> xdp<'a> {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<udphdr>() + begin;
+
         let data_slice = unsafe {
             slice::from_raw_parts_mut(
                 ctx.kptr.data as *mut c_uchar,
                 ctx.data_length,
             )
         };
+
         unsafe {
             convert_slice_to_struct_mut::<udphdr>(&mut data_slice[begin..end])
         }

@@ -1,7 +1,7 @@
 /// All kernel symbols we need should be declared here
 use core::ffi::{c_uchar, VaList};
 
-use crate::bindings::linux::kernel::xdp_buff;
+use crate::bindings::linux::kernel::{sk_buff, xdp_buff};
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
 use crate::perf_event::bpf_perf_event_data_kern;
 
@@ -134,6 +134,17 @@ extern "C" {
     /// kernel is using it fine it should be safe for an FFI call using C ABI
     #[allow(improper_ctypes)]
     pub(crate) fn bpf_xdp_adjust_tail(xdp: *mut xdp_buff, offset: i32) -> i32;
+
+    /// long bpf_clone_redirect(struct sk_buff *skb, u32 ifindex, u64 flags)
+    ///
+    /// The compiler complains about some non-FFI safe type, but since the
+    /// kernel is using it fine it should be safe for an FFI call using C ABI
+    #[allow(improper_ctypes)]
+    pub(crate) fn bpf_clone_redirect(
+        skb: *mut sk_buff,
+        ifindex: u32,
+        flags: u64,
+    ) -> i32;
 
     /// void *bpf_ringbuf_reserve(void *ringbuf, u64 size, u64 flags)
     pub(crate) fn bpf_ringbuf_reserve(

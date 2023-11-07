@@ -1,9 +1,6 @@
 // Functions
-#define KSYM_FUNC(func)	\
-int func()	\
-{	\
-	return 0;	\
-}
+#define KSYM_FUNC(func) \
+  int func() { return 0; }
 
 KSYM_FUNC(bpf_get_current_pid_tgid)
 KSYM_FUNC(bpf_trace_printk_iu)
@@ -27,9 +24,9 @@ KSYM_FUNC(bpf_get_stackid_pe)
 KSYM_FUNC(bpf_perf_prog_read_value)
 KSYM_FUNC(bpf_xdp_adjust_head)
 KSYM_FUNC(bpf_xdp_adjust_tail)
+KSYM_FUNC(bpf_clone_redirect)
 KSYM_FUNC(bpf_ringbuf_reserve)
 KSYM_FUNC(bpf_ringbuf_submit)
-
 
 // Global variables
 int cpu_number;
