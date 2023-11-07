@@ -40,6 +40,9 @@ static CC_IS_CLANG: bool = true;
 #[cfg(not(CONFIG_CC_IS_CLANG = "y"))]
 static CC_IS_GCC: bool = true;
 
+#[cfg(not(CONFIG_KALLSYMS_ALL = "y"))]
+compile_error!("CONFIG_KALLSYMS_ALL is required for inner-unikernels");
+
 macro_rules! define_prog_entry {
     ($prog_ty:ident) => {
         paste! {

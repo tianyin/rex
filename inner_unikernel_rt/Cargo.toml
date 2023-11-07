@@ -55,4 +55,5 @@ kheaders = [
 kconfigs = [
   "CONFIG_CC_IS_CLANG",
   "CONFIG_BPF_KPROBE_OVERRIDE",
+  "CONFIG_KALLSYMS_ALL",
 ]
