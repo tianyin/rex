@@ -470,7 +470,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     return Ok(TC_ACT_OK as i32);
 }
 
-fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> Result {
+fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let header_len = size_of::<iphdr>()
         + size_of::<eth_header>()
         + size_of::<udphdr>()
@@ -481,7 +481,6 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &__sk_buff) -> Result {
         return Ok(TC_ACT_OK as i32);
     }
 
-    let eth_header = obj.eth_header(skb);
     let ip_header = obj.ip_header(skb);
 
     match u8::from_be(ip_header.protocol) as u32 {
