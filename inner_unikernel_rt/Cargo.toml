@@ -52,4 +52,7 @@ kheaders = [
   "net/xdp.h",
 ]
 
-kconfigs = ["CONFIG_CC_IS_CLANG"]
+kconfigs = [
+  "CONFIG_CC_IS_CLANG",
+  "CONFIG_BPF_KPROBE_OVERRIDE",
+]

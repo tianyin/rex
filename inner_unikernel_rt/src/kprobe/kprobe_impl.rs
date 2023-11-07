@@ -45,6 +45,7 @@ impl<'a> kprobe<'a> {
         unsafe { &mut *mut_ctx_ptr }
     }
 
+    #[cfg(CONFIG_BPF_KPROBE_OVERRIDE = "y")]
     // Not usable for now, this function requires a mutation ref, which is
     // not safe to expose to the user progs
     pub fn bpf_override_return(&self, regs: &mut pt_regs, rc: u64) -> i32 {
