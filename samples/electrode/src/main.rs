@@ -25,6 +25,14 @@ pub mod maps;
 use common::*;
 use maps::*;
 
+macro_rules! swap_field {
+    ($field1:expr, $field2:expr, $size:ident) => {
+        for i in 0..$size {
+            swap(&mut $field1[i], &mut $field2[i])
+        }
+    };
+}
+
 // NOTE: function calls are not allowed while holding a lock....
 // Cause Paxos is in fact a serialized protocol, we limit our to one-core, then no lock is needed.
 
@@ -66,20 +74,157 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     Ok(XDP_PASS as i32)
 }
 
-fn fast_broad_cast_main(obj: &sched_cls, skb: &__sk_buff) -> Result {
-    let header_len = size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
+fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
+    let data_slice = obj.data_slice_mut(skb);
+
+    let mut header_len = size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
 
     // check if the packet is long enough
-    if (skb.len as usize <= header_len) {
+    if (data_slice.len() <= header_len) {
         return Ok(TC_ACT_OK as i32);
     }
 
-    let eth_header = obj.eth_header(skb);
     let ip_header = obj.ip_header(skb);
-
     match u8::from_be(ip_header.protocol) as u32 {
-        IPPROTO_UDP => {}
+        IPPROTO_UDP => {
+            // only port 12345 is allowed
+            let udp_header = obj.udp_header(skb);
+            let port = u16::from_be(udp_header.dest);
+            if port != 12345 {
+                return Ok(TC_ACT_OK as i32);
+            }
+
+            // check for the magic bits
+            header_len += MAGIC_LEN + size_of::<u64>();
+
+            let data_slice = obj.data_slice_mut(skb);
+            if data_slice.len() < header_len {
+                bpf_printk!(obj, "data_slice.len() < header_len\n");
+                return Ok(TC_ACT_OK as i32);
+            }
+            let payload = &data_slice;
+
+            if (payload[0] != 0x18
+                || payload[1] != 0x03
+                || payload[2] != 0x05
+                || payload[3] != 0x20)
+            {
+                return Ok(TC_ACT_OK as i32);
+            }
+
+            return handle_udp_fast_broad_cast(obj, skb);
+        }
         _ => {}
+    }
+
+    Ok(TC_ACT_OK as i32)
+}
+
+#[inline(always)]
+fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
+    let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>() + MAGIC_LEN;
+
+    let data_slice = obj.data_slice_mut(skb);
+    let payload = &data_slice[header_len..];
+
+    let (type_len_bytes, payload) = payload.split_at(size_of::<u64>());
+    let type_str_len = header_len + size_of::<u64>();
+    let type_len = u64::from_ne_bytes(type_len_bytes.try_into().unwrap());
+    let len = payload.len();
+
+    if type_len >= MTU || len < type_len as usize || len < 5 {
+        bpf_printk!(obj, "too small type_len: {}\n", type_len);
+        return Ok(TC_ACT_SHOT as i32);
+    }
+
+    // update payload index
+    let payload = &payload[type_len as usize..];
+    if payload.len() < FAST_PAXOS_DATA_LEN {
+        return Ok(TC_ACT_SHOT as i32);
+    }
+
+    let msg_view = u32::from_ne_bytes(payload[0..4].try_into().unwrap());
+    let is_broadcast = msg_view & BROADCAST_SIGN_BIT;
+    let msg_view = msg_view ^ BROADCAST_SIGN_BIT;
+
+    let msg_last_op = u32::from_ne_bytes(payload[4..8].try_into().unwrap());
+    let message_type = compute_message_type(payload);
+
+    if message_type == FastProgXdp::FAST_PROG_XDP_HANDLE_PREPARE {
+        let idx = msg_last_op & (QUORUM_BITSET_ENTRY - 1);
+        let entry = obj
+            .bpf_map_lookup_elem(&map_quorum, &idx)
+            .ok_or_else(|| 0i32)?;
+        if entry.view != msg_view || entry.opnum != msg_last_op {
+            entry.view = msg_view;
+            entry.opnum = msg_last_op;
+            entry.bitset = 0;
+        }
+    }
+
+    if is_broadcast == 0 {
+        return Ok(TC_ACT_OK as i32);
+    };
+
+    let zero = 0u32;
+    let ctr_state = obj
+        .bpf_map_lookup_elem(&map_ctr_state, &zero)
+        .ok_or_else(|| 0i32)?;
+
+    let (mut id, mut nxt) = (0u8, 0u8);
+
+    {
+        let type_str = &mut data_slice[type_str_len..];
+        if type_str.starts_with(b"sp") {
+            if ctr_state.leader_idx == 0 {
+                id = 1;
+            }
+            nxt = id + 1;
+            if ctr_state.leader_idx == nxt as u32 {
+                nxt += 1;
+            }
+
+            type_str[0] = nxt;
+            type_str[1] = b'M';
+            if (nxt < CLUSTER_SIZE) {
+                obj.bpf_clone_redirect(skb, skb.ifindex, 0);
+            }
+        } else {
+            id = type_str[0];
+            nxt = id + 1;
+            if ctr_state.leader_idx == nxt as u32 {
+                nxt += 1;
+            }
+            type_str[0] = nxt;
+
+            if (nxt < CLUSTER_SIZE) {
+                obj.bpf_clone_redirect(skb, skb.ifindex, 0);
+            }
+        }
+    }
+
+    // our version bpf_clone_redirect will update the data reference.
+    let data_slice = obj.data_slice_mut(skb);
+    let type_str = &mut data_slice[type_str_len..];
+    type_str[0] = b's';
+    type_str[1] = b'p';
+
+    let key = id as u32;
+    let replica_info = obj
+        .bpf_map_lookup_elem(&map_configure, &key)
+        .ok_or_else(|| TC_ACT_SHOT as i32)?;
+
+    let udp_header = obj.udp_header(skb);
+    udp_header.dest = replica_info.port;
+    udp_header.check = 0;
+
+    let ip_header = obj.ip_header(skb);
+    ip_header.daddr = replica_info.addr;
+    ip_header.check = compute_ip_checksum(ip_header);
+
+    let eth_header = obj.eth_header(skb);
+    for i in 0..ETH_ALEN {
+        eth_header.h_dest[i] = replica_info.eth[i];
     }
 
     Ok(TC_ACT_OK as i32)
@@ -120,14 +265,6 @@ fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
     return Ok(XDP_PASS as i32);
 }
 
-macro_rules! swap_field {
-    ($field1:expr, $field2:expr, $size:ident) => {
-        for i in 0..$size {
-            swap(&mut $field1[i], &mut $field2[i])
-        }
-    };
-}
-
 #[inline(always)]
 fn compute_message_type(payload: &[u8]) -> FastProgXdp {
     let len = payload.len();
@@ -149,6 +286,12 @@ fn compute_message_type(payload: &[u8]) -> FastProgXdp {
     }
 
     FastProgXdp::FAILED
+}
+
+// This function is ignored in the original implementation.
+#[inline(always)]
+fn handle_request(obj: &xdp, ctx: &mut xdp_md) -> Result {
+    Ok(XDP_PASS as i32)
 }
 
 #[inline(always)]
@@ -220,11 +363,6 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
     let pt = obj
         .bpf_ringbuf_reserve(&map_prepare_buffer, MAX_DATA_LEN as u64, 0)
         .ok_or_else(|| 0i32)?;
-
-    // for (int i = 0; i < MAX_DATA_LEN; ++i)
-    // if (payload + i + 1 <= data_end) pt[i] = payload[i];
-    // bpf_ringbuf_submit(pt, 0);  // guarantee to succeed.
-    // bpf_tail_call(ctx, &map_progs_xdp, FAST_PROG_XDP_PREPARE_REPLY);
 
     for i in 0..MAX_DATA_LEN {
         pt[i] = payload[i];

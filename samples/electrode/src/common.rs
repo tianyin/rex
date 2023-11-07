@@ -14,7 +14,7 @@ pub(crate) const ETH_ALEN: usize = 6; // Octets in one ethernet addr
 pub(crate) const MTU: u64 = 1500;
 pub(crate) const MAX_DATA_LEN: usize = 64;
 
-pub(crate) const CLUSTER_SIZE: u32 = 3;
+pub(crate) const CLUSTER_SIZE: u8 = 3;
 pub(crate) const FAST_REPLICA_MAX: u32 = 100; // max # of replicas.
 pub(crate) const NONFRAG_MAGIC: u32 = 0x20050318;
 pub(crate) const FRAG_MAGIC: u32 = 0x20101010;
@@ -27,7 +27,7 @@ pub(crate) const MYPREPAREOK_TYPE_LEN: usize = 24;
 
 pub(crate) const FAST_PAXOS_DATA_LEN: usize = 12;
 pub(crate) const BROADCAST_SIGN_BIT: u32 = 1 << 31;
-pub(crate) const QUORUM_SIZE: u32 = (CLUSTER_SIZE + 1) >> 1;
+pub(crate) const QUORUM_SIZE: u32 = (CLUSTER_SIZE as u32 + 1) >> 1;
 pub(crate) const QUORUM_BITSET_ENTRY: u32 = 1024; // must be 2^t
 
 #[derive(Debug, PartialEq, Eq)]
