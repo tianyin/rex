@@ -1,6 +1,7 @@
 /// All kernel symbols we need should be declared here
 use core::ffi::{c_uchar, VaList};
 
+use crate::bindings::linux::kernel::CONFIG_NR_CPUS as NR_CPUS;
 use crate::bindings::linux::kernel::{sk_buff, xdp_buff};
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
 use crate::perf_event::bpf_perf_event_data_kern;
@@ -173,7 +174,7 @@ extern "C" {
     pub(crate) static numa_node: i32;
 
     /// `unsigned long __per_cpu_offset[NR_CPUS] __read_mostly;`
-    pub(crate) static __per_cpu_offset: *const u64;
+    pub(crate) static __per_cpu_offset: [u64; NR_CPUS as usize];
 
     /// `DEFINE_PER_CPU(struct iu_cleanup_entry[64], iu_cleanup_entries)
     /// ____cacheline_aligned = { 0 };`
