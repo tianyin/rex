@@ -149,12 +149,19 @@ impl<'a> xdp<'a> {
     }
 
     #[inline(always)]
-    pub fn tcp_header(&'a self, ctx: &'a xdp_md) -> &tcphdr {
+    pub fn tcp_header<'b>(&'b self, ctx: &'b xdp_md) -> &'b mut tcphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<tcphdr>() + begin;
+
+        let data_slice = unsafe {
+            slice::from_raw_parts_mut(
+                ctx.kptr.data as *mut c_uchar,
+                ctx.data_length,
+            )
+        };
         let tcp_header = unsafe {
-            convert_slice_to_struct::<tcphdr>(&ctx.data_slice[begin..end])
+            convert_slice_to_struct_mut::<tcphdr>(&mut data_slice[begin..end])
         };
 
         tcp_header
