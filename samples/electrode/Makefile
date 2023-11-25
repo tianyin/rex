@@ -16,7 +16,7 @@ CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
 LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
 
 LOADER_INC += -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}
-LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBIU_DIR} -lbpf -liu
+LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBIU_DIR} -lbpf -liu -lelf
 
 V ?= 0
 
