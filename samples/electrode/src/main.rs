@@ -137,6 +137,8 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
         return Ok(TC_ACT_SHOT as i32);
     }
 
+    bpf_printk!(obj, "handle_udp_fast_broad_cast\n");
+
     // update payload index
     let payload = &payload[type_len as usize..];
     if payload.len() < FAST_PAXOS_DATA_LEN {
@@ -234,18 +236,20 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let data_slice = obj.data_slice_mut(ctx);
     let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
-    let payload = &mut ctx.data_slice[header_len + MAGIC_LEN + size_of::<u64>()..];
+    let payload = &mut ctx.data_slice[header_len + MAGIC_LEN..];
 
-    let (type_len_bytes, payload) = payload.split_at_mut(size_of::<u64>());
+    let type_len_bytes = &payload[size_of::<u64>()..];
     let type_len = u64::from_ne_bytes(type_len_bytes.try_into().unwrap());
-    bpf_printk!(obj, "type_len: {}\n", type_len);
+    bpf_printk!(obj, "type_len: %u\n", type_len);
 
     // Check the conditions
     let len = payload.len();
     if type_len >= MTU || len < type_len as usize {
+        bpf_printk!(obj, "too big type_len: %u\n", type_len);
         return Ok(XDP_PASS as i32);
     }
     let payload_index = header_len + MAGIC_LEN + size_of::<u64>();
+    let payload = &mut data_slice[payload_index..];
 
     // PrepareMessage in `vr`.
     if len > PREPARE_TYPE_LEN && payload[19..27].starts_with(b"PrepareM") {
@@ -351,6 +355,8 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
         return Ok(XDP_PASS as i32);
     }
 
+    bpf_printk!(obj, "write buffer\n");
+
     let payload = &mut data_slice[payload_index + FAST_PAXOS_DATA_LEN..];
 
     if payload.len() < MAX_DATA_LEN {
@@ -380,6 +386,8 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
     if payload.len() <= FAST_PAXOS_DATA_LEN + size_of::<u64>() {
         return Ok(XDP_PASS as i32);
     }
+
+    bpf_printk!(obj, "prepare_fast_reply\n");
 
     // read our state
     // may update to function parameter later
@@ -472,6 +480,8 @@ fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resul
     if len <= FAST_PAXOS_DATA_LEN {
         return Ok(XDP_DROP as i32);
     }
+
+    bpf_printk!(obj, "handle prepareOK\n");
 
     let msg_view = u32::from_ne_bytes(payload[0..4].try_into().unwrap());
     let msg_opnum = u32::from_ne_bytes(payload[4..8].try_into().unwrap());
