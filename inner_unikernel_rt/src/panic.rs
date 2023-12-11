@@ -5,20 +5,30 @@ use core::panic::PanicInfo;
 use crate::per_cpu::this_cpu_ptr_mut;
 use crate::stub;
 
+/// Needs to match the kernel side per-cpu definition
 const ENTRIES_SIZE: usize = 64;
 
-pub(crate) type CleanupFn = fn(*const ()) -> ();
+pub(crate) type CleanupFn = unsafe fn(*mut ()) -> ();
 
+/// Aggregate to hold cleanup information of a specific object. The information
+/// is used during panics to ensure proper cleanup of allocated kernel
+/// resources. The `valid` field is used to mark whether this given entry holds
+/// valid information. The cleanup will happen in the form of
+/// `cleanup_fn(cleanup_arg)`
+///
+/// `#[repr(C)]` is needed because this struct is used from the kernel side.
 #[derive(Debug, Copy, Clone)]
 #[repr(C)]
 pub(crate) struct CleanupEntry {
     pub(crate) valid: u64,
     pub(crate) cleanup_fn: Option<CleanupFn>,
-    pub(crate) cleanup_arg: *const (),
+    pub(crate) cleanup_arg: *mut (),
 }
 
 impl CleanupEntry {
-    pub fn new(cleanup_fn: CleanupFn, cleanup_arg: *const ()) -> Self {
+    /// Create a new entry with valid function and argument
+    #[inline]
+    pub(crate) fn new(cleanup_fn: CleanupFn, cleanup_arg: *mut ()) -> Self {
         Self {
             valid: 1,
             cleanup_fn: Some(cleanup_fn),
@@ -26,7 +36,9 @@ impl CleanupEntry {
         }
     }
 
-    pub fn cleanup(&self) {
+    /// Run cleanup function
+    #[inline]
+    pub(crate) unsafe fn cleanup(&self) {
         if self.valid != 0 {
             if let Some(cleanup_fn) = self.cleanup_fn {
                 (cleanup_fn)(self.cleanup_arg);
@@ -36,22 +48,27 @@ impl CleanupEntry {
 }
 
 impl Default for CleanupEntry {
+    /// Create a default entry without valid function and argument
+    #[inline]
     fn default() -> Self {
         Self {
             valid: 0,
             cleanup_fn: None,
-            cleanup_arg: core::ptr::null(),
+            cleanup_arg: core::ptr::null_mut(),
         }
     }
 }
 
+/// Represents an array of `CleanupEntry` on a given CPU. The backing storage
+/// is defined as a per-cpu array in the kernel.
 pub(crate) struct CleanupEntries<'a> {
     entries: &'a mut [CleanupEntry],
 }
 
 impl<'a> CleanupEntries<'a> {
+    /// Retrieve the array of `CleanupEntry` on the current CPU.
     #[inline]
-    pub(crate) fn cleanup_entries_this_cpu() -> CleanupEntries<'a> {
+    fn this_cpu_cleanup_entries() -> CleanupEntries<'a> {
         let entries: &mut [CleanupEntry];
         unsafe {
             let entries_ptr: *mut CleanupEntry = this_cpu_ptr_mut(
@@ -63,11 +80,13 @@ impl<'a> CleanupEntries<'a> {
         Self { entries }
     }
 
-    /// This function is called by object constructors
-    /// Panic is allowed here
-    pub(crate) fn find_next_emtpy_entry(
-        &mut self,
-    ) -> (usize, &mut CleanupEntry) {
+    /// Finds the next empty entry in the array
+    ///
+    /// Triggers a panic when the array is full. This is allowed because
+    /// `CleanupEntries::register_cleanup` is its only caller and is only
+    /// called by object constructors
+    #[inline]
+    fn find_next_emtpy_entry(&mut self) -> (usize, &mut CleanupEntry) {
         for (idx, entry) in self.entries.iter_mut().enumerate() {
             if entry.valid == 0 {
                 return (idx, entry);
@@ -76,29 +95,34 @@ impl<'a> CleanupEntries<'a> {
         panic!("Object count exceeded\n");
     }
 
-    /// This function is called on panic to cleanup everything
-    /// It **must** not cause another panic
-    pub(crate) fn cleanup_all(&mut self) {
-        for entry in self.entries.iter_mut() {
+    /// This function is (and must only be) called by object constructors
+    ///
+    /// Panic is allowed here
+    pub(crate) fn register_cleanup(
+        cleanup_fn: CleanupFn,
+        cleanup_arg: *mut (),
+    ) -> usize {
+        let mut entries = Self::this_cpu_cleanup_entries();
+        let (idx, entry) = entries.find_next_emtpy_entry();
+        *entry = CleanupEntry::new(cleanup_fn, cleanup_arg);
+        idx
+    }
+
+    /// This function is called by the object drop handler. It invalidates the
+    /// entry corresponding to the object.
+    pub(crate) fn deregister_cleanup(idx: usize) {
+        let mut entries = Self::this_cpu_cleanup_entries();
+        entries.entries[idx].valid = 0;
+    }
+
+    /// This function is called on panic to cleanup everything on the current
+    /// CPU. It **must** not cause another panic
+    pub(crate) unsafe fn cleanup_all() {
+        let mut entries = Self::this_cpu_cleanup_entries();
+        for entry in entries.entries.iter_mut() {
             entry.cleanup();
-            *entry = Default::default();
+            entry.valid = 0;
         }
-    }
-}
-
-impl core::ops::Index<usize> for CleanupEntries<'_> {
-    type Output = CleanupEntry;
-
-    #[inline(always)]
-    fn index(&self, index: usize) -> &CleanupEntry {
-        &self.entries[index]
-    }
-}
-
-impl core::ops::IndexMut<usize> for CleanupEntries<'_> {
-    #[inline(always)]
-    fn index_mut(&mut self, index: usize) -> &mut CleanupEntry {
-        &mut self.entries[index]
     }
 }
 
@@ -129,7 +153,7 @@ unsafe fn __iu_handle_stack_overflow() -> ! {
 // This function is called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
-    CleanupEntries::cleanup_entries_this_cpu().cleanup_all();
+    unsafe { CleanupEntries::cleanup_all() };
 
     // Print the msg
     let mut msg = [0u8; 128];
