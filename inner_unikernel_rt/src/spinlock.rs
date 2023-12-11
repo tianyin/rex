@@ -1,13 +1,6 @@
 use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
+use crate::panic::CleanupEntries;
 use crate::stub;
-
-pub(crate) fn bpf_spin_lock(lock: &mut bpf_spin_lock) -> i64 {
-    unsafe { stub::bpf_spin_lock(lock) }
-}
-
-pub(crate) fn bpf_spin_unlock(lock: &mut bpf_spin_lock) -> i64 {
-    unsafe { stub::bpf_spin_unlock(lock) }
-}
 
 /// An RAII implementation of a "scoped lock" of a bpf spinlock. When this
 /// structure is dropped (falls out of scope), the lock will be unlocked.
@@ -17,31 +10,47 @@ pub(crate) fn bpf_spin_unlock(lock: &mut bpf_spin_lock) -> i64 {
 #[clippy::has_significant_drop]
 pub struct iu_spinlock_guard<'a> {
     lock: &'a mut bpf_spin_lock,
+    cleanup_idx: usize,
 }
 
 impl<'a> iu_spinlock_guard<'a> {
-    // Constructor function that locks the spinlock
+    /// Constructor function that locks the spinlock
     pub fn new(lock: &'a mut bpf_spin_lock) -> Self {
-        // bpf_spin_lock is guarranteed to return 0
-        bpf_spin_lock(lock);
-        Self { lock }
+        // Put it before lock so if it panics we will not be holding the lock
+        // without a valid cleanup entry for it
+        let cleanup_idx = CleanupEntries::register_cleanup(
+            Self::panic_cleanup,
+            lock as *mut bpf_spin_lock as *mut (),
+        );
+
+        // Lock
+        unsafe {
+            stub::bpf_spin_lock(lock);
+        }
+
+        Self { lock, cleanup_idx }
     }
 
-    // Function that unlocks the spinlock, used by cleanup list and drop
-    pub(crate) fn unlock(&mut self) {
-        // bpf_spin_unlock is guarranteed to return 0
-        bpf_spin_unlock(self.lock);
+    /// Function that unlocks the spinlock, used by cleanup list and drop
+    pub(crate) unsafe fn panic_cleanup(lock: *mut ()) {
+        stub::bpf_spin_unlock(lock as *mut bpf_spin_lock);
     }
 }
 
 impl Drop for iu_spinlock_guard<'_> {
-    // Unlock the spinlock when the guard is out-of-scope
+    /// Unlock the spinlock when the guard is out-of-scope
     fn drop(&mut self) {
-        self.unlock()
+        // Put it before unlock so if it panics we will not unlock twice (once
+        // here in the drop handler, the other in the panic handler triggered
+        // by this function)
+        CleanupEntries::deregister_cleanup(self.cleanup_idx);
+
+        // Unlock
+        unsafe { stub::bpf_spin_unlock(self.lock) };
     }
 }
 
-// Unimplemented Send and Sync
-// Ref: https://doc.rust-lang.org/nomicon/send-and-sync.html
+/// Unimplement Send and Sync
+/// Ref: https://doc.rust-lang.org/nomicon/send-and-sync.html
 impl !Send for iu_spinlock_guard<'_> {}
 impl !Sync for iu_spinlock_guard<'_> {}
