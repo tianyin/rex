@@ -17,13 +17,28 @@ struct MapEntry {
 
 MAP_DEF!(map_array, u32, MapEntry, BPF_MAP_TYPE_ARRAY, 256, 0);
 
-fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+fn test1(obj: &tracepoint) {
     if let Some(entry) = obj.bpf_map_lookup_elem(&map_array, &0) {
         // entry.lock locked in iu_spinlock_guard::new
         let _guard = iu_spinlock_guard::new(&mut entry.lock);
         entry.data = 1;
         // entry.lock is automatically released when _guard goes out of scope
     }
+}
+
+fn test2(obj: &tracepoint) {
+    if let Some(entry) = obj.bpf_map_lookup_elem(&map_array, &0) {
+        // entry.lock locked in iu_spinlock_guard::new
+        let _guard = iu_spinlock_guard::new(&mut entry.lock);
+        entry.data = 1;
+        panic!("test\n");
+        // entry.lock is automatically released by cleanup mechanism
+    }
+}
+
+fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+    test1(obj);
+    test2(obj);
     Ok(0)
 }
 
