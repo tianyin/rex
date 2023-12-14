@@ -28,10 +28,10 @@ endif
 
 all: target/x86_64-unknown-linux-gnu/release/syscall_tp syscall_tp
 
-target/x86_64-unknown-linux-gnu/debug/syscall_tp: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+target/x86_64-unknown-linux-gnu/debug/syscall_tp: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
-target/x86_64-unknown-linux-gnu/release/syscall_tp: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+target/x86_64-unknown-linux-gnu/release/syscall_tp: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 syscall_tp: syscall_tp_user.c

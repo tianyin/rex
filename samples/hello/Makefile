@@ -28,7 +28,7 @@ endif
 
 all: target/x86_64-unknown-linux-gnu/release/hello loader event-trigger
 
-target/x86_64-unknown-linux-gnu/debug/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+target/x86_64-unknown-linux-gnu/debug/hello: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
 mir:
@@ -37,7 +37,7 @@ mir:
 llvm-ir:
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
 
-target/x86_64-unknown-linux-gnu/release/hello: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+target/x86_64-unknown-linux-gnu/release/hello: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 loader: loader.c

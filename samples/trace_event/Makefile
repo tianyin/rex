@@ -28,10 +28,10 @@ endif
 
 all: target/x86_64-unknown-linux-gnu/release/trace_event_kern trace_event
 
-target/x86_64-unknown-linux-gnu/debug/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+target/x86_64-unknown-linux-gnu/debug/trace_event_kern: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
-target/x86_64-unknown-linux-gnu/release/trace_event_kern: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
+target/x86_64-unknown-linux-gnu/release/trace_event_kern: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 %.o: %.c
