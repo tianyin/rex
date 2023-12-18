@@ -238,7 +238,7 @@ fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
     let payload = &mut ctx.data_slice[header_len + MAGIC_LEN..];
 
-    let type_len_bytes = &payload[size_of::<u64>()..];
+    let type_len_bytes = &payload[..size_of::<u64>()];
     let type_len = u64::from_ne_bytes(type_len_bytes.try_into().unwrap());
     bpf_printk!(obj, "type_len: %u\n", type_len);
 
@@ -319,6 +319,7 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
         .bpf_map_lookup_elem(&map_ctr_state, &zero)
         .ok_or_else(|| 0i32)?;
 
+    bpf_printk!(obj, "handle_prepare\n");
     // rare case, not handled properly now.
     if ctr_state.state != ReplicaStatus::STATUS_NORMAL {
         return Ok(XDP_DROP as i32);
