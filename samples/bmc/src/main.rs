@@ -36,7 +36,7 @@ const FNV_PRIME_32: u32 = 16777619;
 // const FNV_PRIME_32: u32 = 5;
 const ETH_ALEN: usize = 6;
 
-// FIX: use simple hash function, may need update in the future
+// TODO: use simple hash function, may need update in the future
 macro_rules! hash_func {
     ($hash:expr, $value:expr) => {
         $hash = $hash.wrapping_pow($value as u32);
@@ -208,23 +208,13 @@ fn prepare_packet(
     payload_index: usize,
     pctx: &mut parsing_context,
 ) -> Result {
-    // exchange src and dst ip and mac
-
-    // if (payload >= data_end || old_payload + 1 >= data_end)
-    // 	return XDP_PASS;
-    //
-    // // use old headers as a base; then update addresses and ports to create the new headers
-    // memmove(eth, old_data,
-    // 	sizeof(*eth) + sizeof(*ip) + sizeof(*udp) +
-    // 		sizeof(*memcached_udp_hdr));
-    //
     let mut ip_tmp: u32;
     let mut port_tmp: u16;
     let data_slice = obj.data_slice_mut(ctx);
 
     let eth_header = eth_header::new(&mut data_slice[0..14]);
 
-    // TODO: use swap
+    // exchange src and dst ip and mac
     swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
 
     let ip_header_mut = obj.ip_header(ctx);
