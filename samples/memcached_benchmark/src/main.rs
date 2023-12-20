@@ -3,6 +3,7 @@ use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString};
 use rand::Rng;
 use std::error::Error;
+use std::mem::size_of_val;
 use std::vec;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
@@ -81,7 +82,7 @@ fn set_memcached_value(
 
     // set a string value:
     for (key, value) in test_dict.iter() {
-        server.set(key.as_str(), value, 0)?;
+        server.set(key.as_str(), value.as_str(), 0)?;
     }
 
     Ok(())
@@ -130,7 +131,7 @@ async fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
 
 struct TaskData {
     buf: Vec<u8>,
-    addr: String,
+    addr: Arc<String>,
     key: String,
     test_dict: Arc<HashMap<String, String>>,
     validate: bool,
@@ -150,7 +151,7 @@ async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
     }) = rx.recv().await
     {
         // Send
-        let _ = socket.send_to(&buf[..], &addr).await;
+        let _ = socket.send_to(&buf[..], addr.as_str()).await;
 
         // Then receive
         let mut buf = [0; BUFFER_SIZE];
@@ -187,27 +188,31 @@ async fn get_command_benchmark(
     let keys: Vec<&String> = test_dict.keys().collect();
 
     // assign client address
-    let addr = format!("{}:{}", args.server_address, args.port);
+    let addr = Arc::new(format!("{}:{}", args.server_address, args.port));
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
     let socket = Arc::new(socket);
+    // let addr_to: ToSocketAddrs = ToSocketAddrs::to_socket_addrs(addr).unwrap();
 
     let start = std::time::Instant::now();
     let dict_len = keys.len();
 
     let mut seq: u16 = 0;
+    let mut send_commands = vec![];
+
+    // generate get commands
+    for _ in 0..nums {
+        let key = keys[rand::thread_rng().gen_range(0..dict_len - 1)].clone();
+        let packet = wrap_get_command(key.clone(), seq).await;
+        seq = seq.wrapping_add(1);
+        send_commands.push((key, packet));
+    }
 
     // Create the channel
-    let (tx, rx) = mpsc::channel(100000);
+    let (tx, rx) = mpsc::channel(1000000);
     let socket_clone = Arc::clone(&socket);
     let socket_task = tokio::spawn(socket_task(socket_clone, rx));
 
-    for _ in 0..nums {
-        let rng = rand::thread_rng().gen_range(0..dict_len - 1);
-        let key = keys[rng].clone();
-        // let addr_clone = Arc::clone(&addr);
-        let packet = wrap_get_command(key.clone(), seq).await;
-        seq = seq.wrapping_add(1);
-
+    for (key, packet) in send_commands {
         let send_result = tx
             .send(TaskData {
                 buf: packet,
@@ -256,6 +261,13 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
     exmaple_method(&server)?;
 
     let test_dict = generate_memcached_test_dict(args.key_size, args.value_size, NUM_ENTRIES);
+    println!("test dict len: {}", test_dict.len());
+    if let Some((key, value)) = test_dict.iter().next() {
+        println!("test dict key size: {}", size_of_val(key.as_str()));
+        println!("test dict value size: {}", size_of_val(value.as_str()));
+    } else {
+        Err("test dict is empty")?;
+    }
 
     let test_dict = Arc::new(test_dict);
 
