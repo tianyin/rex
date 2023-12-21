@@ -8,10 +8,12 @@ authors = ["Ruowen Qin ruowenq2@illinois.edu"]
 [dependencies]
 memcache = "0.17.1"
 rand = "0.8.5"
+zipf = "7.0.1"
 clap = { version = "4.4.11", features = ["derive"] }
+rayon = "1.8.0"
 tokio = { version = "1.35.1", features = ["full"] }
 
 [profile.release]
-lto = "thin" 
+lto = "thin"
 opt-level = 3
 debug = false

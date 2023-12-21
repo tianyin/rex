@@ -11,7 +11,7 @@ use tokio::time::timeout;
 
 use std::{collections::HashMap, sync::Arc};
 
-const NUM_ENTRIES: usize = 10000;
+const NUM_ENTRIES: usize = 100000000;
 const BUFFER_SIZE: usize = 1500;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -119,7 +119,7 @@ fn exmaple_method(server: &memcache::Client) -> std::result::Result<(), Memcache
     Ok(())
 }
 
-async fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
+fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
     let mut bytes: Vec<u8> = vec![0, 0, 0, 1, 0, 0];
     let mut command = format!("get {}\r\n", key).into_bytes();
     let mut seq_bytes = seq.to_be_bytes().to_vec();
@@ -182,10 +182,9 @@ async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
 // TODO add mutiple thread support
 async fn get_command_benchmark(
     test_dict: Arc<HashMap<String, String>>,
-    nums: usize,
+    send_commands: Vec<(String, Vec<u8>)>,
 ) -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
-    let keys: Vec<&String> = test_dict.keys().collect();
 
     // assign client address
     let addr = Arc::new(format!("{}:{}", args.server_address, args.port));
@@ -194,18 +193,6 @@ async fn get_command_benchmark(
     // let addr_to: ToSocketAddrs = ToSocketAddrs::to_socket_addrs(addr).unwrap();
 
     let start = std::time::Instant::now();
-    let dict_len = keys.len();
-
-    let mut seq: u16 = 0;
-    let mut send_commands = vec![];
-
-    // generate get commands
-    for _ in 0..nums {
-        let key = keys[rand::thread_rng().gen_range(0..dict_len - 1)].clone();
-        let packet = wrap_get_command(key.clone(), seq).await;
-        seq = seq.wrapping_add(1);
-        send_commands.push((key, packet));
-    }
 
     // Create the channel
     let (tx, rx) = mpsc::channel(1000000);
@@ -277,9 +264,26 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let mut handles = vec![];
 
     for _ in 0..args.threads {
+        let mut seq: u16 = 0;
+        let mut send_commands = vec![];
+
+        let keys: Vec<&String> = test_dict.keys().collect();
+        let dict_len = keys.len();
+
+        let mut rng = rand::thread_rng();
+        let zipf = zipf::ZipfDistribution::new(dict_len - 1, 0.99).unwrap();
+
+        // generate get commands for each thread
+        for _ in 0..args.nums / args.threads {
+            let key = keys[zipf.sample(&mut rng)].clone();
+            let packet = wrap_get_command(key.clone(), seq);
+            seq = seq.wrapping_add(1);
+            send_commands.push((key, packet));
+        }
+
         let test_dict = Arc::clone(&test_dict);
         let handle = tokio::spawn(async move {
-            match get_command_benchmark(test_dict, args.nums).await {
+            match get_command_benchmark(test_dict, send_commands).await {
                 Ok(_) => (),
                 Err(e) => eprintln!("Task failed with error: {:?}", e),
             }
