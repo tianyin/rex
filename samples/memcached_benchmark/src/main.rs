@@ -1,7 +1,8 @@
 use clap::{Parser, ValueEnum};
 use memcache::MemcacheError;
-use rand::distributions::{Alphanumeric, DistString};
-use rand::Rng;
+use rand::distributions::{Alphanumeric, DistString, Distribution};
+
+use rayon::prelude::*;
 use std::error::Error;
 use std::mem::size_of_val;
 use std::vec;
@@ -81,9 +82,10 @@ fn set_memcached_value(
     server.flush()?;
 
     // set a string value:
-    for (key, value) in test_dict.iter() {
-        server.set(key.as_str(), value.as_str(), 0)?;
-    }
+    test_dict.par_iter().for_each(|(key, value)| {
+        // println!("key: {}, value: {}", key, value);
+        server.set(key.as_str(), value.as_str(), 0).unwrap();
+    });
 
     Ok(())
 }
