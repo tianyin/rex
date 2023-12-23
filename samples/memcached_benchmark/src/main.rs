@@ -1,18 +1,20 @@
+use async_memcached::*;
 use clap::{Parser, ValueEnum};
 use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
-
 use rayon::prelude::*;
+
 use std::error::Error;
 use std::mem::size_of_val;
+use std::result::Result;
 use std::vec;
+use std::{collections::HashMap, sync::Arc};
+
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
-use std::{collections::HashMap, sync::Arc};
-
-const NUM_ENTRIES: usize = 100000000;
+const NUM_ENTRIES: usize = 1000000;
 const BUFFER_SIZE: usize = 1500;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -66,6 +68,7 @@ fn generate_memcached_test_dict(
 ) -> HashMap<String, String> {
     // random generate dict for memcached test
     (0..nums)
+        .into_par_iter()
         .map(|_| {
             (
                 generate_random_str(key_size),
@@ -75,17 +78,27 @@ fn generate_memcached_test_dict(
         .collect()
 }
 
-fn set_memcached_value(
-    server: &memcache::Client,
+async fn set_memcached_value(
+    args: &Cli,
     test_dict: Arc<HashMap<String, String>>,
-) -> std::result::Result<(), MemcacheError> {
-    server.flush()?;
+) -> Result<(), MemcacheError> {
+    let mut client = Client::new(format!("{}:{}", args.server_address, args.port))
+        .await
+        .unwrap();
 
-    // set a string value:
-    test_dict.par_iter().for_each(|(key, value)| {
-        // println!("key: {}, value: {}", key, value);
-        server.set(key.as_str(), value.as_str(), 0).unwrap();
-    });
+    // set the data via tokio
+    tokio::spawn(async move {
+        for (key, value) in test_dict.iter() {
+            client
+                .set(key.as_bytes(), value.as_bytes(), None, None)
+                .await
+                .unwrap();
+        }
+    })
+    .await
+    .expect("set memcaced value failed");
+
+    println!("Done set memcaced value");
 
     Ok(())
 }
@@ -197,7 +210,7 @@ async fn get_command_benchmark(
     let start = std::time::Instant::now();
 
     // Create the channel
-    let (tx, rx) = mpsc::channel(1000000);
+    let (tx, rx) = mpsc::channel(100000);
     let socket_clone = Arc::clone(&socket);
     let socket_task = tokio::spawn(socket_task(socket_clone, rx));
 
@@ -248,6 +261,7 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
 
     let server = get_server(&args.server_address, &args.port, &args.protocol)?;
     exmaple_method(&server)?;
+    server.flush()?;
 
     let test_dict = generate_memcached_test_dict(args.key_size, args.value_size, NUM_ENTRIES);
     println!("test dict len: {}", test_dict.len());
@@ -261,7 +275,7 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let test_dict = Arc::new(test_dict);
 
     // assign test_dict to server
-    set_memcached_value(&server, test_dict.clone())?;
+    set_memcached_value(&args, test_dict.clone()).await?;
 
     let mut handles = vec![];
 
