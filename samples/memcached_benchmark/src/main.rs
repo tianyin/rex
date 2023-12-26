@@ -1,5 +1,6 @@
-use async_memcached::*;
+// use async_memcached::*;
 use clap::{Parser, ValueEnum};
+use futures::future::join_all;
 use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
 use rayon::prelude::*;
@@ -14,7 +15,9 @@ use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
-const NUM_ENTRIES: usize = 1000000;
+extern crate r2d2_memcache;
+
+const NUM_ENTRIES: usize = 100000000;
 const BUFFER_SIZE: usize = 1500;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -78,25 +81,26 @@ fn generate_memcached_test_dict(
         .collect()
 }
 
-async fn set_memcached_value(
-    args: &Cli,
-    test_dict: Arc<HashMap<String, String>>,
-) -> Result<(), MemcacheError> {
-    let mut client = Client::new(format!("{}:{}", args.server_address, args.port))
-        .await
+async fn set_memcached_value(test_dict: Arc<HashMap<String, String>>) -> Result<(), MemcacheError> {
+    let args = Cli::parse();
+    // let mut client = Client::new(format!("{}:{}", args.server_address, args.port))
+    //     .await
+    //     .unwrap();
+    let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
+        "memcache://{}:{}",
+        args.server_address, args.port
+    ));
+    let pool = r2d2_memcache::r2d2::Pool::builder()
+        .max_size(100)
+        .build(manager)
         .unwrap();
 
-    // set the data via tokio
-    tokio::spawn(async move {
-        for (key, value) in test_dict.iter() {
-            client
-                .set(key.as_bytes(), value.as_bytes(), None, None)
-                .await
-                .unwrap();
-        }
-    })
-    .await
-    .expect("set memcaced value failed");
+    test_dict.par_iter().for_each(|(key, value)| {
+        let conn = pool.get().unwrap();
+        conn.set(key, value.as_bytes(), 0).unwrap();
+        let result: String = conn.get(key).unwrap().unwrap();
+        assert!(result == *value);
+    });
 
     println!("Done set memcaced value");
 
@@ -144,6 +148,28 @@ fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
     seq_bytes
 }
 
+fn process_received_data(
+    buf: &[u8],
+    amt: usize,
+    key: String,
+    value: &String,
+    key_size: usize,
+    value_size: usize,
+) {
+    let received = String::from_utf8_lossy(&buf[..amt])
+        .split("VALUE ")
+        .nth(1)
+        .unwrap_or_default()[6 + key_size + 1..6 + key_size + value_size + 1]
+        .to_string();
+
+    if received != *value.to_string() {
+        println!(
+            "response not match key {} buf: {} , value: {}",
+            key, received, value
+        );
+    }
+}
+
 struct TaskData {
     buf: Vec<u8>,
     addr: Arc<String>,
@@ -154,8 +180,9 @@ struct TaskData {
     value_size: usize,
 }
 
-async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
-    while let Some(TaskData {
+async fn handle_task(
+    socket: &Arc<UdpSocket>,
+    TaskData {
         buf,
         addr,
         key,
@@ -163,38 +190,30 @@ async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
         validate,
         key_size,
         value_size,
-    }) = rx.recv().await
-    {
-        // Send
-        let _ = socket.send_to(&buf[..], addr.as_str()).await;
+    }: TaskData,
+) {
+    // Send
+    let _ = socket.send_to(&buf[..], addr.as_str()).await;
 
-        // Then receive
-        let mut buf = [0; BUFFER_SIZE];
-        let my_duration = tokio::time::Duration::from_millis(500);
+    // Then receive
+    let mut buf = [0; BUFFER_SIZE];
+    let my_duration = tokio::time::Duration::from_millis(500);
 
-        // timeout(my_duration, socket.recv_from(&mut buf)).await
-        if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
-            if validate {
-                if let Some(value) = test_dict.get(&key) {
-                    let received = String::from_utf8_lossy(&buf[..amt])
-                        .split("VALUE ")
-                        .nth(1)
-                        .unwrap_or_default()[6 + key_size + 1..6 + key_size + value_size + 1]
-                        .to_string();
-
-                    if received != *value.to_string() {
-                        println!(
-                            "response not match key {} buf: {} , value: {}",
-                            key, received, value
-                        );
-                    }
-                }
-            }
+    if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
+        if !validate {
+            return;
+        }
+        if let Some(value) = test_dict.get(&key) {
+            process_received_data(&buf, amt, key, value, key_size, value_size);
         }
     }
 }
+async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
+    while let Some(task_data) = rx.recv().await {
+        handle_task(&socket, task_data).await;
+    }
+}
 
-// TODO add mutiple thread support
 async fn get_command_benchmark(
     test_dict: Arc<HashMap<String, String>>,
     send_commands: Vec<(String, Vec<u8>)>,
@@ -232,11 +251,11 @@ async fn get_command_benchmark(
         }
     }
 
-    // Close the channel
-    drop(tx);
-
     // Wait for the socket task to finish
     socket_task.await?;
+
+    // Close the channel
+    drop(tx);
 
     let duration = start.elapsed();
     println!("Time elapsed in get_command_benchmark() is: {:?}", duration);
@@ -255,7 +274,7 @@ fn get_server(
     }
 }
 
-#[tokio::main]
+#[tokio::main(flavor = "multi_thread", worker_threads = 12)]
 async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
 
@@ -275,7 +294,11 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let test_dict = Arc::new(test_dict);
 
     // assign test_dict to server
-    set_memcached_value(&args, test_dict.clone()).await?;
+    // for _ in 0..args.threads {
+    //     let args_clone = Cli::parse();
+    //     handles.push();
+    // }
+    set_memcached_value(test_dict.clone()).await?;
 
     let mut handles = vec![];
 
@@ -308,9 +331,7 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
     }
 
     // wait for all tasks to complete
-    for handle in handles {
-        handle.await?;
-    }
+    join_all(handles).await;
 
     // stats
     let stats = server.stats()?;
