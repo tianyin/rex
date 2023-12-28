@@ -1,23 +1,27 @@
 // use async_memcached::*;
-use clap::{Parser, ValueEnum};
+use clap::{Parser, Subcommand, ValueEnum};
 use futures::future::join_all;
 use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
-use rayon::prelude::*;
+use serde_yaml;
+use zstd;
 
 use std::error::Error;
+use std::fs::File;
+use std::io::Write;
 use std::mem::size_of_val;
 use std::result::Result;
 use std::vec;
 use std::{collections::HashMap, sync::Arc};
 
+use rayon::prelude::*;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
 extern crate r2d2_memcache;
 
-const NUM_ENTRIES: usize = 100000000;
+const NUM_ENTRIES: usize = 10000;
 const BUFFER_SIZE: usize = 1500;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -26,38 +30,65 @@ enum Protocol {
     Tcp,
 }
 
+struct TaskData {
+    buf: Vec<u8>,
+    addr: Arc<String>,
+    key: String,
+    test_dict: Arc<HashMap<String, String>>,
+    validate: bool,
+    key_size: usize,
+    value_size: usize,
+}
+
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
 struct Cli {
-    #[arg(short, long, default_value = "127.0.0.1")]
-    server_address: String,
+    #[command(subcommand)]
+    command: Commands,
+}
 
-    #[arg(short, long, default_value = "11211")]
-    port: String,
+#[derive(Debug, Subcommand)]
+enum Commands {
+    #[command(arg_required_else_help = true)]
+    Bench {
+        #[arg(short, long, default_value = "127.0.0.1")]
+        server_address: String,
 
-    /// key size to generate random memcached key
-    #[arg(short, long, default_value = "16")]
-    key_size: usize,
+        #[arg(short, long, default_value = "11211")]
+        port: String,
 
-    /// value size to generate random memcached value
-    #[arg(short, long, default_value = "32")]
-    value_size: usize,
+        /// key size to generate random memcached key
+        #[arg(short, long, default_value = "16")]
+        key_size: usize,
 
-    /// verify the value after get command
-    #[arg(short = 'd', long, default_value = "false")]
-    validate: bool,
+        /// value size to generate random memcached value
+        #[arg(short, long, default_value = "32")]
+        value_size: usize,
 
-    /// number of test entries to generate
-    #[arg(short, long, default_value = "100000")]
-    nums: usize,
+        /// verify the value after get command
+        #[arg(short = 'd', long, default_value = "false")]
+        validate: bool,
 
-    // number of threads to run
-    #[arg(short, long, default_value = "4")]
-    threads: usize,
+        /// number of test entries to generate
+        #[arg(short, long, default_value = "100000")]
+        nums: usize,
 
-    /// udp or tcp protocol for memcached
-    #[arg(short = 'l', long, default_value_t = Protocol::Udp , value_enum)]
-    protocol: Protocol,
+        // number of threads to run
+        #[arg(short, long, default_value = "4")]
+        threads: usize,
+
+        /// udp or tcp protocol for memcached
+        #[arg(short = 'l', long, default_value_t = Protocol::Udp , value_enum)]
+        protocol: Protocol,
+    },
+    GenTestdict {
+        #[arg(short, long, default_value = "16")]
+        key_size: usize,
+        #[arg(short, long, default_value = "32")]
+        value_size: usize,
+        #[arg(short, long, default_value = "100000")]
+        nums: usize,
+    },
 }
 
 fn generate_random_str(len: usize) -> String {
@@ -81,14 +112,17 @@ fn generate_memcached_test_dict(
         .collect()
 }
 
-async fn set_memcached_value(test_dict: Arc<HashMap<String, String>>) -> Result<(), MemcacheError> {
-    let args = Cli::parse();
+async fn set_memcached_value(
+    test_dict: Arc<HashMap<String, String>>,
+    server_address: String,
+    port: String,
+) -> Result<(), MemcacheError> {
     // let mut client = Client::new(format!("{}:{}", args.server_address, args.port))
     //     .await
     //     .unwrap();
     let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
         "memcache://{}:{}",
-        args.server_address, args.port
+        server_address, port
     ));
     let pool = r2d2_memcache::r2d2::Pool::builder()
         .max_size(100)
@@ -148,41 +182,8 @@ fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
     seq_bytes
 }
 
-fn process_received_data(
-    buf: &[u8],
-    amt: usize,
-    key: String,
-    value: &String,
-    key_size: usize,
-    value_size: usize,
-) {
-    let received = String::from_utf8_lossy(&buf[..amt])
-        .split("VALUE ")
-        .nth(1)
-        .unwrap_or_default()[6 + key_size + 1..6 + key_size + value_size + 1]
-        .to_string();
-
-    if received != *value.to_string() {
-        println!(
-            "response not match key {} buf: {} , value: {}",
-            key, received, value
-        );
-    }
-}
-
-struct TaskData {
-    buf: Vec<u8>,
-    addr: Arc<String>,
-    key: String,
-    test_dict: Arc<HashMap<String, String>>,
-    validate: bool,
-    key_size: usize,
-    value_size: usize,
-}
-
-async fn handle_task(
-    socket: &Arc<UdpSocket>,
-    TaskData {
+async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
+    while let Some(TaskData {
         buf,
         addr,
         key,
@@ -190,38 +191,48 @@ async fn handle_task(
         validate,
         key_size,
         value_size,
-    }: TaskData,
-) {
-    // Send
-    let _ = socket.send_to(&buf[..], addr.as_str()).await;
+    }) = rx.recv().await
+    {
+        // Send
+        let _ = socket.send_to(&buf[..], addr.as_str()).await;
 
-    // Then receive
-    let mut buf = [0; BUFFER_SIZE];
-    let my_duration = tokio::time::Duration::from_millis(500);
+        // Then receive
+        let mut buf = [0; BUFFER_SIZE];
+        let my_duration = tokio::time::Duration::from_millis(500);
 
-    if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
-        if !validate {
-            return;
+        if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
+            if validate {
+                continue;
+            }
+            if let Some(value) = test_dict.get(&key) {
+                let received = String::from_utf8_lossy(&buf[..amt])
+                    .split("VALUE ")
+                    .nth(1)
+                    .unwrap_or_default()[6 + key_size + 1..6 + key_size + value_size + 1]
+                    .to_string();
+
+                if received != *value.to_string() {
+                    println!(
+                        "response not match key {} buf: {} , value: {}",
+                        key, received, value
+                    );
+                }
+            }
         }
-        if let Some(value) = test_dict.get(&key) {
-            process_received_data(&buf, amt, key, value, key_size, value_size);
-        }
-    }
-}
-async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
-    while let Some(task_data) = rx.recv().await {
-        handle_task(&socket, task_data).await;
     }
 }
 
 async fn get_command_benchmark(
     test_dict: Arc<HashMap<String, String>>,
     send_commands: Vec<(String, Vec<u8>)>,
+    server_address: String,
+    port: String,
+    validate: bool,
+    key_size: usize,
+    value_size: usize,
 ) -> Result<(), Box<dyn Error>> {
-    let args = Cli::parse();
-
     // assign client address
-    let addr = Arc::new(format!("{}:{}", args.server_address, args.port));
+    let addr = Arc::new(format!("{}:{}", server_address, port));
     let socket = UdpSocket::bind("0.0.0.0:0").await?;
     let socket = Arc::new(socket);
     // let addr_to: ToSocketAddrs = ToSocketAddrs::to_socket_addrs(addr).unwrap();
@@ -240,9 +251,9 @@ async fn get_command_benchmark(
                 addr: addr.clone(),
                 key,
                 test_dict: test_dict.clone(),
-                validate: args.validate,
-                key_size: args.key_size,
-                value_size: args.value_size,
+                validate,
+                key_size,
+                value_size,
             })
             .await;
         if send_result.is_err() {
@@ -274,68 +285,114 @@ fn get_server(
     }
 }
 
+fn write_hashmap_to_file(
+    hashmap: &HashMap<String, String>,
+    file_path: &str,
+) -> std::io::Result<()> {
+    // Serialize the hashmap to a JSON string
+    let serialized = serde_yaml::to_string(hashmap).expect("Failed to serialize");
+
+    // Create or open the file
+    let file = File::create(file_path)?;
+
+    // Create a zstd encoder with default compression level
+    let mut encoder = zstd::stream::write::Encoder::new(file, 7)?;
+
+    // Write the JSON string to the file
+    encoder.write_all(serialized.as_bytes())?;
+    encoder.finish()?;
+
+    Ok(())
+}
+
 #[tokio::main(flavor = "multi_thread", worker_threads = 12)]
 async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
+    match args.command {
+        Commands::Bench {
+            server_address,
+            port,
+            key_size,
+            value_size,
+            validate,
+            nums,
+            threads,
+            protocol,
+        } => {
+            let server = get_server(&server_address, &port, &protocol)?;
+            exmaple_method(&server)?;
+            server.flush()?;
 
-    let server = get_server(&args.server_address, &args.port, &args.protocol)?;
-    exmaple_method(&server)?;
-    server.flush()?;
-
-    let test_dict = generate_memcached_test_dict(args.key_size, args.value_size, NUM_ENTRIES);
-    println!("test dict len: {}", test_dict.len());
-    if let Some((key, value)) = test_dict.iter().next() {
-        println!("test dict key size: {}", size_of_val(key.as_str()));
-        println!("test dict value size: {}", size_of_val(value.as_str()));
-    } else {
-        Err("test dict is empty")?;
-    }
-
-    let test_dict = Arc::new(test_dict);
-
-    // assign test_dict to server
-    // for _ in 0..args.threads {
-    //     let args_clone = Cli::parse();
-    //     handles.push();
-    // }
-    set_memcached_value(test_dict.clone()).await?;
-
-    let mut handles = vec![];
-
-    for _ in 0..args.threads {
-        let mut seq: u16 = 0;
-        let mut send_commands = vec![];
-
-        let keys: Vec<&String> = test_dict.keys().collect();
-        let dict_len = keys.len();
-
-        let mut rng = rand::thread_rng();
-        let zipf = zipf::ZipfDistribution::new(dict_len - 1, 0.99).unwrap();
-
-        // generate get commands for each thread
-        for _ in 0..args.nums / args.threads {
-            let key = keys[zipf.sample(&mut rng)].clone();
-            let packet = wrap_get_command(key.clone(), seq);
-            seq = seq.wrapping_add(1);
-            send_commands.push((key, packet));
-        }
-
-        let test_dict = Arc::clone(&test_dict);
-        let handle = tokio::spawn(async move {
-            match get_command_benchmark(test_dict, send_commands).await {
-                Ok(_) => (),
-                Err(e) => eprintln!("Task failed with error: {:?}", e),
+            let test_dict = generate_memcached_test_dict(key_size, value_size, NUM_ENTRIES);
+            println!("test dict len: {}", test_dict.len());
+            if let Some((key, value)) = test_dict.iter().next() {
+                println!("test dict key size: {}", size_of_val(key.as_str()));
+                println!("test dict value size: {}", size_of_val(value.as_str()));
+            } else {
+                Err("test dict is empty")?;
             }
-        });
-        handles.push(handle);
+
+            println!("write test dict to file");
+            write_hashmap_to_file(&test_dict, "test_dict.yml.zst")?;
+
+            let test_dict = Arc::new(test_dict);
+
+            set_memcached_value(test_dict.clone(), server_address.clone(), port.clone()).await?;
+
+            let mut handles = vec![];
+
+            for _ in 0..threads {
+                let mut seq: u16 = 0;
+                let mut send_commands = vec![];
+
+                let keys: Vec<&String> = test_dict.keys().collect();
+                let dict_len = keys.len();
+
+                let mut rng = rand::thread_rng();
+                let zipf = zipf::ZipfDistribution::new(dict_len - 1, 0.99).unwrap();
+
+                // generate get commands for each thread
+                for _ in 0..nums / threads {
+                    let key = keys[zipf.sample(&mut rng)].clone();
+                    let packet = wrap_get_command(key.clone(), seq);
+                    seq = seq.wrapping_add(1);
+                    send_commands.push((key, packet));
+                }
+
+                let test_dict = Arc::clone(&test_dict);
+                let server_address = server_address.clone();
+                let port = port.clone();
+                let handle = tokio::spawn(async move {
+                    match get_command_benchmark(
+                        test_dict,
+                        send_commands,
+                        server_address,
+                        port,
+                        validate,
+                        key_size,
+                        value_size,
+                    )
+                    .await
+                    {
+                        Ok(_) => (),
+                        Err(e) => eprintln!("Task failed with error: {:?}", e),
+                    }
+                });
+                handles.push(handle);
+            }
+            // wait for all tasks to complete
+            join_all(handles).await;
+
+            // stats
+            let stats = server.stats()?;
+            println!("stats: {:?}", stats);
+        }
+        Commands::GenTestdict {
+            key_size,
+            value_size,
+            nums,
+        } => {}
     }
-
-    // wait for all tasks to complete
-    join_all(handles).await;
-
-    // stats
-    let stats = server.stats()?;
-    println!("stats: {:?}", stats);
 
     Ok(())
 }
