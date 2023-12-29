@@ -8,7 +8,7 @@ use zstd;
 
 use std::error::Error;
 use std::fs::File;
-use std::io::Write;
+use std::io::{Read, Write};
 use std::mem::size_of_val;
 use std::result::Result;
 use std::vec;
@@ -21,7 +21,6 @@ use tokio::time::timeout;
 
 extern crate r2d2_memcache;
 
-const NUM_ENTRIES: usize = 10000;
 const BUFFER_SIZE: usize = 1500;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
@@ -51,7 +50,7 @@ struct Cli {
 enum Commands {
     #[command(arg_required_else_help = true)]
     Bench {
-        #[arg(short, long, default_value = "127.0.0.1")]
+        #[arg(short, long, required = true)]
         server_address: String,
 
         #[arg(short, long, default_value = "11211")]
@@ -66,7 +65,7 @@ enum Commands {
         value_size: usize,
 
         /// verify the value after get command
-        #[arg(short = 'd', long, default_value = "false")]
+        #[arg(long, default_value = "false")]
         validate: bool,
 
         /// number of test entries to generate
@@ -80,14 +79,36 @@ enum Commands {
         /// udp or tcp protocol for memcached
         #[arg(short = 'l', long, default_value_t = Protocol::Udp , value_enum)]
         protocol: Protocol,
+
+        // number of dict entries to generate
+        #[arg(short, long, default_value = "1000000")]
+        dict_entries: usize,
+
+        // dict path to load
+        #[arg(
+            short = 'f',
+            long,
+            default_value = "test_dict.yml.zst",
+            conflicts_with = "key_size"
+        )]
+        dict_path: String,
     },
     GenTestdict {
+        // key size to generate random memcached key
         #[arg(short, long, default_value = "16")]
         key_size: usize,
+
+        // value size to generate random memcached value
         #[arg(short, long, default_value = "32")]
         value_size: usize,
-        #[arg(short, long, default_value = "100000")]
-        nums: usize,
+
+        // number of dict entries to generate
+        #[arg(short, long, default_value = "1000000")]
+        dict_entries: usize,
+
+        // dict path to store
+        #[arg(short = 'f', long, default_value = "test_dict.yml.zst")]
+        dict_path: String,
     },
 }
 
@@ -112,14 +133,33 @@ fn generate_memcached_test_dict(
         .collect()
 }
 
+fn generate_test_dict_write_to_disk(
+    key_size: usize,
+    value_size: usize,
+    nums: usize,
+    dict_path: &str,
+) -> Result<HashMap<String, String>, std::io::Error> {
+    let test_dict = generate_memcached_test_dict(key_size, value_size, nums);
+    println!("test dict len: {}", test_dict.len());
+    if let Some((key, value)) = test_dict.iter().next() {
+        println!("test dict key size: {}", size_of_val(key.as_str()));
+        println!("test dict value size: {}", size_of_val(value.as_str()));
+    } else {
+        Err(std::io::Error::new(
+            std::io::ErrorKind::Other,
+            "test dict is empty",
+        ))?;
+    }
+    write_hashmap_to_file(&test_dict, dict_path)?;
+    println!("write test dict to path {}", dict_path);
+    Ok(test_dict)
+}
+
 async fn set_memcached_value(
     test_dict: Arc<HashMap<String, String>>,
     server_address: String,
     port: String,
 ) -> Result<(), MemcacheError> {
-    // let mut client = Client::new(format!("{}:{}", args.server_address, args.port))
-    //     .await
-    //     .unwrap();
     let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
         "memcache://{}:{}",
         server_address, port
@@ -201,7 +241,7 @@ async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
         let my_duration = tokio::time::Duration::from_millis(500);
 
         if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
-            if validate {
+            if !validate {
                 continue;
             }
             if let Some(value) = test_dict.get(&key) {
@@ -262,11 +302,11 @@ async fn get_command_benchmark(
         }
     }
 
-    // Wait for the socket task to finish
-    socket_task.await?;
-
     // Close the channel
     drop(tx);
+
+    // Wait for the socket task to finish
+    socket_task.await?;
 
     let duration = start.elapsed();
     println!("Time elapsed in get_command_benchmark() is: {:?}", duration);
@@ -305,7 +345,7 @@ fn write_hashmap_to_file(
     Ok(())
 }
 
-#[tokio::main(flavor = "multi_thread", worker_threads = 12)]
+#[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     match args.command {
@@ -318,23 +358,41 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
             nums,
             threads,
             protocol,
+            dict_path,
+            dict_entries,
         } => {
             let server = get_server(&server_address, &port, &protocol)?;
             exmaple_method(&server)?;
             server.flush()?;
 
-            let test_dict = generate_memcached_test_dict(key_size, value_size, NUM_ENTRIES);
-            println!("test dict len: {}", test_dict.len());
-            if let Some((key, value)) = test_dict.iter().next() {
-                println!("test dict key size: {}", size_of_val(key.as_str()));
-                println!("test dict value size: {}", size_of_val(value.as_str()));
+            let test_dict_path = std::path::Path::new(dict_path.as_str());
+            let test_dict: HashMap<String, String> = if !test_dict_path.exists() {
+                // if dict_path is empty, generate dict
+                generate_test_dict_write_to_disk(
+                    key_size,
+                    value_size,
+                    dict_entries,
+                    dict_path.as_str(),
+                )?
             } else {
-                Err("test dict is empty")?;
-            }
-
-            println!("write test dict to file");
-            write_hashmap_to_file(&test_dict, "test_dict.yml.zst")?;
-
+                // load dict from file if dict_path is not empty
+                println!("load dict from path {:?}", test_dict_path);
+                let file = File::open(test_dict_path)?;
+                let mut decoder = zstd::stream::read::Decoder::new(file)?;
+                let mut buffer = String::new();
+                decoder.read_to_string(&mut buffer)?;
+                let test_dict: HashMap<String, String> = serde_yaml::from_str(&buffer)?;
+                println!("test dict len: {}", test_dict.len());
+                println!(
+                    "test dict key size: {}",
+                    size_of_val(test_dict.keys().next().unwrap())
+                );
+                println!(
+                    "test dict value size: {}",
+                    size_of_val(test_dict.values().next().unwrap())
+                );
+                test_dict
+            };
             let test_dict = Arc::new(test_dict);
 
             set_memcached_value(test_dict.clone(), server_address.clone(), port.clone()).await?;
@@ -381,6 +439,7 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
                 handles.push(handle);
             }
             // wait for all tasks to complete
+            println!("wait for all tasks to complete");
             join_all(handles).await;
 
             // stats
@@ -390,8 +449,16 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
         Commands::GenTestdict {
             key_size,
             value_size,
-            nums,
-        } => {}
+            dict_entries,
+            dict_path,
+        } => {
+            let _ = generate_test_dict_write_to_disk(
+                key_size,
+                value_size,
+                dict_entries,
+                dict_path.as_str(),
+            )?;
+        }
     }
 
     Ok(())

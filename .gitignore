@@ -5,5 +5,6 @@ samples/*/event-trigger
 samples/*/loader
 samples/*/entry
 samples/*/.cache
+test_dict.yml.zst
 compile_commands.json
 
