@@ -63,17 +63,31 @@ cargo build -r
 Check the help message
 ```bash
 cargo run -r -- -h
-Usage: memcached_benchmark [OPTIONS]
+Usage: memcached_benchmark <COMMAND>
+
+Commands:
+  bench
+  gen-testdict
+  help          Print this message or the help of the given subcommand(s)
+
+Options:
+  -h, --help     Print help
+  -V, --version  Print version
+
+
+cargo run -r -- bench -h
+Usage: memcached_benchmark bench [OPTIONS] --server-address <SERVER_ADDRESS>
+
 Options:
   -s, --server-address <SERVER_ADDRESS>
-          [default: 127.0.0.1]
+
   -p, --port <PORT>
           [default: 11211]
   -k, --key-size <KEY_SIZE>
           key size to generate random memcached key [default: 16]
   -v, --value-size <VALUE_SIZE>
           value size to generate random memcached value [default: 32]
-  -d, --validate
+      --validate
           verify the value after get command
   -n, --nums <NUMS>
           number of test entries to generate [default: 100000]
@@ -81,14 +95,28 @@ Options:
           [default: 4]
   -l, --protocol <PROTOCOL>
           udp or tcp protocol for memcached [default: udp] [possible values: udp, tcp]
+  -d, --dict-entries <DICT_ENTRIES>
+          [default: 1000000]
+      --skip-set
+
+  -f, --dict-path <DICT_PATH>
+          [default: test_dict.yml.zst]
   -h, --help
           Print help
-  -V, --version
-          Print version
+
+cargo run -r -- gen-testdict -h
+Usage: memcached_benchmark gen-testdict [OPTIONS]
+
+Options:
+  -k, --key-size <KEY_SIZE>          [default: 16]
+  -v, --value-size <VALUE_SIZE>      [default: 32]
+  -d, --dict-entries <DICT_ENTRIES>  [default: 1000000]
+  -f, --dict-path <DICT_PATH>        [default: test_dict.yml.zst]
+  -h, --help                         Print help
 
 ```
 Example usage:
 ```bash
 # test on memcached server 10.0.1.254 with 1000000 get requests 
-cargo run -r -- -n 1000000 -s 10.0.1.254 -p 11211
+cargo run -r -- bench -n 1000000 -s 10.0.1.254 -p 11211
 ```
