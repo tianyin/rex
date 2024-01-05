@@ -8,7 +8,7 @@ use zstd;
 
 use std::error::Error;
 use std::fs::File;
-use std::io::{Read, Write};
+use std::io::{BufRead, BufReader, Write};
 use std::mem::size_of_val;
 use std::result::Result;
 use std::vec;
@@ -84,12 +84,17 @@ enum Commands {
         #[arg(short, long, default_value = "1000000")]
         dict_entries: usize,
 
+        // skip set memcached value if the data is already imported
+        #[arg(long, default_value = "false")]
+        skip_set: bool,
+
         // dict path to load
         #[arg(
             short = 'f',
             long,
             default_value = "test_dict.yml.zst",
-            conflicts_with = "key_size"
+            conflicts_with = "key_size",
+            conflicts_with = "dict_entries"
         )]
         dict_path: String,
     },
@@ -360,6 +365,7 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
             protocol,
             dict_path,
             dict_entries,
+            skip_set,
         } => {
             let server = get_server(&server_address, &port, &protocol)?;
             exmaple_method(&server)?;
@@ -378,10 +384,18 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
                 // load dict from file if dict_path is not empty
                 println!("load dict from path {:?}", test_dict_path);
                 let file = File::open(test_dict_path)?;
-                let mut decoder = zstd::stream::read::Decoder::new(file)?;
-                let mut buffer = String::new();
-                decoder.read_to_string(&mut buffer)?;
-                let test_dict: HashMap<String, String> = serde_yaml::from_str(&buffer)?;
+                let decoder = zstd::stream::read::Decoder::new(file)?;
+                let reader = BufReader::new(decoder);
+
+                // Deserialize the string into a HashMap
+                let mut test_dict = HashMap::new();
+
+                for line in reader.lines() {
+                    let line = line?;
+                    // Assuming each line in your file is a valid YAML representing a key-value pair
+                    let deserialized_map: HashMap<String, String> = serde_yaml::from_str(&line)?;
+                    test_dict.extend(deserialized_map);
+                }
                 println!("test dict len: {}", test_dict.len());
                 println!(
                     "test dict key size: {}",
@@ -395,7 +409,11 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
             };
             let test_dict = Arc::new(test_dict);
 
-            set_memcached_value(test_dict.clone(), server_address.clone(), port.clone()).await?;
+            // if memcached server is already imported, skip set memcached value
+            if !skip_set {
+                set_memcached_value(test_dict.clone(), server_address.clone(), port.clone())
+                    .await?;
+            }
 
             let mut handles = vec![];
 
@@ -410,6 +428,8 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
                 let zipf = zipf::ZipfDistribution::new(dict_len - 1, 0.99).unwrap();
 
                 // generate get commands for each thread
+                // FIX:: the sequence number is not unique for each thread,
+                // we may need to generate commands before spawning threads
                 for _ in 0..nums / threads {
                     let key = keys[zipf.sample(&mut rng)].clone();
                     let packet = wrap_get_command(key.clone(), seq);
