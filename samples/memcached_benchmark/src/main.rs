@@ -350,121 +350,170 @@ fn write_hashmap_to_file(
     Ok(())
 }
 
+fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String)>>) {
+    // analyze the key distribution base on the frequency
+    let mut key_frequency = HashMap::new();
+    for (key, _) in test_entries.iter() {
+        *key_frequency.entry(key.to_string()).or_insert(0) += 1;
+    }
+
+    // sort by frequency
+    let mut key_frequency: Vec<_> = key_frequency.into_iter().collect();
+    key_frequency.sort_by(|a, b| a.1.cmp(&b.1));
+
+    // Display the frequency of each item
+    for (key, count) in &key_frequency {
+        if *count < key_frequency.len() / 1000 {
+            continue;
+        }
+        println!("{}: {}", key, count);
+    }
+}
+
+fn generate_test_entries<'a>(
+    test_dict: &'a Arc<HashMap<String, String>>,
+    nums: usize,
+) -> Vec<(&'a String, &'a String)> {
+    let mut rng = rand::thread_rng();
+    let zipf = zipf::ZipfDistribution::new(test_dict.len() - 1, 0.99).unwrap();
+    let keys: Vec<&String> = test_dict.keys().collect();
+    (0..nums)
+        .into_iter()
+        .map(|_| {
+            let key = keys[zipf.sample(&mut rng)];
+            let value = test_dict.get(key).unwrap();
+            (key, value)
+        })
+        .collect()
+}
+
+async fn command_bench() -> Result<(), Box<dyn Error>> {
+    let args = Cli::parse();
+    let Commands::Bench {
+        server_address,
+        port,
+        key_size,
+        value_size,
+        validate,
+        nums,
+        threads,
+        protocol,
+        dict_path,
+        dict_entries,
+        skip_set,
+    } = args.command
+    else {
+        return Err("invalid command".into());
+    };
+
+    let server = get_server(&server_address, &port, &protocol)?;
+    exmaple_method(&server)?;
+    server.flush()?;
+
+    let test_dict_path = std::path::Path::new(dict_path.as_str());
+    let test_dict: HashMap<String, String> = if !test_dict_path.exists() {
+        // if dict_path is empty, generate dict
+        generate_test_dict_write_to_disk(key_size, value_size, dict_entries, dict_path.as_str())?
+    } else {
+        // load dict from file if dict_path is not empty
+        println!("load dict from path {:?}", test_dict_path);
+        let file = File::open(test_dict_path)?;
+        let decoder = zstd::stream::read::Decoder::new(file)?;
+        let reader = BufReader::new(decoder);
+
+        // Deserialize the string into a HashMap
+        let mut test_dict = HashMap::new();
+
+        reader.lines().for_each(|line| {
+            let line = line.unwrap();
+            // Assuming each line in your file is a valid YAML representing a key-value pair
+            let deserialized_map: HashMap<String, String> = serde_yaml::from_str(&line).unwrap();
+            test_dict.extend(deserialized_map);
+        });
+
+        println!("test dict len: {}", test_dict.len());
+        println!(
+            "test dict key size: {}",
+            size_of_val(test_dict.keys().next().unwrap())
+        );
+        println!(
+            "test dict value size: {}",
+            size_of_val(test_dict.values().next().unwrap())
+        );
+        test_dict
+    };
+    let test_dict = Arc::new(test_dict);
+
+    // if memcached server is already imported, skip set memcached value
+    if !skip_set {
+        set_memcached_value(test_dict.clone(), server_address.clone(), port.clone()).await?;
+    }
+
+    // generate test entries
+    let test_entries = Arc::new(generate_test_entries(&test_dict, nums));
+
+    // analyze test entries statistics
+    test_entries_statistics(test_entries.clone());
+
+    let mut handles = vec![];
+
+    for _ in 0..threads {
+        let mut seq: u16 = 0;
+        let mut send_commands = vec![];
+
+        let keys: Vec<&String> = test_dict.keys().collect();
+        let dict_len = keys.len();
+
+        let mut rng = rand::thread_rng();
+        let zipf = zipf::ZipfDistribution::new(dict_len - 1, 0.99).unwrap();
+
+        // generate get commands for each thread
+        // FIX:: the sequence number is not unique for each thread,
+        // we may need to generate commands before spawning threads
+        for _ in 0..nums / threads {
+            let key = keys[zipf.sample(&mut rng)].clone();
+            let packet = wrap_get_command(key.clone(), seq);
+            seq = seq.wrapping_add(1);
+            send_commands.push((key, packet));
+        }
+
+        let test_dict = Arc::clone(&test_dict);
+        let server_address = server_address.clone();
+        let port = port.clone();
+        let handle = tokio::spawn(async move {
+            match get_command_benchmark(
+                test_dict,
+                send_commands,
+                server_address,
+                port,
+                validate,
+                key_size,
+                value_size,
+            )
+            .await
+            {
+                Ok(_) => (),
+                Err(e) => eprintln!("Task failed with error: {:?}", e),
+            }
+        });
+        handles.push(handle);
+    }
+    // wait for all tasks to complete
+    println!("wait for all tasks to complete");
+    join_all(handles).await;
+
+    // stats
+    let stats = server.stats()?;
+    println!("stats: {:?}", stats);
+    Ok(())
+}
+
 #[tokio::main]
 async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     match args.command {
-        Commands::Bench {
-            server_address,
-            port,
-            key_size,
-            value_size,
-            validate,
-            nums,
-            threads,
-            protocol,
-            dict_path,
-            dict_entries,
-            skip_set,
-        } => {
-            let server = get_server(&server_address, &port, &protocol)?;
-            exmaple_method(&server)?;
-            server.flush()?;
-
-            let test_dict_path = std::path::Path::new(dict_path.as_str());
-            let test_dict: HashMap<String, String> = if !test_dict_path.exists() {
-                // if dict_path is empty, generate dict
-                generate_test_dict_write_to_disk(
-                    key_size,
-                    value_size,
-                    dict_entries,
-                    dict_path.as_str(),
-                )?
-            } else {
-                // load dict from file if dict_path is not empty
-                println!("load dict from path {:?}", test_dict_path);
-                let file = File::open(test_dict_path)?;
-                let decoder = zstd::stream::read::Decoder::new(file)?;
-                let reader = BufReader::new(decoder);
-
-                // Deserialize the string into a HashMap
-                let mut test_dict = HashMap::new();
-
-                for line in reader.lines() {
-                    let line = line?;
-                    // Assuming each line in your file is a valid YAML representing a key-value pair
-                    let deserialized_map: HashMap<String, String> = serde_yaml::from_str(&line)?;
-                    test_dict.extend(deserialized_map);
-                }
-                println!("test dict len: {}", test_dict.len());
-                println!(
-                    "test dict key size: {}",
-                    size_of_val(test_dict.keys().next().unwrap())
-                );
-                println!(
-                    "test dict value size: {}",
-                    size_of_val(test_dict.values().next().unwrap())
-                );
-                test_dict
-            };
-            let test_dict = Arc::new(test_dict);
-
-            // if memcached server is already imported, skip set memcached value
-            if !skip_set {
-                set_memcached_value(test_dict.clone(), server_address.clone(), port.clone())
-                    .await?;
-            }
-
-            let mut handles = vec![];
-
-            for _ in 0..threads {
-                let mut seq: u16 = 0;
-                let mut send_commands = vec![];
-
-                let keys: Vec<&String> = test_dict.keys().collect();
-                let dict_len = keys.len();
-
-                let mut rng = rand::thread_rng();
-                let zipf = zipf::ZipfDistribution::new(dict_len - 1, 0.99).unwrap();
-
-                // generate get commands for each thread
-                // FIX:: the sequence number is not unique for each thread,
-                // we may need to generate commands before spawning threads
-                for _ in 0..nums / threads {
-                    let key = keys[zipf.sample(&mut rng)].clone();
-                    let packet = wrap_get_command(key.clone(), seq);
-                    seq = seq.wrapping_add(1);
-                    send_commands.push((key, packet));
-                }
-
-                let test_dict = Arc::clone(&test_dict);
-                let server_address = server_address.clone();
-                let port = port.clone();
-                let handle = tokio::spawn(async move {
-                    match get_command_benchmark(
-                        test_dict,
-                        send_commands,
-                        server_address,
-                        port,
-                        validate,
-                        key_size,
-                        value_size,
-                    )
-                    .await
-                    {
-                        Ok(_) => (),
-                        Err(e) => eprintln!("Task failed with error: {:?}", e),
-                    }
-                });
-                handles.push(handle);
-            }
-            // wait for all tasks to complete
-            println!("wait for all tasks to complete");
-            join_all(handles).await;
-
-            // stats
-            let stats = server.stats()?;
-            println!("stats: {:?}", stats);
+        Commands::Bench { .. } => {
+            command_bench().await?;
         }
         Commands::GenTestdict {
             key_size,

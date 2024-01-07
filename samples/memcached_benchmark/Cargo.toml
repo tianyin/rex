@@ -9,7 +9,7 @@ authors = ["Ruowen Qin ruowenq2@illinois.edu"]
 memcache = "0.17.1"
 rand = "0.8.5"
 zipf = "7.0.1"
-clap = { version = "4.4.11", features = ["derive"] }
+clap = { version = "4.4.13", features = ["derive"] }
 rayon = "1.8.0"
 tokio = { version = "1.35.1", features = ["full"] }
 # async-memcached = "0.1.7"
@@ -17,7 +17,7 @@ futures = "0.3.30"
 r2d2-memcache = "0.6.0"
 zstd = "0.13.0"
 serde = { version = "1.0.193", features = ["derive"] }
-serde_yaml = "0.9.29"
+serde_yaml = "0.9.30"
 
 
 [profile.release]
