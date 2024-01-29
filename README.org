@@ -52,7 +52,7 @@ The Linux directory now hosts the kernel repo, checked out at the pre-set
 commit. To build the kernel, do:
 #+BEGIN_SRC bash
 cd linux
-cp ./q-script/.config .config
+cp ../q-script/.config .config
 make oldconfig LLVM=1
 make -j`nproc` LLVM=1
 cd -
