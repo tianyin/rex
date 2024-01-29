@@ -89,7 +89,7 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
             // get field ident
             let _ = field.ident.as_ref().unwrap();
 
-            let token = quote!( direct_packet_access_ok::<#field_type>(); );
+            let token = quote!( safe_transmute::<#field_type>(); );
             fields_token.push(token);
         }
     }

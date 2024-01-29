@@ -92,9 +92,9 @@ impl<'a> sched_cls<'a> {
     // NOTE: copied from xdp impl, may change in the future
     #[inline(always)]
     pub fn eth_header<'b>(&self, skb: &'b mut __sk_buff) -> &'b mut ethhdr {
-        direct_packet_access_ok::<[u8; 6]>();
-        direct_packet_access_ok::<[u8; 6]>();
-        direct_packet_access_ok::<u16>();
+        safe_transmute::<[u8; 6]>();
+        safe_transmute::<[u8; 6]>();
+        safe_transmute::<u16>();
 
         let data_slice = unsafe {
             slice::from_raw_parts_mut(

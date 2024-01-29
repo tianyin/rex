@@ -11,35 +11,35 @@ impl From<u16be> for u16 {
 }
 
 mod private {
-    pub trait DirectPacketAccessOkBase {}
+    pub trait SafeTransmuteBase {}
 }
 
-pub trait DirectPacketAccessOk: private::DirectPacketAccessOkBase {}
+pub trait SafeTransmute: private::SafeTransmuteBase {}
 
-macro_rules! direct_packet_access_ok_impl {
+macro_rules! safe_transmute_impl {
     ($dest_ty:ident $($dest_tys:ident)*) => {
-        impl private::DirectPacketAccessOkBase for $dest_ty {}
-        impl DirectPacketAccessOk for $dest_ty {}
-        direct_packet_access_ok_impl!($($dest_tys)*);
+        impl private::SafeTransmuteBase for $dest_ty {}
+        impl SafeTransmute for $dest_ty {}
+        safe_transmute_impl!($($dest_tys)*);
     };
     () => {};
 }
 
-direct_packet_access_ok_impl!(u64 i64 u32 i32 u16 i16 u8 i8);
+safe_transmute_impl!(u64 i64 u32 i32 u16 i16 u8 i8);
 
-macro_rules! direct_packet_access_ok_impl_arr {
+macro_rules! safe_transmute_impl_arr {
     ($dest_ty:ident $($dest_tys:ident)*) => {
-        impl<const N: usize> private::DirectPacketAccessOkBase for [$dest_ty; N] {}
-        impl<const N: usize> DirectPacketAccessOk for [$dest_ty; N] {}
-        direct_packet_access_ok_impl_arr!($($dest_tys)*);
+        impl<const N: usize> private::SafeTransmuteBase for [$dest_ty; N] {}
+        impl<const N: usize> SafeTransmute for [$dest_ty; N] {}
+        safe_transmute_impl_arr!($($dest_tys)*);
     };
     () => {};
 }
 
-direct_packet_access_ok_impl_arr!(u64 i64 u32 i32 u16 i16 u8 i8);
+safe_transmute_impl_arr!(u64 i64 u32 i32 u16 i16 u8 i8);
 
 #[inline(always)]
-pub fn direct_packet_access_ok<T: DirectPacketAccessOk>() {}
+pub fn safe_transmute<T: SafeTransmute>() {}
 
 /// A specialized Result for typical int return value in the kernel
 ///

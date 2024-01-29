@@ -204,9 +204,9 @@ impl<'a> xdp<'a> {
 
     #[inline(always)]
     pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b mut ethhdr {
-        direct_packet_access_ok::<[u8; 6]>();
-        direct_packet_access_ok::<[u8; 6]>();
-        direct_packet_access_ok::<u16>();
+        safe_transmute::<[u8; 6]>();
+        safe_transmute::<[u8; 6]>();
+        safe_transmute::<u16>();
 
         let data_slice = unsafe {
             slice::from_raw_parts_mut(
