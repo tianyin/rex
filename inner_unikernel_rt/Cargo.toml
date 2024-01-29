@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 paste = "1.0.14"
 rlibc = "1.0.0"
-struct_filter = { path = "../struct_filter" }
+safe_from_bytes = { path = "../safe_from_bytes" }
 
 [profile.dev]
 debug = 0
@@ -52,7 +52,4 @@ kheaders = [
   "net/xdp.h",
 ]
 
-kconfigs = [
-  "CONFIG_BPF_KPROBE_OVERRIDE",
-  "CONFIG_KALLSYMS_ALL",
-]
+kconfigs = ["CONFIG_BPF_KPROBE_OVERRIDE", "CONFIG_KALLSYMS_ALL"]

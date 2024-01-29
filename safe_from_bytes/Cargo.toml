@@ -1,5 +1,5 @@
 [package]
-name = "struct_filter"
+name = "safe_from_bytes"
 version = "0.1.0"
 edition = "2021"
 

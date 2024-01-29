@@ -98,7 +98,7 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
     let gen = quote! {
         impl #struct_name {
             #[inline(always)]
-            pub(crate) fn new(data: &mut [u8]) -> &mut #struct_name{
+            pub(crate) fn from_bytes(data: &mut [u8]) -> &mut #struct_name{
              #(#fields_token)*
              unsafe { convert_slice_to_struct_mut::<#struct_name>(data) }
             }

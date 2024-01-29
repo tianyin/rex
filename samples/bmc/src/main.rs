@@ -210,9 +210,7 @@ fn prepare_packet(
 ) -> Result {
     let mut ip_tmp: u32;
     let mut port_tmp: u16;
-    let data_slice = obj.data_slice_mut(ctx);
-
-    let eth_header = eth_header::new(&mut data_slice[0..14]);
+    let eth_header = obj.eth_header(ctx);
 
     // exchange src and dst ip and mac
     swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
@@ -338,7 +336,7 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
         + size_of::<udphdr>()
         + size_of::<memcached_udp_header>();
     let data_slice = obj.data_slice_mut(ctx);
-    let eth_header = eth_header::new(&mut data_slice[0..14]);
+    let eth_header = eth_header::from_bytes(&mut data_slice[0..14]);
     let ip_header_mut = obj.ip_header(ctx);
 
     match u8::from_be(ip_header_mut.protocol) as u32 {
