@@ -33,28 +33,6 @@ pub struct xdp_md<'a> {
     kptr: &'a xdp_buff,
 }
 
-// User can get the customized struct like memcached from the data_slice
-// TODO: add a bound checking for this function, add size check
-#[inline(always)]
-pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
-    assert!(
-        slice.len() >= mem::size_of::<T>(),
-        "size mismatch in convert_slice_to_struct"
-    );
-
-    unsafe { &*(slice.as_ptr() as *const T) }
-}
-
-#[inline(always)]
-pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
-    assert!(
-        slice.len() >= mem::size_of::<T>(),
-        "size mismatch in convert_slice_to_struct_mut"
-    );
-
-    unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
-}
-
 #[inline(always)]
 pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
     let mut sum: u32 = 0;

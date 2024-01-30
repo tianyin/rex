@@ -1,4 +1,5 @@
-use core::ffi::c_int;
+use core::ffi::{c_int, c_uchar};
+use core::mem;
 
 #[repr(transparent)]
 pub struct u16be(pub(crate) u16);
@@ -63,6 +64,28 @@ macro_rules! to_result {
             Ok(val as i32)
         }
     }};
+}
+
+// User can get the customized struct like memcached from the data_slice
+// TODO: add a bound checking for this function, add size check
+#[inline(always)]
+pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
+    assert!(
+        slice.len() >= mem::size_of::<T>(),
+        "size mismatch in convert_slice_to_struct"
+    );
+
+    unsafe { &*(slice.as_ptr() as *const T) }
+}
+
+#[inline(always)]
+pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
+    assert!(
+        slice.len() >= mem::size_of::<T>(),
+        "size mismatch in convert_slice_to_struct_mut"
+    );
+
+    unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
 }
 
 pub(crate) use to_result;

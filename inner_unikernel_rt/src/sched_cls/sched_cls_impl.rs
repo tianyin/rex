@@ -11,8 +11,6 @@ pub use crate::bindings::uapi::linux::pkt_cls::{
 };
 use crate::prog_type::iu_prog;
 use crate::utils::*;
-use crate::xdp::convert_slice_to_struct;
-use crate::xdp::convert_slice_to_struct_mut;
 
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_char, c_uchar, c_uint, c_void};
