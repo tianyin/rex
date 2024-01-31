@@ -43,7 +43,7 @@ build dependencies.
 
 Clone this repo and its submodules:
 #+BEGIN_SRC bash
-git clone https://github.com/djwillia/inner_unikernels.git
+git clone https://github.com/xlab-uiuc/inner_unikernels.git
 cd inner_unikernels
 git submodule update --init --recursive --progress
 #+END_SRC
@@ -70,7 +70,16 @@ make -j`nproc`
 cd -
 #+END_SRC
 
-Then bootstrap Rust:
+Before doing the next step, check if you have gcc 12+ installed:
+#+BEGIN_SRC bash
+gcc --version
+#+END_SRC
+If you don't, update gcc.
+Alternatively, remove the mold linker by commenting out the line ~use-linker = `mold`~ 
+within 
+~inner_unikernels/rust/inner-unikernels-config.toml~.
+
+Bootstrap Rust:
 #+BEGIN_SRC bash
 cd rust
 ./x.py build --config=inner-unikernels-config.toml
@@ -93,6 +102,18 @@ cd -
 
 ** Run ~hello~ example
 
+At this point, you should have ~bindgen~ installed. If not you can install it with:
+#+BEGIN_SRC bash
+cargo install bindgen-cli
+#+END_SRC
+
+If that fails, download binary from source:
+#+BEGIN_SRC bash
+wget https://github.com/rust-lang/rust-bindgen/releases/download/v0.68.1/bindgen-cli-x86_64-unknown-linux-gnu.tar.xz
+tar xf bindgen-cli-x86_64-unknown-linux-gnu.tar.xz
+#+END_SRC
+Then copy ~bindgen-cli-x86_64-unknown-linux-gnu/bindgen~ to ~​~/bin/~.
+
 First build the source
 #+BEGIN_SRC bash
 cd samples/hello
@@ -100,11 +121,27 @@ make
 cd -
 #+END_SRC
 
+If Clang throws an error while ~make~ ing, simply update it or alternately, download binary:
+#+BEGIN_SRC bash
+wget https://github.com/llvm/llvm-project/releases/download/llvmorg-17.0.6/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+tar xf clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04.tar.xz
+#+END_SRC
+Then add 
+~export PATH=`/path/to/clang+llvm-17.0.6-x86_64-linux-gnu-ubuntu-22.04/bin:$PATH`~ 
+at the end of 
+~​~/.profile~
+
 Then boot the VM:
 #+BEGIN_SRC bash
 cd linux
 ../q-script/yifei-q
 #+END_SRC
+
+To run the VM, you may also need to add your user to the ~KVM~ group, using:
+#+BEGIN_SRC bash
+sudo usermod -a -G groupName userName
+#+END_SRC
+If that fails, contact your administrator.
 
 Inside the VM:
 #+BEGIN_SRC bash
