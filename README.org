@@ -43,7 +43,7 @@ build dependencies.
 
 Clone this repo and its submodules:
 #+BEGIN_SRC bash
-git clone https://github.com/xlab-uiuc/inner_unikernels.git
+git clone https://github.com/djwillia/inner_unikernels.git
 cd inner_unikernels
 git submodule update --init --recursive --progress
 #+END_SRC
