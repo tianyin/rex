@@ -1,8 +1,8 @@
 LINUX ?= $(HOME)/linux
 
 LINUX_INC = ${LINUX}/usr/include
-LIBBPF_DIR = ${LINUX}/tools/lib/bpf
-LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unikernels/libiu"; else echo "../../libiu"; fi)
+LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
+LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unikernels/libiu"; else echo `realpath ../../libiu`; fi)
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
 CARGO_FLAGS = -Zbuild-std=core --target x86_64-unknown-linux-gnu
@@ -14,7 +14,7 @@ CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
 LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
 
 LOADER_INC += -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}
-LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBIU_DIR} -lbpf -liu
+LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBIU_DIR} -lbpf -liu -Wl,-rpath=${LIBBPF_DIR} -Wl,-rpath=${LIBIU_DIR}
 
 V ?= 0
 
