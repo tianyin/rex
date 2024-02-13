@@ -50,6 +50,7 @@ struct Cli {
 enum Commands {
     #[command(arg_required_else_help = true)]
     Bench {
+        /// memcached server addr
         #[arg(short, long, required = true)]
         server_address: String,
 
@@ -72,7 +73,7 @@ enum Commands {
         #[arg(short, long, default_value = "100000")]
         nums: usize,
 
-        // number of threads to run
+        /// number of threads to run
         #[arg(short, long, default_value = "4")]
         threads: usize,
 
@@ -80,15 +81,15 @@ enum Commands {
         #[arg(short = 'l', long, default_value_t = Protocol::Udp , value_enum)]
         protocol: Protocol,
 
-        // number of dict entries to generate
+        /// number of dict entries to generate
         #[arg(short, long, default_value = "1000000")]
         dict_entries: usize,
 
-        // skip set memcached value if the data is already imported
+        /// skip set memcached value if the data is already imported
         #[arg(long, default_value = "false")]
         skip_set: bool,
 
-        // dict path to load
+        /// dict path to load
         #[arg(
             short = 'f',
             long,
@@ -99,19 +100,19 @@ enum Commands {
         dict_path: String,
     },
     GenTestdict {
-        // key size to generate random memcached key
+        /// key size to generate random memcached key
         #[arg(short, long, default_value = "16")]
         key_size: usize,
 
-        // value size to generate random memcached value
+        /// value size to generate random memcached value
         #[arg(short, long, default_value = "32")]
         value_size: usize,
 
-        // number of dict entries to generate
+        /// number of dict entries to generate
         #[arg(short, long, default_value = "1000000")]
         dict_entries: usize,
 
-        // dict path to store
+        /// dict path to store
         #[arg(short = 'f', long, default_value = "test_dict.yml.zst")]
         dict_path: String,
     },
@@ -353,10 +354,16 @@ fn write_hashmap_to_file(
 fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String)>>) {
     // analyze the key distribution base on the frequency
     let mut key_frequency = HashMap::new();
-    for (key, _) in test_entries.iter() {
-        *key_frequency.entry(key.to_string()).or_insert(0) += 1;
-    }
+    // for (key, _) in test_entries.iter() {
+    //     *key_frequency.entry(key.to_string()).or_insert(0) += 1;
+    // }
 
+    // only get the first element in the tuple
+    test_entries.iter().for_each(|(key, _)| {
+        *key_frequency.entry(key.to_string()).or_insert(0) += 1;
+    });
+
+    // key_frequency = test_entries.into_iter().counts();
     // sort by frequency
     let mut key_frequency: Vec<_> = key_frequency.into_iter().collect();
     key_frequency.sort_by(|a, b| a.1.cmp(&b.1));
