@@ -355,17 +355,24 @@ fn write_hashmap_to_file(
 }
 
 // WARN: need to update based on key and value distributions
-fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String)>>) {
+fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String, Protocol)>>) {
+    let mut udp_count: usize = 0;
+    let mut tcp_count: usize = 0;
+
     // analyze the key distribution base on the frequency
     let mut key_frequency = HashMap::new();
-    // for (key, _) in test_entries.iter() {
-    //     *key_frequency.entry(key.to_string()).or_insert(0) += 1;
-    // }
 
     // only get the first element in the tuple
-    test_entries.iter().for_each(|(key, _)| {
+    test_entries.iter().for_each(|(key, _, proto)| {
         *key_frequency.entry(key.to_string()).or_insert(0) += 1;
+        if *proto == Protocol::Udp {
+            udp_count += 1;
+        } else {
+            tcp_count += 1;
+        }
     });
+
+    println!("tcp count: {}, udp count: {}", tcp_count, udp_count);
 
     // key_frequency = test_entries.into_iter().counts();
     // sort by frequency
@@ -384,16 +391,25 @@ fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String)>>) {
 fn generate_test_entries<'a>(
     test_dict: &'a Arc<HashMap<String, String>>,
     nums: usize,
-) -> Vec<(&'a String, &'a String)> {
+) -> Vec<(&'a String, &'a String, Protocol)> {
     let mut rng = rand::thread_rng();
     let zipf = zipf::ZipfDistribution::new(test_dict.len() - 1, 0.99).unwrap();
+
+    let mut counter: usize = 0;
     let keys: Vec<&String> = test_dict.keys().collect();
     (0..nums)
         .into_iter()
         .map(|_| {
             let key = keys[zipf.sample(&mut rng)];
             let value = test_dict.get(key).unwrap();
-            (key, value)
+            // every 31 element is tcp. udp:tcp = 30:1
+            let protocol = if counter % 31 == 30 {
+                Protocol::Udp
+            } else {
+                Protocol::Tcp
+            };
+            counter += 1;
+            (key, value, protocol)
         })
         .collect()
 }
