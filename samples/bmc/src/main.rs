@@ -84,8 +84,6 @@ struct parsing_context {
     write_pkt_offset: u8,
 }
 
-MAP_DEF!(map_hash, u32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
-MAP_DEF!(map_array, u32, u64, BPF_MAP_TYPE_ARRAY, 256, 0);
 MAP_DEF!(
     map_kcache,
     u32,
