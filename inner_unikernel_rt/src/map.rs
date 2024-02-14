@@ -42,7 +42,6 @@ unsafe impl<const MT: bpf_map_type, K, V> Sync for IUMap<MT, K, V> {}
 macro_rules! MAP_DEF {
     ($n:ident, $k:ty, $v:ty, $mt:expr, $ms:expr, $mf:expr) => {
         #[no_mangle]
-        #[used]
         #[link_section = ".maps"]
         pub(crate) static $n: IUMap<$mt, $k, $v> = IUMap::new($ms, $mf);
     };
