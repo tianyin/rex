@@ -15,7 +15,10 @@ use std::vec;
 use std::{collections::HashMap, sync::Arc};
 
 use rayon::prelude::*;
+use std::net::UdpSocket as StdUdpSocket;
 use tokio::net::UdpSocket;
+use tub::Pool;
+
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -187,10 +190,7 @@ async fn set_memcached_value(
     Ok(())
 }
 
-fn exmaple_method(server: &memcache::Client) -> std::result::Result<(), MemcacheError> {
-    // flush the database:
-    server.flush()?;
-
+fn _validate_server(server: &memcache::Client) -> std::result::Result<(), MemcacheError> {
     // set a string value:
     server.set("foo", "bar", 0)?;
 
@@ -213,6 +213,9 @@ fn exmaple_method(server: &memcache::Client) -> std::result::Result<(), Memcache
     server.increment("counter", 2).unwrap();
     let answer: i32 = server.get("counter")?.unwrap();
     assert_eq!(answer, 42);
+
+    // flush the database:
+    server.flush()?;
 
     println!("memcached server works!");
     Ok(())
@@ -351,6 +354,7 @@ fn write_hashmap_to_file(
     Ok(())
 }
 
+// WARN: need to update based on key and value distributions
 fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String)>>) {
     // analyze the key distribution base on the frequency
     let mut key_frequency = HashMap::new();
@@ -394,7 +398,7 @@ fn generate_test_entries<'a>(
         .collect()
 }
 
-async fn command_bench() -> Result<(), Box<dyn Error>> {
+async fn run_bench() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     let Commands::Bench {
         server_address,
@@ -414,8 +418,6 @@ async fn command_bench() -> Result<(), Box<dyn Error>> {
     };
 
     let server = get_server(&server_address, &port, &protocol)?;
-    exmaple_method(&server)?;
-    server.flush()?;
 
     let test_dict_path = std::path::Path::new(dict_path.as_str());
     let test_dict: HashMap<String, String> = if !test_dict_path.exists() {
@@ -461,6 +463,22 @@ async fn command_bench() -> Result<(), Box<dyn Error>> {
 
     // analyze test entries statistics
     test_entries_statistics(test_entries.clone());
+
+    // UDP:TCP = 30:1 and the total number of clients is 340
+    // generate udp socket pool
+    let udp_pool: Pool<StdUdpSocket> = (0..328)
+        .map(|_| StdUdpSocket::bind("0.0.0.0:0").unwrap())
+        .into();
+
+    // generate tcp connect pool
+    let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
+        "memcache://{}:{}",
+        server_address, port
+    ));
+    let tcp_pool = r2d2_memcache::r2d2::Pool::builder()
+        .max_size(11)
+        .build(manager)
+        .unwrap();
 
     let mut handles = vec![];
 
@@ -520,7 +538,7 @@ async fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     match args.command {
         Commands::Bench { .. } => {
-            command_bench().await?;
+            run_bench().await?;
         }
         Commands::GenTestdict {
             key_size,

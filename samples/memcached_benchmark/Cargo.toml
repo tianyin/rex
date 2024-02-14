@@ -18,6 +18,8 @@ r2d2-memcache = "0.6.0"
 zstd = "0.13.0"
 serde = { version = "1.0.193", features = ["derive"] }
 serde_yaml = "0.9.30"
+tokio-utils = "0.1.2"
+tub = "0.3.7"
 
 
 [profile.release]
