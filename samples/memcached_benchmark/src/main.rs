@@ -274,7 +274,7 @@ async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
 
 async fn get_command_benchmark(
     test_dict: Arc<HashMap<String, String>>,
-    send_commands: Vec<(String, Vec<u8>)>,
+    send_commands: Vec<(String, Vec<u8>, Protocol, String)>,
     server_address: String,
     port: String,
     validate: bool,
@@ -287,6 +287,8 @@ async fn get_command_benchmark(
     let socket = Arc::new(socket);
     // let addr_to: ToSocketAddrs = ToSocketAddrs::to_socket_addrs(addr).unwrap();
 
+    let conn = memcache::connect(format!("memcache://{}:{}?timeout=10", server_address, port))?;
+
     let start = std::time::Instant::now();
 
     // Create the channel
@@ -294,7 +296,12 @@ async fn get_command_benchmark(
     let socket_clone = Arc::clone(&socket);
     let socket_task = tokio::spawn(socket_task(socket_clone, rx));
 
-    for (key, packet) in send_commands {
+    for (key, packet, proto, value) in send_commands {
+        // if tcp, use set request
+        if proto == Protocol::Tcp {
+            conn.set(&key, value.as_bytes(), 0)?;
+            continue;
+        }
         let send_result = tx
             .send(TaskData {
                 buf: packet,
@@ -404,9 +411,9 @@ fn generate_test_entries<'a>(
             let value = test_dict.get(key).unwrap();
             // every 31 element is tcp. udp:tcp = 30:1
             let protocol = if counter % 31 == 30 {
-                Protocol::Udp
-            } else {
                 Protocol::Tcp
+            } else {
+                Protocol::Udp
             };
             counter += 1;
             (key, value, protocol)
@@ -505,24 +512,15 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
     let mut send_commands_deq = VecDeque::new();
 
     // First generate get commands for each thread
-    for _ in 0..threads {
+    for thread_num in 0..threads {
         let mut seq: u16 = 0;
         let mut send_commands = vec![];
 
-        let keys: Vec<&String> = test_dict.keys().collect();
-        let dict_len = keys.len();
-
-        let mut rng = rand::thread_rng();
-        let zipf = zipf::ZipfDistribution::new(dict_len - 1, 0.99).unwrap();
-
-        // generate get commands for each thread
-        // FIX:: the sequence number is not unique for each thread,
-        // we may need to generate commands before spawning threads
-        for _ in 0..nums / threads {
-            let key = keys[zipf.sample(&mut rng)].clone();
+        for index in 0..nums / threads {
+            let (key, value, proto) = test_entries[thread_num * nums / threads + index];
             let packet = wrap_get_command(key.clone(), seq);
             seq = seq.wrapping_add(1);
-            send_commands.push((key, packet));
+            send_commands.push((key.to_string(), packet, proto, value.to_string()));
         }
 
         send_commands_deq.push_back(send_commands);
