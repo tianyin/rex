@@ -355,7 +355,7 @@ fn write_hashmap_to_file(
     Ok(())
 }
 
-// WARN: need to update based on key and value distributions
+// INFO: May need to update based on key and value distributions
 fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String, Protocol)>>) {
     let mut udp_count: usize = 0;
     let mut tcp_count: usize = 0;
@@ -373,9 +373,6 @@ fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String, Protocol)>>)
         }
     });
 
-    println!("tcp count: {}, udp count: {}", tcp_count, udp_count);
-
-    // key_frequency = test_entries.into_iter().counts();
     // sort by frequency
     let mut key_frequency: Vec<_> = key_frequency.into_iter().collect();
     key_frequency.sort_by(|a, b| a.1.cmp(&b.1));
@@ -387,6 +384,8 @@ fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String, Protocol)>>)
         }
         println!("{}: {}", key, count);
     }
+
+    println!("tcp count: {}, udp count: {}", tcp_count, udp_count);
 }
 
 fn generate_test_entries<'a>(
@@ -415,6 +414,37 @@ fn generate_test_entries<'a>(
         .collect()
 }
 
+fn load_test_dict(
+    test_dict_path: &std::path::Path,
+) -> Result<HashMap<String, String>, Box<dyn Error>> {
+    // load dict from file if dict_path is not empty
+    println!("load dict from path {:?}", test_dict_path);
+    let file = File::open(test_dict_path)?;
+    let decoder = zstd::stream::read::Decoder::new(file)?;
+    let reader = BufReader::new(decoder);
+
+    // Deserialize the string into a HashMap
+    let mut test_dict = HashMap::new();
+
+    reader.lines().for_each(|line| {
+        let line = line.unwrap();
+        // Assuming each line in your file is a valid YAML representing a key-value pair
+        let deserialized_map: HashMap<String, String> = serde_yaml::from_str(&line).unwrap();
+        test_dict.extend(deserialized_map);
+    });
+
+    println!("test dict len: {}", test_dict.len());
+    println!(
+        "test dict key size: {}",
+        test_dict.keys().next().unwrap().len()
+    );
+    println!(
+        "test dict value size: {}",
+        test_dict.values().next().unwrap().len()
+    );
+    Ok(test_dict)
+}
+
 async fn run_bench() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     let Commands::Bench {
@@ -441,32 +471,7 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
         // if dict_path is empty, generate dict
         generate_test_dict_write_to_disk(key_size, value_size, dict_entries, dict_path.as_str())?
     } else {
-        // load dict from file if dict_path is not empty
-        println!("load dict from path {:?}", test_dict_path);
-        let file = File::open(test_dict_path)?;
-        let decoder = zstd::stream::read::Decoder::new(file)?;
-        let reader = BufReader::new(decoder);
-
-        // Deserialize the string into a HashMap
-        let mut test_dict = HashMap::new();
-
-        reader.lines().for_each(|line| {
-            let line = line.unwrap();
-            // Assuming each line in your file is a valid YAML representing a key-value pair
-            let deserialized_map: HashMap<String, String> = serde_yaml::from_str(&line).unwrap();
-            test_dict.extend(deserialized_map);
-        });
-
-        println!("test dict len: {}", test_dict.len());
-        println!(
-            "test dict key size: {}",
-            size_of_val(test_dict.keys().next().unwrap())
-        );
-        println!(
-            "test dict value size: {}",
-            size_of_val(test_dict.values().next().unwrap())
-        );
-        test_dict
+        load_test_dict(test_dict_path)?
     };
     let test_dict = Arc::new(test_dict);
 
@@ -483,7 +488,7 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
 
     // UDP:TCP = 30:1 and the total number of clients is 340
     // generate udp socket pool
-    let udp_pool: Pool<StdUdpSocket> = (0..328)
+    let _udp_pool: Pool<StdUdpSocket> = (0..328)
         .map(|_| StdUdpSocket::bind("0.0.0.0:0").unwrap())
         .into();
 
@@ -492,7 +497,7 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
         "memcache://{}:{}",
         server_address, port
     ));
-    let tcp_pool = r2d2_memcache::r2d2::Pool::builder()
+    let _tcp_pool = r2d2_memcache::r2d2::Pool::builder()
         .max_size(11)
         .build(manager)
         .unwrap();
