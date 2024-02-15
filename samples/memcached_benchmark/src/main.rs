@@ -6,6 +6,7 @@ use rand::distributions::{Alphanumeric, DistString, Distribution};
 use serde_yaml;
 use zstd;
 
+use std::collections::VecDeque;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
@@ -496,8 +497,9 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
         .build(manager)
         .unwrap();
 
-    let mut handles = vec![];
+    let mut send_commands_deq = VecDeque::new();
 
+    // First generate get commands for each thread
     for _ in 0..threads {
         let mut seq: u16 = 0;
         let mut send_commands = vec![];
@@ -518,9 +520,18 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
             send_commands.push((key, packet));
         }
 
+        send_commands_deq.push_back(send_commands);
+    }
+
+    let mut handles = vec![];
+
+    let start_time = std::time::SystemTime::now();
+
+    for _ in 0..threads {
         let test_dict = Arc::clone(&test_dict);
         let server_address = server_address.clone();
         let port = port.clone();
+        let send_commands = send_commands_deq.pop_front().unwrap();
         let handle = tokio::spawn(async move {
             match get_command_benchmark(
                 test_dict,
@@ -542,6 +553,10 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
     // wait for all tasks to complete
     println!("wait for all tasks to complete");
     join_all(handles).await;
+
+    let elapsed_time = start_time.elapsed()?.as_secs_f64();
+    let throughput = nums as f64 / elapsed_time;
+    println!("Throughput across all threads: {}", throughput);
 
     // stats
     let stats = server.stats()?;
