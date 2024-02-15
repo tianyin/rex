@@ -559,7 +559,7 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
 
     let elapsed_time = start_time.elapsed()?.as_secs_f64();
     let throughput = nums as f64 / elapsed_time;
-    println!("Throughput across all threads: {}", throughput);
+    println!("Throughput across all threads: {:.2} reqs/sec", throughput);
 
     // stats
     let stats = server.stats()?;
