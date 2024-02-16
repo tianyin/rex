@@ -18,14 +18,14 @@ use core::{mem, slice};
 
 pub struct __sk_buff<'a> {
     // TODO: may need to append more based on __sk_buff
-    pub len: u32,
+    len: u32,
     // be16
-    pub protocol: u16be,
-    pub priority: u32,
-    pub ingress_ifindex: u32,
-    pub ifindex: u32,
-    pub hash: u32,
-    pub mark: u32,
+    protocol: u16be,
+    priority: u32,
+    ingress_ifindex: u32,
+    ifindex: u32,
+    hash: u32,
+    mark: u32,
 
     // such as PACKET_HOST if_packet.h
     // /* if you move pkt_type around you also must adapt those constants */
@@ -34,25 +34,118 @@ pub struct __sk_buff<'a> {
     // #else
     // #define PKT_TYPE_MAX	7
     // #endif
-    pub pkt_type: u32,
+    pkt_type: u32,
 
-    pub queue_mapping: u16,
+    queue_mapping: u16,
 
-    pub vlan_present: u32,
-    pub vlan_tci: u16,
-    pub vlan_proto: u16be,
-    pub cb: &'a [c_char; 48],
+    vlan_present: u32,
+    vlan_tci: u16,
+    vlan_proto: u16be,
+    cb: &'a [c_char; 48],
 
-    pub tc_classid: u32,
-    pub tc_index: u16,
+    tc_classid: u32,
+    tc_index: u16,
 
-    pub napi_id: u32,
+    napi_id: u32,
 
     sk: &'a sock,
-    pub data: u32,
-    pub data_meta: u32,
-    pub data_slice: &'a mut [c_uchar],
+    data: u32,
+    data_meta: u32,
+    data_slice: &'a mut [c_uchar],
     kptr: &'a sk_buff,
+}
+
+// Define accessors of program-accessible fields
+impl<'a> __sk_buff<'a> {
+    #[inline(always)]
+    pub fn len(&self) -> u32 {
+        self.len
+    }
+
+    #[inline(always)]
+    pub fn protocol(&self) -> u16be {
+        self.protocol
+    }
+
+    #[inline(always)]
+    pub fn priority(&self) -> u32 {
+        self.priority
+    }
+
+    #[inline(always)]
+    pub fn ingress_ifindex(&self) -> u32 {
+        self.ingress_ifindex
+    }
+
+    #[inline(always)]
+    pub fn ifindex(&self) -> u32 {
+        self.ifindex
+    }
+
+    #[inline(always)]
+    pub fn hash(&self) -> u32 {
+        self.hash
+    }
+
+    #[inline(always)]
+    pub fn mark(&self) -> u32 {
+        self.mark
+    }
+
+    #[inline(always)]
+    pub fn pkt_type(&self) -> u32 {
+        self.pkt_type
+    }
+
+    #[inline(always)]
+    pub fn queue_mapping(&self) -> u16 {
+        self.queue_mapping
+    }
+
+    #[inline(always)]
+    pub fn vlan_present(&self) -> u32 {
+        self.vlan_present
+    }
+
+    #[inline(always)]
+    pub fn vlan_tci(&self) -> u16 {
+        self.vlan_tci
+    }
+
+    #[inline(always)]
+    pub fn vlan_proto(&self) -> u16be {
+        self.vlan_proto
+    }
+
+    #[inline(always)]
+    pub fn cb(&self) -> &'a [c_char; 48] {
+        self.cb
+    }
+
+    #[inline(always)]
+    pub fn tc_classid(&self) -> u32 {
+        self.tc_classid
+    }
+
+    #[inline(always)]
+    pub fn tc_index(&self) -> u16 {
+        self.tc_index
+    }
+
+    #[inline(always)]
+    pub fn napi_id(&self) -> u32 {
+        self.napi_id
+    }
+
+    #[inline(always)]
+    pub fn data_meta(&self) -> u32 {
+        self.data_meta
+    }
+
+    #[inline(always)]
+    pub fn data_slice(&'a mut self) -> &'a mut [c_uchar] {
+        self.data_slice
+    }
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -90,18 +183,11 @@ impl<'a> sched_cls<'a> {
     // NOTE: copied from xdp impl, may change in the future
     #[inline(always)]
     pub fn eth_header<'b>(&self, skb: &'b mut __sk_buff) -> &'b mut ethhdr {
-        safe_transmute::<[u8; 6]>();
-        safe_transmute::<[u8; 6]>();
-        safe_transmute::<u16>();
-
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
+        unsafe {
+            convert_slice_to_struct_mut::<ethhdr>(
+                &mut skb.data_slice[0..mem::size_of::<ethhdr>()],
             )
-        };
-
-        unsafe { convert_slice_to_struct_mut::<ethhdr>(&mut data_slice[0..14]) }
+        }
     }
 
     #[inline(always)]
@@ -110,15 +196,10 @@ impl<'a> sched_cls<'a> {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<udphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
-            )
-        };
-
         unsafe {
-            convert_slice_to_struct_mut::<udphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<udphdr>(
+                &mut skb.data_slice[begin..end],
+            )
         }
     }
 
@@ -128,48 +209,24 @@ impl<'a> sched_cls<'a> {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<tcphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
-            )
-        };
-
         unsafe {
-            convert_slice_to_struct_mut::<tcphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<tcphdr>(
+                &mut skb.data_slice[begin..end],
+            )
         }
     }
 
     #[inline(always)]
-    pub fn ip_header<'b>(&self, skb: &'b __sk_buff) -> &'b mut iphdr {
+    pub fn ip_header<'b>(&self, skb: &'b mut __sk_buff) -> &'b mut iphdr {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let end = mem::size_of::<iphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
-            )
-        };
-
         unsafe {
-            convert_slice_to_struct_mut::<iphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<iphdr>(
+                &mut skb.data_slice[begin..end],
+            )
         }
-    }
-
-    #[inline(always)]
-    pub fn data_slice_mut<'b>(
-        &self,
-        skb: &'b mut __sk_buff,
-    ) -> &'b mut [c_uchar] {
-        let kptr = skb.kptr;
-        // may not work since directly truncate the pointer
-        let data_length = kptr.len as usize;
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
-        };
-        data_slice
     }
 
     #[inline(always)]
@@ -178,13 +235,13 @@ impl<'a> sched_cls<'a> {
         skb: &mut __sk_buff,
         ifindex: u32,
         flags: u64,
-    ) -> i32 {
+    ) -> Result {
         let kptr = unsafe { skb.kptr as *const sk_buff as *mut sk_buff };
 
         let ret = unsafe { stub::bpf_clone_redirect(kptr, ifindex, flags) };
 
         if ret != 0 {
-            return ret;
+            return Err(ret);
         }
 
         let kptr = skb.kptr;
@@ -196,7 +253,7 @@ impl<'a> sched_cls<'a> {
             slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };
 
-        0
+        Ok(0)
     }
 
     // Now returns a mutable ref, but since every reg is private the user prog
