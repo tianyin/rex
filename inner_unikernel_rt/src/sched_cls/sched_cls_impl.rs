@@ -41,7 +41,7 @@ pub struct __sk_buff<'a> {
     vlan_present: u32,
     vlan_tci: u16,
     vlan_proto: u16be,
-    cb: &'a [c_char; 48],
+    cb: [c_char; 48],
 
     tc_classid: u32,
     tc_index: u16,
@@ -52,7 +52,7 @@ pub struct __sk_buff<'a> {
     data: u32,
     data_meta: u32,
     data_slice: &'a mut [c_uchar],
-    kptr: &'a sk_buff,
+    kptr: &'a mut sk_buff,
 }
 
 // Define accessors of program-accessible fields
@@ -118,8 +118,8 @@ impl<'a> __sk_buff<'a> {
     }
 
     #[inline(always)]
-    pub fn cb(&self) -> &'a [c_char; 48] {
-        self.cb
+    pub fn cb(&self) -> &[c_char; 48] {
+        &self.cb
     }
 
     #[inline(always)]
@@ -236,21 +236,20 @@ impl<'a> sched_cls<'a> {
         ifindex: u32,
         flags: u64,
     ) -> Result {
-        let kptr = unsafe { skb.kptr as *const sk_buff as *mut sk_buff };
-
-        let ret = unsafe { stub::bpf_clone_redirect(kptr, ifindex, flags) };
+        let ret = unsafe { stub::bpf_clone_redirect(skb.kptr, ifindex, flags) };
 
         if ret != 0 {
             return Err(ret);
         }
 
-        let kptr = skb.kptr;
-
-        skb.data = kptr.data as u32;
-        let data_length = kptr.len as usize;
+        skb.data = skb.kptr.data as u32;
+        let data_length = skb.kptr.len as usize;
 
         skb.data_slice = unsafe {
-            slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
+            slice::from_raw_parts_mut(
+                skb.kptr.data as *mut c_uchar,
+                data_length,
+            )
         };
 
         Ok(0)
@@ -261,9 +260,8 @@ impl<'a> sched_cls<'a> {
     // assign this reference a new value either, given that they will not able
     // to create another instance of pt_regs (private fields, no pub ctor)
     #[inline(always)]
-    fn convert_ctx(&self, ctx: *const ()) -> __sk_buff {
-        let kptr: &sk_buff =
-            unsafe { &*core::mem::transmute::<*const (), *mut sk_buff>(ctx) };
+    fn convert_ctx(&self, ctx: *mut ()) -> __sk_buff {
+        let kptr: &mut sk_buff = unsafe { &mut *(ctx as *mut sk_buff) };
 
         let data = kptr.data as u32;
         let data_length = kptr.len as usize;
@@ -297,7 +295,7 @@ impl<'a> sched_cls<'a> {
             vlan_present: 0,
             vlan_tci: kptr.vlan_tci,
             vlan_proto: u16be(kptr.vlan_proto),
-            cb: &kptr.cb,
+            cb: kptr.cb, // copy here
             tc_classid: 0,
             tc_index: kptr.tc_index,
             napi_id,
@@ -311,7 +309,7 @@ impl<'a> sched_cls<'a> {
 }
 
 impl iu_prog for sched_cls<'_> {
-    fn prog_run(&self, ctx: *const ()) -> u32 {
+    fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // return TC_ACT_OK if error
         ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| TC_ACT_OK as i32)

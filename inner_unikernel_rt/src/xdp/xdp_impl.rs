@@ -48,7 +48,7 @@ pub struct xdp_md<'a> {
     ingress_ifindex: u32,
     rx_qeueu_index: u32,
     egress_ifindex: u32,
-    kptr: &'a xdp_buff,
+    kptr: &'a mut xdp_buff,
 }
 
 // Define accessors of program-accessible fields
@@ -120,10 +120,8 @@ impl<'a> xdp<'a> {
     // assign this reference a new value either, given that they will not able
     // to create another instance of pt_regs (private fields, no pub ctor)
     #[inline(always)]
-    fn convert_ctx(&self, ctx: *const ()) -> xdp_md {
-        let kptr: &xdp_buff = unsafe {
-            &*core::mem::transmute::<*const (), *const xdp_buff>(ctx)
-        };
+    fn convert_ctx(&self, ctx: *mut ()) -> xdp_md {
+        let kptr: &mut xdp_buff = unsafe { &mut *(ctx as *mut xdp_buff) };
 
         // BUG may not work since directly truncate the pointer
         let data = kptr.data as usize;
@@ -213,36 +211,33 @@ impl<'a> xdp<'a> {
     // WARN: this function is unsafe
     #[inline(always)]
     pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> Result {
-        let kptr = unsafe { ctx.kptr as *const xdp_buff as *mut xdp_buff };
-        let ret = unsafe { stub::bpf_xdp_adjust_tail(kptr, offset) };
+        let ret = unsafe { stub::bpf_xdp_adjust_tail(ctx.kptr, offset) };
         if ret != 0 {
             return Err(ret);
         }
 
-        let kptr = ctx.kptr;
-
         // Update xdp_md fields
-        ctx.data = kptr.data as usize;
-        ctx.data_end = kptr.data_end as usize;
-        ctx.data_meta = kptr.data_meta as usize;
+        ctx.data = ctx.kptr.data as usize;
+        ctx.data_end = ctx.kptr.data_end as usize;
+        ctx.data_meta = ctx.kptr.data_meta as usize;
         ctx.data_length = ctx.data_end - ctx.data;
 
         ctx.data_slice = unsafe {
             slice::from_raw_parts_mut(
-                kptr.data as *mut c_uchar,
+                ctx.kptr.data as *mut c_uchar,
                 ctx.data_length,
             )
         };
 
-        ctx.ingress_ifindex = kptr.rxq as u32;
-        ctx.rx_qeueu_index = unsafe { (*kptr.rxq).queue_index };
+        ctx.ingress_ifindex = ctx.kptr.rxq as u32;
+        ctx.rx_qeueu_index = unsafe { (*ctx.kptr.rxq).queue_index };
         ctx.egress_ifindex = 0;
 
         Ok(0)
     }
 }
 impl iu_prog for xdp<'_> {
-    fn prog_run(&self, ctx: *const ()) -> u32 {
+    fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // Return XDP_PASS if Err, i.e. discard event
         // FIX:map the error as XDP_PASS or err code

@@ -52,14 +52,14 @@ impl<'a> tracepoint<'a> {
         }
     }
 
-    fn convert_ctx(&self, ctx: *const ()) -> tp_ctx {
+    fn convert_ctx(&self, ctx: *mut ()) -> tp_ctx {
         match self.tp_type {
             tp_type::Void => tp_ctx::Void,
             tp_type::SyscallsEnterOpen => tp_ctx::SyscallsEnterOpen(unsafe {
-                &*(ctx as *const SyscallsEnterOpenArgs)
+                &*(ctx as *mut SyscallsEnterOpenArgs)
             }),
             tp_type::SyscallsExitOpen => tp_ctx::SyscallsExitOpen(unsafe {
-                &*(ctx as *const SyscallsExitOpenArgs)
+                &*(ctx as *mut SyscallsExitOpenArgs)
             }),
         }
     }
@@ -70,7 +70,7 @@ impl<'a> tracepoint<'a> {
 }
 
 impl iu_prog for tracepoint<'_> {
-    fn prog_run(&self, ctx: *const ()) -> u32 {
+    fn prog_run(&self, ctx: *mut ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
 
         // Return 0 if Err, i.e. discard event

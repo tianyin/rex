@@ -14,12 +14,12 @@ use crate::utils::{to_result, Result};
 
 pub type pt_regs = super::binding::pt_regs;
 
-#[derive(Debug, Copy, Clone)]
-pub struct bpf_perf_event_data {
+#[derive(Debug)]
+pub struct bpf_perf_event_data<'a> {
     pub regs: bpf_user_pt_regs_t,
     pub sample_period: u64,
     pub addr: u64,
-    kptr: *const bpf_perf_event_data_kern,
+    kptr: &'a mut bpf_perf_event_data_kern,
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -52,11 +52,9 @@ impl<'a> perf_event<'a> {
         }
     }
 
-    fn convert_ctx(&self, ctx: *const ()) -> bpf_perf_event_data {
-        let kptr: &bpf_perf_event_data_kern = unsafe {
-            &*core::mem::transmute::<*const (), *const bpf_perf_event_data_kern>(
-                ctx,
-            )
+    fn convert_ctx(&self, ctx: *mut ()) -> bpf_perf_event_data {
+        let kptr: &mut bpf_perf_event_data_kern = unsafe {
+            &mut *(ctx as *mut bpf_perf_event_data_kern)
         };
 
         let regs = unsafe { *kptr.regs };
@@ -106,7 +104,7 @@ impl<'a> perf_event<'a> {
 }
 
 impl iu_prog for perf_event<'_> {
-    fn prog_run(&self, ctx: *const ()) -> u32 {
+    fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         ((self.prog)(self, &newctx)).unwrap_or_else(|_| 0) as u32
     }
