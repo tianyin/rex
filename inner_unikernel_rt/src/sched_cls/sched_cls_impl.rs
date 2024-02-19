@@ -17,134 +17,120 @@ use core::ffi::{c_char, c_uchar, c_uint, c_void};
 use core::{mem, slice};
 
 pub struct __sk_buff<'a> {
-    // TODO: may need to append more based on __sk_buff
-    len: u32,
-    // be16
-    protocol: u16be,
-    priority: u32,
-    ingress_ifindex: u32,
-    ifindex: u32,
-    hash: u32,
-    mark: u32,
-
-    // such as PACKET_HOST if_packet.h
-    // /* if you move pkt_type around you also must adapt those constants */
-    // #ifdef __BIG_ENDIAN_BITFIELD
-    // #define PKT_TYPE_MAX	(7 << 5)
-    // #else
-    // #define PKT_TYPE_MAX	7
-    // #endif
-    pkt_type: u32,
-
-    queue_mapping: u16,
-
-    vlan_present: u32,
-    vlan_tci: u16,
-    vlan_proto: u16be,
-    cb: [c_char; 48],
-
-    tc_classid: u32,
-    tc_index: u16,
-
-    napi_id: u32,
-
-    sk: &'a sock,
-    data: u32,
-    data_meta: u32,
-    data_slice: &'a mut [c_uchar],
+    pub data_slice: &'a mut [c_uchar],
     kptr: &'a mut sk_buff,
 }
 
 // Define accessors of program-accessible fields
+// TODO: may need to append more based on __sk_buff
 impl<'a> __sk_buff<'a> {
     #[inline(always)]
     pub fn len(&self) -> u32 {
-        self.len
+        self.kptr.len
     }
 
     #[inline(always)]
     pub fn protocol(&self) -> u16be {
-        self.protocol
+        u16be(self.kptr.protocol)
     }
 
     #[inline(always)]
     pub fn priority(&self) -> u32 {
-        self.priority
+        self.kptr.priority
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn ingress_ifindex(&self) -> u32 {
-        self.ingress_ifindex
+        0
     }
 
     #[inline(always)]
     pub fn ifindex(&self) -> u32 {
-        self.ifindex
+        unsafe {
+            (&*self
+                .kptr
+                .__bindgen_anon_1
+                .__bindgen_anon_1
+                .__bindgen_anon_1
+                .dev)
+                .ifindex as u32
+        }
     }
 
     #[inline(always)]
     pub fn hash(&self) -> u32 {
-        self.hash
+        self.kptr.hash
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn mark(&self) -> u32 {
-        self.mark
+        0
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn pkt_type(&self) -> u32 {
-        self.pkt_type
+        0
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn queue_mapping(&self) -> u16 {
-        self.queue_mapping
+        self.kptr.queue_mapping
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn vlan_present(&self) -> u32 {
-        self.vlan_present
+        0
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn vlan_tci(&self) -> u16 {
-        self.vlan_tci
+        self.kptr.vlan_tci
     }
 
     #[inline(always)]
     pub fn vlan_proto(&self) -> u16be {
-        self.vlan_proto
+        u16be(self.kptr.vlan_proto)
     }
 
     #[inline(always)]
-    pub fn cb(&self) -> &[c_char; 48] {
-        &self.cb
+    pub fn cb(&self) -> [c_char; 20] {
+        let mut cb = [0; 20];
+        cb[0..20].clone_from_slice(&self.kptr.cb[0..20]);
+        cb
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn tc_classid(&self) -> u32 {
-        self.tc_classid
+        0
     }
 
     #[inline(always)]
     pub fn tc_index(&self) -> u16 {
-        self.tc_index
+        self.kptr.tc_index
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn napi_id(&self) -> u32 {
-        self.napi_id
+        0
     }
 
     #[inline(always)]
+    // TODO: may need to update based on __sk_buff
     pub fn data_meta(&self) -> u32 {
-        self.data_meta
+        0
     }
 
     #[inline(always)]
-    pub fn data_slice(&'a mut self) -> &'a mut [c_uchar] {
-        self.data_slice
+    pub fn sk(&self) -> &'a sock {
+        unsafe { &*self.kptr.__bindgen_anon_2.sk }
     }
 }
 
@@ -242,13 +228,11 @@ impl<'a> sched_cls<'a> {
             return Err(ret);
         }
 
-        skb.data = skb.kptr.data as u32;
-        let data_length = skb.kptr.len as usize;
-
+        // WARN: bpf_clone_redirect does not update skb.kptr?
         skb.data_slice = unsafe {
             slice::from_raw_parts_mut(
                 skb.kptr.data as *mut c_uchar,
-                data_length,
+                skb.len() as usize,
             )
         };
 
@@ -266,45 +250,11 @@ impl<'a> sched_cls<'a> {
         let data = kptr.data as u32;
         let data_length = kptr.len as usize;
 
-        // NOTE: currently we only added const data slice for read only
         let data_slice = unsafe {
             slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };
 
-        // bindgen for C union is kind of wired, so we have to do this
-        let sk: &sock = unsafe { &*kptr.__bindgen_anon_2.sk };
-
-        // TODO: UNION required unsafe, and need to update binding.rs
-        let napi_id = 0;
-
-        let net_dev: &net_device = unsafe {
-            &*kptr.__bindgen_anon_1.__bindgen_anon_1.__bindgen_anon_1.dev
-        };
-
-        __sk_buff {
-            // TODO: may need to append more based on __sk_buff
-            len: kptr.len,
-            protocol: u16be(kptr.protocol),
-            priority: kptr.priority,
-            ingress_ifindex: 0,
-            ifindex: net_dev.ifindex as u32,
-            hash: kptr.hash,
-            mark: 0,
-            pkt_type: 0,
-            queue_mapping: kptr.queue_mapping,
-            vlan_present: 0,
-            vlan_tci: kptr.vlan_tci,
-            vlan_proto: u16be(kptr.vlan_proto),
-            cb: kptr.cb, // copy here
-            tc_classid: 0,
-            tc_index: kptr.tc_index,
-            napi_id,
-            sk,
-            data,
-            data_slice,
-            data_meta: 0,
-            kptr,
-        }
+        __sk_buff { data_slice, kptr }
     }
 }
 

@@ -38,49 +38,37 @@ pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
 }
 
 pub struct xdp_md<'a> {
-    // TODO check the kernel version xdp_md
-    // pub regs: bpf_user_pt_regs_t,
-    data: usize,
-    data_end: usize,
-    data_slice: &'a mut [c_uchar],
-    data_length: usize,
-    data_meta: usize,
-    ingress_ifindex: u32,
-    rx_qeueu_index: u32,
-    egress_ifindex: u32,
+    pub data_slice: &'a mut [c_uchar],
     kptr: &'a mut xdp_buff,
 }
 
 // Define accessors of program-accessible fields
 impl<'a> xdp_md<'a> {
     #[inline(always)]
-    pub fn data_slice(&'a mut self) -> &'a mut [c_uchar] {
-        self.data_slice
-    }
-
-    #[inline(always)]
     pub fn data_length(&self) -> usize {
-        self.data_length
+        self.data_slice.len()
     }
 
     #[inline(always)]
     pub fn data_meta(&self) -> usize {
-        self.data_meta
+        self.kptr.data_meta as usize
     }
 
     #[inline(always)]
     pub fn ingress_ifindex(&self) -> u32 {
-        self.ingress_ifindex
+        unsafe { (*(*self.kptr.rxq).dev).ifindex as u32 }
     }
 
     #[inline(always)]
     pub fn rx_qeueu_index(&self) -> u32 {
-        self.rx_qeueu_index
+        unsafe { (*self.kptr.rxq).queue_index }
     }
 
     #[inline(always)]
     pub fn egress_ifindex(&self) -> u32 {
-        self.egress_ifindex
+        // TODO: https://elixir.bootlin.com/linux/v5.15.123/source/net/core/filter.c#L8271
+        // egress_ifindex is valid only for BPF_XDP_DEVMAP option
+        0
     }
 }
 
@@ -123,36 +111,13 @@ impl<'a> xdp<'a> {
     fn convert_ctx(&self, ctx: *mut ()) -> xdp_md {
         let kptr: &mut xdp_buff = unsafe { &mut *(ctx as *mut xdp_buff) };
 
-        // BUG may not work since directly truncate the pointer
-        let data = kptr.data as usize;
-        let data_end = kptr.data_end as usize;
-        let data_meta = kptr.data_meta as usize;
-        let data_length = data_end - data;
+        let data_length = kptr.data_end as usize - kptr.data as usize;
 
         let data_slice = unsafe {
             slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };
 
-        let ingress_ifindex = kptr.rxq as u32;
-
-        let rx_qeueu_index = unsafe { (*kptr.rxq).queue_index };
-
-        // TODO https://elixir.bootlin.com/linux/v5.15.123/source/net/core/filter.c#L8271
-        // egress_ifindex is valid only for BPF_XDP_DEVMAP option
-        let egress_ifindex = 0;
-        // let egress_ifindex = unsafe { (*(*kptr.txq).dev).ifindex as u32 };
-
-        xdp_md {
-            data,
-            data_end,
-            data_slice,
-            data_length,
-            data_meta,
-            ingress_ifindex,
-            rx_qeueu_index,
-            egress_ifindex,
-            kptr,
-        }
+        xdp_md { data_slice, kptr }
     }
 
     #[inline(always)]
@@ -217,21 +182,14 @@ impl<'a> xdp<'a> {
         }
 
         // Update xdp_md fields
-        ctx.data = ctx.kptr.data as usize;
-        ctx.data_end = ctx.kptr.data_end as usize;
-        ctx.data_meta = ctx.kptr.data_meta as usize;
-        ctx.data_length = ctx.data_end - ctx.data;
+        let data_length = ctx.kptr.data_end as usize - ctx.kptr.data as usize;
 
         ctx.data_slice = unsafe {
             slice::from_raw_parts_mut(
                 ctx.kptr.data as *mut c_uchar,
-                ctx.data_length,
+                data_length,
             )
         };
-
-        ctx.ingress_ifindex = ctx.kptr.rxq as u32;
-        ctx.rx_qeueu_index = unsafe { (*ctx.kptr.rxq).queue_index };
-        ctx.egress_ifindex = 0;
 
         Ok(0)
     }
