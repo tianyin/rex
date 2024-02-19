@@ -42,4 +42,4 @@ trace_event: trace_event_user.o trace_helpers.o
 
 clean:
 	cargo clean
-	rm -rf bpf.o trace_helpers.o trace_event ./src/linux ./src/stub.rs
+	rm -rf *.o trace_event ./src/linux ./src/stub.rs
