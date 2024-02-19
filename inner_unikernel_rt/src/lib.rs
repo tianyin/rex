@@ -42,6 +42,7 @@ macro_rules! define_prog_entry {
     ($prog_ty:ident) => {
         paste! {
             #[no_mangle]
+            #[inline(always)]
             fn [<__iu_entry_ $prog_ty>](
                 prog: &$prog_ty::$prog_ty,
                 ctx: *mut (),
