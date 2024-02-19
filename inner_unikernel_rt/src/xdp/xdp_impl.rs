@@ -17,22 +17,6 @@ pub use crate::bindings::uapi::linux::bpf::{
 };
 pub use crate::bindings::uapi::linux::r#in::{IPPROTO_TCP, IPPROTO_UDP};
 
-// pub type pt_regs = super::binding::pt_regs;
-
-pub struct xdp_md<'a> {
-    // TODO check the kernel version xdp_md
-    // pub regs: bpf_user_pt_regs_t,
-    data: usize,
-    data_end: usize,
-    pub data_slice: &'a mut [c_uchar],
-    pub data_length: usize,
-    pub data_meta: usize,
-    pub ingress_ifindex: u32,
-    pub rx_qeueu_index: u32,
-    pub egress_ifindex: u32,
-    kptr: &'a xdp_buff,
-}
-
 #[inline(always)]
 pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
     let mut sum: u32 = 0;
@@ -50,7 +34,42 @@ pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
     }
 
     sum = (sum & 0xffff) + (sum >> 16);
-    return !sum as u16;
+    !sum as u16
+}
+
+pub struct xdp_md<'a> {
+    pub data_slice: &'a mut [c_uchar],
+    kptr: &'a mut xdp_buff,
+}
+
+// Define accessors of program-accessible fields
+impl<'a> xdp_md<'a> {
+    #[inline(always)]
+    pub fn data_length(&self) -> usize {
+        self.data_slice.len()
+    }
+
+    #[inline(always)]
+    pub fn data_meta(&self) -> usize {
+        self.kptr.data_meta as usize
+    }
+
+    #[inline(always)]
+    pub fn ingress_ifindex(&self) -> u32 {
+        unsafe { (*(*self.kptr.rxq).dev).ifindex as u32 }
+    }
+
+    #[inline(always)]
+    pub fn rx_qeueu_index(&self) -> u32 {
+        unsafe { (*self.kptr.rxq).queue_index }
+    }
+
+    #[inline(always)]
+    pub fn egress_ifindex(&self) -> u32 {
+        // TODO: https://elixir.bootlin.com/linux/v5.15.123/source/net/core/filter.c#L8271
+        // egress_ifindex is valid only for BPF_XDP_DEVMAP option
+        0
+    }
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -89,203 +108,94 @@ impl<'a> xdp<'a> {
     // assign this reference a new value either, given that they will not able
     // to create another instance of pt_regs (private fields, no pub ctor)
     #[inline(always)]
-    fn convert_ctx(&self, ctx: *const ()) -> xdp_md {
-        let kptr: &xdp_buff = unsafe {
-            &*core::mem::transmute::<*const (), *const xdp_buff>(ctx)
-        };
+    fn convert_ctx(&self, ctx: *mut ()) -> xdp_md {
+        let kptr: &mut xdp_buff = unsafe { &mut *(ctx as *mut xdp_buff) };
 
-        // BUG may not work since directly truncate the pointer
-        let data = kptr.data as usize;
-        let data_end = kptr.data_end as usize;
-        let data_meta = kptr.data_meta as usize;
-        let data_length = data_end - data;
+        let data_length = kptr.data_end as usize - kptr.data as usize;
 
         let data_slice = unsafe {
             slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };
 
-        let ingress_ifindex = kptr.rxq as u32;
-
-        let rx_qeueu_index = unsafe { (*kptr.rxq).queue_index };
-
-        // TODO https://elixir.bootlin.com/linux/v5.15.123/source/net/core/filter.c#L8271
-        // egress_ifindex is valid only for BPF_XDP_DEVMAP option
-        let egress_ifindex = 0;
-        // let egress_ifindex = unsafe { (*(*kptr.txq).dev).ifindex as u32 };
-
-        xdp_md {
-            data,
-            data_end,
-            data_slice,
-            data_length,
-            data_meta,
-            ingress_ifindex,
-            rx_qeueu_index,
-            egress_ifindex,
-            kptr,
-        }
+        xdp_md { data_slice, kptr }
     }
 
     #[inline(always)]
-    pub fn tcp_header<'b>(&'b self, ctx: &'b xdp_md) -> &'b mut tcphdr {
+    pub fn tcp_header<'b>(&'b self, ctx: &'b mut xdp_md) -> &'b mut tcphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<tcphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                ctx.kptr.data as *mut c_uchar,
-                ctx.data_length,
+        unsafe {
+            convert_slice_to_struct_mut::<tcphdr>(
+                &mut ctx.data_slice[begin..end],
             )
-        };
-        let tcp_header = unsafe {
-            convert_slice_to_struct_mut::<tcphdr>(&mut data_slice[begin..end])
-        };
-
-        tcp_header
+        }
     }
 
     #[inline(always)]
-    pub fn udp_header<'b>(&self, ctx: &'b xdp_md) -> &'b mut udphdr {
+    pub fn udp_header<'b>(&self, ctx: &'b mut xdp_md) -> &'b mut udphdr {
         // NOTE: this assumes packet has ethhdr and iphdr
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<udphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                ctx.kptr.data as *mut c_uchar,
-                ctx.data_length,
-            )
-        };
-
         unsafe {
-            convert_slice_to_struct_mut::<udphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<udphdr>(
+                &mut ctx.data_slice[begin..end],
+            )
         }
     }
 
     #[inline(always)]
-    pub fn ip_header<'b>(&self, ctx: &'b xdp_md) -> &'b mut iphdr {
+    pub fn ip_header<'b>(&self, ctx: &'b mut xdp_md) -> &'b mut iphdr {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let end = mem::size_of::<iphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                ctx.kptr.data as *mut c_uchar,
-                ctx.data_length,
-            )
-        };
         unsafe {
-            convert_slice_to_struct_mut::<iphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<iphdr>(
+                &mut ctx.data_slice[begin..end],
+            )
         }
     }
 
     #[inline(always)]
-    pub fn eth_header<'b>(&self, ctx: &'b xdp_md) -> &'b mut ethhdr {
-        safe_transmute::<[u8; 6]>();
-        safe_transmute::<[u8; 6]>();
-        safe_transmute::<u16>();
-
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                ctx.kptr.data as *mut c_uchar,
-                ctx.data_length,
+    pub fn eth_header<'b>(&self, ctx: &'b mut xdp_md) -> &'b mut ethhdr {
+        unsafe {
+            convert_slice_to_struct_mut::<ethhdr>(
+                &mut ctx.data_slice[0..mem::size_of::<ethhdr>()],
             )
-        };
-        unsafe { convert_slice_to_struct_mut::<ethhdr>(&mut data_slice[0..14]) }
-    }
-
-    pub fn bpf_change_udp_port(&self, ctx: &xdp_md, port_num: u16) {
-        let kptr = unsafe { *(ctx.kptr) };
-
-        // may not work since directly truncate the pointer
-        let data = kptr.data as usize;
-        let data_end = kptr.data_end as usize;
-        let data_meta = kptr.data_meta as usize;
-        let data_length = data_end - data;
-
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
-        };
-
-        let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
-        let mut off = begin + mem::size_of::<udphdr>();
-        data_slice[off] = b'0';
-
-        let part = &mut data_slice[begin..begin + mem::size_of::<udphdr>()];
-        let mut udp_header =
-            unsafe { convert_slice_to_struct_mut::<udphdr>(part) };
-
-        unsafe {
-            printk(
-                "udp_dest change before %d\n\0",
-                u16::from_be(udp_header.dest) as u32,
-            );
-        }
-        udp_header.dest = port_num.to_be();
-
-        let part = &mut data_slice[begin..begin + mem::size_of::<udphdr>()];
-        let mut udp_header_2 =
-            unsafe { convert_slice_to_struct_mut::<udphdr>(part) };
-        unsafe {
-            printk(
-                "udp_dest change to %d\n\0",
-                u16::from_be(udp_header_2.dest) as u32,
-            );
         }
     }
 
     // FIX: update based on xdp_md to convert to xdp_buff
-    pub fn bpf_xdp_adjust_head(&self, xdp: &mut xdp_buff, offset: i32) -> i32 {
-        unsafe { stub::bpf_xdp_adjust_head(xdp, offset) }
-    }
+    // pub fn bpf_xdp_adjust_head(&self, xdp: &mut xdp_buff, offset: i32) -> i32
+    // {     unsafe { stub::bpf_xdp_adjust_head(xdp, offset) }
+    // }
 
     // WARN: this function is unsafe
     #[inline(always)]
-    pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> i32 {
-        let kptr = unsafe { ctx.kptr as *const xdp_buff as *mut xdp_buff };
-        let ret = unsafe { stub::bpf_xdp_adjust_tail(kptr, offset) };
+    pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> Result {
+        let ret = unsafe { stub::bpf_xdp_adjust_tail(ctx.kptr, offset) };
         if ret != 0 {
-            return ret;
+            return Err(ret);
         }
 
-        let kptr = ctx.kptr;
-
-        // BUG may not work since directly truncate the pointer
-        ctx.data = kptr.data as usize;
-        ctx.data_end = kptr.data_end as usize;
-        ctx.data_meta = kptr.data_meta as usize;
-        ctx.data_length = ctx.data_end - ctx.data;
+        // Update xdp_md fields
+        let data_length = ctx.kptr.data_end as usize - ctx.kptr.data as usize;
 
         ctx.data_slice = unsafe {
             slice::from_raw_parts_mut(
-                kptr.data as *mut c_uchar,
-                ctx.data_length,
+                ctx.kptr.data as *mut c_uchar,
+                data_length,
             )
         };
 
-        ctx.ingress_ifindex = kptr.rxq as u32;
-        ctx.rx_qeueu_index = unsafe { (*kptr.rxq).queue_index };
-        ctx.egress_ifindex = 0;
-
-        0
-    }
-
-    #[inline(always)]
-    pub fn data_slice_mut(&self, ctx: &xdp_md) -> &mut [c_uchar] {
-        let kptr = unsafe { *(ctx.kptr) };
-        // may not work since directly truncate the pointer
-        let data = kptr.data as usize;
-        let data_end = kptr.data_end as usize;
-        let data_length = data_end - data;
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(data as *mut c_uchar, data_length)
-        };
-        data_slice
+        Ok(0)
     }
 }
 impl iu_prog for xdp<'_> {
-    fn prog_run(&self, ctx: *const ()) -> u32 {
+    fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // Return XDP_PASS if Err, i.e. discard event
         // FIX:map the error as XDP_PASS or err code

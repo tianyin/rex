@@ -109,7 +109,7 @@ fn hash_key(
     payload_index: usize,
 ) -> Result {
     let (mut off, mut done_parsing, mut key_len) = (0usize, false, 0u8);
-    let payload = &mut ctx.data_slice[payload_index..];
+    let payload = &ctx.data_slice[payload_index..];
 
     while !done_parsing {
         let mut key = obj
@@ -118,8 +118,8 @@ fn hash_key(
 
         key.hash = FNV_OFFSET_BASIS_32;
 
-        while (off < (BMC_MAX_KEY_LENGTH + 1))
-            && ((pctx.read_pkt_offset as usize + off + 1) <= ctx.data_length)
+        while off < (BMC_MAX_KEY_LENGTH + 1)
+            && (pctx.read_pkt_offset as usize + off + 1) <= ctx.data_length()
         {
             if payload[off] == b'\r' {
                 done_parsing = true;
@@ -156,7 +156,7 @@ fn hash_key(
             // bpf_printk!(obj, "potential cache hit\n");
             for i in pctx.read_pkt_offset..key_len {
                 // end of packet
-                if i as usize + 1 > ctx.data_length {
+                if i as usize + 1 > ctx.data_length() {
                     break;
                 }
                 key.data[i as usize] = payload[i as usize];
@@ -213,12 +213,11 @@ fn prepare_packet(
     swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
 
     let ip_header_mut = obj.ip_header(ctx);
-    let udp_header = obj.udp_header(ctx);
-
     ip_tmp = ip_header_mut.saddr;
     ip_header_mut.saddr = ip_header_mut.daddr;
     ip_header_mut.daddr = ip_tmp;
 
+    let udp_header = obj.udp_header(ctx);
     port_tmp = udp_header.source;
     udp_header.source = udp_header.dest;
     udp_header.dest = port_tmp;
@@ -282,7 +281,7 @@ fn write_pkt_reply(
         // const U64_SIZE: usize = size_of::<u64>();
         // NOTE: data end is determined by slice length limit, may changed in future
         // while off + U64_SIZE < BMC_MAX_CACHE_DATA_SIZE && off + U64_SIZE <= entry.len as usize {}
-        let padding = (entry.len as i32 - (ctx.data_length - payload_index) as i32) + 1;
+        let padding = (entry.len as i32 - (ctx.data_length() - payload_index) as i32) + 1;
         // bpf_printk!(
         //     obj,
         //     "entry len %d payload_index %d padding %d\n",
@@ -292,8 +291,8 @@ fn write_pkt_reply(
         // );
 
         match obj.bpf_xdp_adjust_tail(ctx, padding) {
-            0i32 => {}
-            _ => {
+            Ok(_) => {}
+            Err(_) => {
                 bpf_printk!(obj, "adjust tail failed\n");
                 return Ok(XDP_DROP as i32);
             }
@@ -301,19 +300,17 @@ fn write_pkt_reply(
         // bpf_printk!(obj, "length after %d\n", ctx.data_length as u64);
 
         // FIX: currently only support single key and no check
-        let data_slice = obj.data_slice_mut(ctx);
-        let payload = &mut data_slice[payload_index - 4..];
 
-        // // udp check not required
+        // udp check not required
         let ip_header_mut = obj.ip_header(ctx);
-        let udp_header = obj.udp_header(ctx);
-
         ip_header_mut.tot_len = (u16::from_be(ip_header_mut.tot_len) + padding as u16).to_be();
         ip_header_mut.check = compute_ip_checksum(ip_header_mut);
 
+        let udp_header = obj.udp_header(ctx);
         udp_header.len = (u16::from_be(udp_header.len) + padding as u16).to_be();
         udp_header.check = 0;
 
+        let payload = &mut ctx.data_slice[payload_index - 4..];
         for i in 0..entry.len as usize {
             payload[i] = entry.data[i];
         }
@@ -332,8 +329,6 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
         + size_of::<iphdr>()
         + size_of::<udphdr>()
         + size_of::<memcached_udp_header>();
-    let data_slice = obj.data_slice_mut(ctx);
-    let _eth_header = eth_header::from_bytes(&mut data_slice[0..14]);
     let ip_header_mut = obj.ip_header(ctx);
 
     match u8::from_be(ip_header_mut.protocol) as u32 {
@@ -341,8 +336,8 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
             // NOTE: currently we only take care of UDP memcached
         }
         IPPROTO_UDP => {
-            let _udp_header = obj.udp_header(ctx);
-            let port = u16::from_be(obj.udp_header(ctx).dest);
+            let udp_header = obj.udp_header(ctx);
+            let port = u16::from_be(udp_header.dest);
             let payload = &ctx.data_slice[header_len..];
 
             // check if using the memcached port
@@ -387,7 +382,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
 
     let mut off = 6usize;
     while off < BMC_MAX_KEY_LENGTH
-        && header_len + off + 1 <= skb.len as usize
+        && header_len + off + 1 <= skb.len() as usize
         && payload[off] != b' '
     {
         hash_func!(hash, payload[off]);
@@ -410,7 +405,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         let mut diff = 0;
         off = 6;
         while off < BMC_MAX_KEY_LENGTH
-            && header_len + off + 1 <= skb.len as usize
+            && header_len + off + 1 <= skb.len() as usize
             && (payload[off] != b' ' || entry.data[off] != b' ')
         {
             if entry.data[off] != payload[off] {
@@ -431,7 +426,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
 
     let (mut count, mut i) = (0usize, 0usize);
     entry.len = 0;
-    while i < BMC_MAX_CACHE_DATA_SIZE && header_len + i + 1 <= skb.len as usize && count < 2 {
+    while i < BMC_MAX_CACHE_DATA_SIZE && header_len + i + 1 <= skb.len() as usize && count < 2 {
         entry.data[i] = payload[i];
         entry.len += 1;
         if payload[i] == b'\n' {
@@ -462,7 +457,7 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
         + size_of::<memcached_udp_header>();
 
     // check if the packet is long enough
-    if skb.len as usize <= header_len {
+    if skb.len() as usize <= header_len {
         return Ok(TC_ACT_OK as i32);
     }
 

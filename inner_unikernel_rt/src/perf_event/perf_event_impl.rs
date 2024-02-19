@@ -12,14 +12,35 @@ use crate::stub;
 use crate::task_struct::TaskStruct;
 use crate::utils::{to_result, Result};
 
-pub type pt_regs = super::binding::pt_regs;
+#[derive(Debug)]
+pub struct bpf_perf_event_data<'a> {
+    kptr: &'a mut bpf_perf_event_data_kern,
+}
 
-#[derive(Debug, Copy, Clone)]
-pub struct bpf_perf_event_data {
-    pub regs: bpf_user_pt_regs_t,
-    pub sample_period: u64,
-    pub addr: u64,
-    kptr: *const bpf_perf_event_data_kern,
+macro_rules! decl_reg_accessors {
+    ($t:ident $($ts:ident)*) => {
+        #[inline(always)]
+        pub fn $t(&self) -> u64 {
+            unsafe { (*self.kptr.regs).$t }
+        }
+        decl_reg_accessors!($($ts)*);
+    };
+    () => {};
+}
+
+impl<'a> bpf_perf_event_data<'a> {
+    decl_reg_accessors!(r15 r14 r13 r12 rbp rbx r11 r10 r9 r8 rax rcx rdx rsi
+        rdi orig_rax rip cs eflags rsp ss);
+
+    #[inline(always)]
+    pub fn sample_period(&self) -> u64 {
+        unsafe { (&*self.kptr.data).period }
+    }
+
+    #[inline(always)]
+    pub fn addr(&self) -> u64 {
+        unsafe { (&*self.kptr.data).addr }
+    }
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -52,24 +73,11 @@ impl<'a> perf_event<'a> {
         }
     }
 
-    fn convert_ctx(&self, ctx: *const ()) -> bpf_perf_event_data {
-        let kptr: &bpf_perf_event_data_kern = unsafe {
-            &*core::mem::transmute::<*const (), *const bpf_perf_event_data_kern>(
-                ctx,
-            )
-        };
+    fn convert_ctx(&self, ctx: *mut ()) -> bpf_perf_event_data {
+        let kptr: &mut bpf_perf_event_data_kern =
+            unsafe { &mut *(ctx as *mut bpf_perf_event_data_kern) };
 
-        let regs = unsafe { *kptr.regs };
-        let data: &perf_sample_data = unsafe { &*kptr.data };
-        let sample_period = data.period;
-        let addr = data.addr;
-
-        bpf_perf_event_data {
-            regs,
-            sample_period,
-            addr,
-            kptr,
-        }
+        bpf_perf_event_data { kptr }
     }
 
     pub fn bpf_perf_prog_read_value(
@@ -106,7 +114,7 @@ impl<'a> perf_event<'a> {
 }
 
 impl iu_prog for perf_event<'_> {
-    fn prog_run(&self, ctx: *const ()) -> u32 {
+    fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         ((self.prog)(self, &newctx)).unwrap_or_else(|_| 0) as u32
     }

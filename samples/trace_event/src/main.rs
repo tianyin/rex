@@ -47,7 +47,7 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
         kernstack: 0,
         userstack: 0,
     };
-    if ctx.sample_period < 10000 {
+    if ctx.sample_period() < 10000 {
         return Ok(0);
     }
 
@@ -65,8 +65,8 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
                 obj,
                 "CPU-%d period %lld ip %llx",
                 cpu as u64,
-                ctx.sample_period,
-                ctx.regs.rip()
+                ctx.sample_period(),
+                ctx.rip()
             );
             0i32
         })? as u32;
@@ -78,8 +78,8 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
                 obj,
                 "CPU-%d period %lld ip %llx",
                 cpu as u64,
-                ctx.sample_period,
-                ctx.regs.rip()
+                ctx.sample_period(),
+                ctx.rip()
             );
             0i32
         })? as u32;
@@ -101,8 +101,8 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
             },
         );
 
-    if ctx.addr != 0 {
-        bpf_printk!(obj, "Address recorded on event: %llx", ctx.addr);
+    if ctx.addr() != 0 {
+        bpf_printk!(obj, "Address recorded on event: %llx", ctx.addr());
     }
 
     match obj.bpf_map_lookup_elem(&counts, &key) {

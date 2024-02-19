@@ -2,6 +2,7 @@ use core::ffi::{c_int, c_uchar};
 use core::mem;
 
 #[repr(transparent)]
+#[derive(Copy, Clone)]
 pub struct u16be(pub(crate) u16);
 
 impl From<u16be> for u16 {

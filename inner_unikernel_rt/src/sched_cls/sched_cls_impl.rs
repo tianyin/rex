@@ -17,42 +17,121 @@ use core::ffi::{c_char, c_uchar, c_uint, c_void};
 use core::{mem, slice};
 
 pub struct __sk_buff<'a> {
-    // TODO: may need to append more based on __sk_buff
-    pub len: u32,
-    // be16
-    pub protocol: u16be,
-    pub priority: u32,
-    pub ingress_ifindex: u32,
-    pub ifindex: u32,
-    pub hash: u32,
-    pub mark: u32,
-
-    // such as PACKET_HOST if_packet.h
-    // /* if you move pkt_type around you also must adapt those constants */
-    // #ifdef __BIG_ENDIAN_BITFIELD
-    // #define PKT_TYPE_MAX	(7 << 5)
-    // #else
-    // #define PKT_TYPE_MAX	7
-    // #endif
-    pub pkt_type: u32,
-
-    pub queue_mapping: u16,
-
-    pub vlan_present: u32,
-    pub vlan_tci: u16,
-    pub vlan_proto: u16be,
-    pub cb: &'a [c_char; 48],
-
-    pub tc_classid: u32,
-    pub tc_index: u16,
-
-    pub napi_id: u32,
-
-    sk: &'a sock,
-    pub data: u32,
-    pub data_meta: u32,
     pub data_slice: &'a mut [c_uchar],
-    kptr: &'a sk_buff,
+    kptr: &'a mut sk_buff,
+}
+
+// Define accessors of program-accessible fields
+// TODO: may need to append more based on __sk_buff
+impl<'a> __sk_buff<'a> {
+    #[inline(always)]
+    pub fn len(&self) -> u32 {
+        self.kptr.len
+    }
+
+    #[inline(always)]
+    pub fn protocol(&self) -> u16be {
+        u16be(self.kptr.protocol)
+    }
+
+    #[inline(always)]
+    pub fn priority(&self) -> u32 {
+        self.kptr.priority
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn ingress_ifindex(&self) -> u32 {
+        0
+    }
+
+    #[inline(always)]
+    pub fn ifindex(&self) -> u32 {
+        unsafe {
+            (&*self
+                .kptr
+                .__bindgen_anon_1
+                .__bindgen_anon_1
+                .__bindgen_anon_1
+                .dev)
+                .ifindex as u32
+        }
+    }
+
+    #[inline(always)]
+    pub fn hash(&self) -> u32 {
+        self.kptr.hash
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn mark(&self) -> u32 {
+        0
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn pkt_type(&self) -> u32 {
+        0
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn queue_mapping(&self) -> u16 {
+        self.kptr.queue_mapping
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn vlan_present(&self) -> u32 {
+        0
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn vlan_tci(&self) -> u16 {
+        self.kptr.vlan_tci
+    }
+
+    #[inline(always)]
+    pub fn vlan_proto(&self) -> u16be {
+        u16be(self.kptr.vlan_proto)
+    }
+
+    #[inline(always)]
+    pub fn cb(&self) -> [c_char; 20] {
+        let mut cb = [0; 20];
+        cb[0..20].clone_from_slice(&self.kptr.cb[0..20]);
+        cb
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn tc_classid(&self) -> u32 {
+        0
+    }
+
+    #[inline(always)]
+    pub fn tc_index(&self) -> u16 {
+        self.kptr.tc_index
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn napi_id(&self) -> u32 {
+        0
+    }
+
+    #[inline(always)]
+    // TODO: may need to update based on __sk_buff
+    pub fn data_meta(&self) -> u32 {
+        0
+    }
+
+    #[inline(always)]
+    pub fn sk(&self) -> &'a sock {
+        unsafe { &*self.kptr.__bindgen_anon_2.sk }
+    }
 }
 
 // First 3 fields should always be rtti, prog_fn, and name
@@ -90,18 +169,11 @@ impl<'a> sched_cls<'a> {
     // NOTE: copied from xdp impl, may change in the future
     #[inline(always)]
     pub fn eth_header<'b>(&self, skb: &'b mut __sk_buff) -> &'b mut ethhdr {
-        safe_transmute::<[u8; 6]>();
-        safe_transmute::<[u8; 6]>();
-        safe_transmute::<u16>();
-
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
+        unsafe {
+            convert_slice_to_struct_mut::<ethhdr>(
+                &mut skb.data_slice[0..mem::size_of::<ethhdr>()],
             )
-        };
-
-        unsafe { convert_slice_to_struct_mut::<ethhdr>(&mut data_slice[0..14]) }
+        }
     }
 
     #[inline(always)]
@@ -110,15 +182,10 @@ impl<'a> sched_cls<'a> {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<udphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
-            )
-        };
-
         unsafe {
-            convert_slice_to_struct_mut::<udphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<udphdr>(
+                &mut skb.data_slice[begin..end],
+            )
         }
     }
 
@@ -128,48 +195,24 @@ impl<'a> sched_cls<'a> {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<tcphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
-            )
-        };
-
         unsafe {
-            convert_slice_to_struct_mut::<tcphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<tcphdr>(
+                &mut skb.data_slice[begin..end],
+            )
         }
     }
 
     #[inline(always)]
-    pub fn ip_header<'b>(&self, skb: &'b __sk_buff) -> &'b mut iphdr {
+    pub fn ip_header<'b>(&self, skb: &'b mut __sk_buff) -> &'b mut iphdr {
         // NOTE: this assumes packet has ethhdr
         let begin = mem::size_of::<ethhdr>();
         let end = mem::size_of::<iphdr>() + begin;
 
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(
-                skb.kptr.data as *mut c_uchar,
-                skb.len as usize,
-            )
-        };
-
         unsafe {
-            convert_slice_to_struct_mut::<iphdr>(&mut data_slice[begin..end])
+            convert_slice_to_struct_mut::<iphdr>(
+                &mut skb.data_slice[begin..end],
+            )
         }
-    }
-
-    #[inline(always)]
-    pub fn data_slice_mut<'b>(
-        &self,
-        skb: &'b mut __sk_buff,
-    ) -> &'b mut [c_uchar] {
-        let kptr = skb.kptr;
-        // may not work since directly truncate the pointer
-        let data_length = kptr.len as usize;
-        let data_slice = unsafe {
-            slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
-        };
-        data_slice
     }
 
     #[inline(always)]
@@ -178,25 +221,22 @@ impl<'a> sched_cls<'a> {
         skb: &mut __sk_buff,
         ifindex: u32,
         flags: u64,
-    ) -> i32 {
-        let kptr = unsafe { skb.kptr as *const sk_buff as *mut sk_buff };
-
-        let ret = unsafe { stub::bpf_clone_redirect(kptr, ifindex, flags) };
+    ) -> Result {
+        let ret = unsafe { stub::bpf_clone_redirect(skb.kptr, ifindex, flags) };
 
         if ret != 0 {
-            return ret;
+            return Err(ret);
         }
 
-        let kptr = skb.kptr;
-
-        skb.data = kptr.data as u32;
-        let data_length = kptr.len as usize;
-
+        // WARN: bpf_clone_redirect does not update skb.kptr?
         skb.data_slice = unsafe {
-            slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
+            slice::from_raw_parts_mut(
+                skb.kptr.data as *mut c_uchar,
+                skb.len() as usize,
+            )
         };
 
-        0
+        Ok(0)
     }
 
     // Now returns a mutable ref, but since every reg is private the user prog
@@ -204,57 +244,22 @@ impl<'a> sched_cls<'a> {
     // assign this reference a new value either, given that they will not able
     // to create another instance of pt_regs (private fields, no pub ctor)
     #[inline(always)]
-    fn convert_ctx(&self, ctx: *const ()) -> __sk_buff {
-        let kptr: &sk_buff =
-            unsafe { &*core::mem::transmute::<*const (), *mut sk_buff>(ctx) };
+    fn convert_ctx(&self, ctx: *mut ()) -> __sk_buff {
+        let kptr: &mut sk_buff = unsafe { &mut *(ctx as *mut sk_buff) };
 
         let data = kptr.data as u32;
         let data_length = kptr.len as usize;
 
-        // NOTE: currently we only added const data slice for read only
         let data_slice = unsafe {
             slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)
         };
 
-        // bindgen for C union is kind of wired, so we have to do this
-        let sk: &sock = unsafe { &*kptr.__bindgen_anon_2.sk };
-
-        // TODO: UNION required unsafe, and need to update binding.rs
-        let napi_id = 0;
-
-        let net_dev: &net_device = unsafe {
-            &*kptr.__bindgen_anon_1.__bindgen_anon_1.__bindgen_anon_1.dev
-        };
-
-        __sk_buff {
-            // TODO: may need to append more based on __sk_buff
-            len: kptr.len,
-            protocol: u16be(kptr.protocol),
-            priority: kptr.priority,
-            ingress_ifindex: 0,
-            ifindex: net_dev.ifindex as u32,
-            hash: kptr.hash,
-            mark: 0,
-            pkt_type: 0,
-            queue_mapping: kptr.queue_mapping,
-            vlan_present: 0,
-            vlan_tci: kptr.vlan_tci,
-            vlan_proto: u16be(kptr.vlan_proto),
-            cb: &kptr.cb,
-            tc_classid: 0,
-            tc_index: kptr.tc_index,
-            napi_id,
-            sk,
-            data,
-            data_slice,
-            data_meta: 0,
-            kptr,
-        }
+        __sk_buff { data_slice, kptr }
     }
 }
 
 impl iu_prog for sched_cls<'_> {
-    fn prog_run(&self, ctx: *const ()) -> u32 {
+    fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // return TC_ACT_OK if error
         ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| TC_ACT_OK as i32)
