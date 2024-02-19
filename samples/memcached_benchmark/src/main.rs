@@ -6,7 +6,6 @@ use rand::distributions::{Alphanumeric, DistString, Distribution};
 use serde_yaml;
 use zstd;
 
-use std::collections::VecDeque;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
@@ -509,7 +508,7 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
         .build(manager)
         .unwrap();
 
-    let mut send_commands_deq = VecDeque::new();
+    let mut send_commands_vec = Vec::new();
 
     // First generate get commands for each thread
     for thread_num in 0..threads {
@@ -523,7 +522,7 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
             send_commands.push((key.to_string(), packet, proto, value.to_string()));
         }
 
-        send_commands_deq.push_back(send_commands);
+        send_commands_vec.push(send_commands);
     }
 
     let mut handles = vec![];
@@ -534,7 +533,7 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
         let test_dict = Arc::clone(&test_dict);
         let server_address = server_address.clone();
         let port = port.clone();
-        let send_commands = send_commands_deq.pop_front().unwrap();
+        let send_commands = send_commands_vec.pop().unwrap();
         let handle = tokio::spawn(async move {
             match get_command_benchmark(
                 test_dict,
