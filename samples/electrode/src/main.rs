@@ -4,20 +4,15 @@
 
 extern crate inner_unikernel_rt;
 
-use core::ffi::c_void;
 use core::mem::{size_of, swap};
-use core::num::Wrapping;
+
 use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::entry_link;
-use inner_unikernel_rt::linux::bpf::{
-    bpf_spin_lock, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_PERCPU_ARRAY,
-};
-use inner_unikernel_rt::map::IUMap;
+
 use inner_unikernel_rt::sched_cls::*;
-use inner_unikernel_rt::spinlock::*;
+
 use inner_unikernel_rt::utils::*;
 use inner_unikernel_rt::xdp::*;
-use inner_unikernel_rt::MAP_DEF;
 
 pub mod common;
 pub mod maps;
@@ -38,7 +33,6 @@ macro_rules! swap_field {
 
 fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
-    let data_slice = obj.data_slice_mut(ctx);
     let ip_header = obj.ip_header(ctx);
 
     match u8::from_be(ip_header.protocol) as u32 {
@@ -46,21 +40,17 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
             // NOTE: currently we only take care of UDP memcached
         }
         IPPROTO_UDP => {
-            let udp_header = obj.udp_header(ctx);
             let port = u16::from_be(obj.udp_header(ctx).dest);
-            let payload = &mut data_slice[header_len..];
+            let payload = &mut ctx.data_slice[header_len..];
 
             // port check, our process bound to 12345.
             // don't have magic bits...
-            if (port != 12345 || payload.len() < MAGIC_LEN + size_of::<u64>()) {
+            if port != 12345 || payload.len() < MAGIC_LEN + size_of::<u64>() {
                 return Ok(XDP_PASS as i32);
             }
 
             // NOTE: currently, we don't support reassembly.
-            if (payload[0] != 0x18
-                || payload[1] != 0x03
-                || payload[2] != 0x05
-                || payload[3] != 0x20)
+            if payload[0] != 0x18 || payload[1] != 0x03 || payload[2] != 0x05 || payload[3] != 0x20
             {
                 return Ok(XDP_PASS as i32);
             }
@@ -75,12 +65,10 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
 }
 
 fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
-    let data_slice = obj.data_slice_mut(skb);
-
     let mut header_len = size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
 
     // check if the packet is long enough
-    if (data_slice.len() <= header_len) {
+    if skb.data_slice.len() <= header_len {
         return Ok(TC_ACT_OK as i32);
     }
 
@@ -97,17 +85,13 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
             // check for the magic bits
             header_len += MAGIC_LEN + size_of::<u64>();
 
-            let data_slice = obj.data_slice_mut(skb);
-            if data_slice.len() < header_len {
+            if skb.data_slice.len() < header_len {
                 bpf_printk!(obj, "data_slice.len() < header_len\n");
                 return Ok(TC_ACT_OK as i32);
             }
-            let payload = &data_slice;
+            let payload = &skb.data_slice;
 
-            if (payload[0] != 0x18
-                || payload[1] != 0x03
-                || payload[2] != 0x05
-                || payload[3] != 0x20)
+            if payload[0] != 0x18 || payload[1] != 0x03 || payload[2] != 0x05 || payload[3] != 0x20
             {
                 return Ok(TC_ACT_OK as i32);
             }
@@ -123,9 +107,7 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 #[inline(always)]
 fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>() + MAGIC_LEN;
-
-    let data_slice = obj.data_slice_mut(skb);
-    let payload = &data_slice[header_len..];
+    let payload = &skb.data_slice[header_len..];
 
     let (type_len_bytes, payload) = payload.split_at(size_of::<u64>());
     let type_str_len = header_len + size_of::<u64>();
@@ -173,10 +155,11 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
         .bpf_map_lookup_elem(&map_ctr_state, &zero)
         .ok_or_else(|| 0i32)?;
 
-    let (mut id, mut nxt) = (0u8, 0u8);
+    let mut id = 0u8;
+    let mut nxt;
 
     {
-        let type_str = &mut data_slice[type_str_len..];
+        let type_str = &mut skb.data_slice[type_str_len..];
         if type_str.starts_with(b"sp") {
             if ctr_state.leader_idx == 0 {
                 id = 1;
@@ -188,8 +171,8 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
             type_str[0] = nxt;
             type_str[1] = b'M';
-            if (nxt < CLUSTER_SIZE) {
-                obj.bpf_clone_redirect(skb, skb.ifindex, 0);
+            if nxt < CLUSTER_SIZE {
+                obj.bpf_clone_redirect(skb, skb.ifindex(), 0).unwrap();
             }
         } else {
             id = type_str[0];
@@ -199,15 +182,14 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
             }
             type_str[0] = nxt;
 
-            if (nxt < CLUSTER_SIZE) {
-                obj.bpf_clone_redirect(skb, skb.ifindex, 0);
+            if nxt < CLUSTER_SIZE {
+                obj.bpf_clone_redirect(skb, skb.ifindex(), 0).unwrap();
             }
         }
     }
 
     // our version bpf_clone_redirect will update the data reference.
-    let data_slice = obj.data_slice_mut(skb);
-    let type_str = &mut data_slice[type_str_len..];
+    let type_str = &mut skb.data_slice[type_str_len..];
     type_str[0] = b's';
     type_str[1] = b'p';
 
@@ -234,7 +216,6 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
 #[inline(always)]
 fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    let data_slice = obj.data_slice_mut(ctx);
     let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
     let payload = &mut ctx.data_slice[header_len + MAGIC_LEN..];
 
@@ -249,7 +230,7 @@ fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
         return Ok(XDP_PASS as i32);
     }
     let payload_index = header_len + MAGIC_LEN + size_of::<u64>();
-    let payload = &mut data_slice[payload_index..];
+    let payload = &mut ctx.data_slice[payload_index..];
 
     // PrepareMessage in `vr`.
     if len > PREPARE_TYPE_LEN && payload[19..27].starts_with(b"PrepareM") {
@@ -293,10 +274,10 @@ fn compute_message_type(payload: &[u8]) -> FastProgXdp {
 }
 
 // This function is ignored in the original implementation.
-#[inline(always)]
-fn handle_request(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    Ok(XDP_PASS as i32)
-}
+// #[inline(always)]
+// fn handle_request(_obj: &xdp, _ctx: &mut xdp_md) -> Result {
+//     Ok(XDP_PASS as i32)
+// }
 
 #[inline(always)]
 fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
@@ -350,15 +331,14 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
 #[inline(always)]
 fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
     // payload_index = header_len + MAGIC_LEN + size_of::<u64>() + PREPARE_TYPE_LEN
-    let data_slice = obj.data_slice_mut(ctx);
     // check the end of the payload
-    if data_slice.len() < payload_index + FAST_PAXOS_DATA_LEN {
+    if ctx.data_slice.len() < payload_index + FAST_PAXOS_DATA_LEN {
         return Ok(XDP_PASS as i32);
     }
 
     bpf_printk!(obj, "write buffer\n");
 
-    let payload = &mut data_slice[payload_index + FAST_PAXOS_DATA_LEN..];
+    let payload = &mut ctx.data_slice[payload_index + FAST_PAXOS_DATA_LEN..];
 
     if payload.len() < MAX_DATA_LEN {
         return Ok(XDP_PASS as i32);
@@ -381,8 +361,7 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
 
 #[inline(always)]
 fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
-    let data_slice = obj.data_slice_mut(ctx);
-    let mut payload = &mut data_slice[payload_index..];
+    let mut payload = &mut ctx.data_slice[payload_index..];
 
     if payload.len() <= FAST_PAXOS_DATA_LEN + size_of::<u64>() {
         return Ok(XDP_PASS as i32);
@@ -442,20 +421,19 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
     payload = &mut payload[size as usize..];
 
     let useless_len = payload.len() as u16;
-    let new_len = ctx.data_length as u16 - useless_len;
+    let new_len = ctx.data_length() as u16 - useless_len;
 
     let eth_header = obj.eth_header(ctx);
-    let ip_header = obj.ip_header(ctx);
-    let udp_header = obj.udp_header(ctx);
-
     swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
 
     // update the port
+    let udp_header = obj.udp_header(ctx);
     udp_header.source = udp_header.dest;
     udp_header.dest = leader_info.port;
     udp_header.check = 0;
     udp_header.len = new_len.to_be();
 
+    let ip_header = obj.ip_header(ctx);
     ip_header.tot_len = (new_len + size_of::<iphdr>() as u16).to_be();
     ip_header.saddr = ip_header.daddr;
     ip_header.daddr = leader_info.addr;
@@ -463,7 +441,10 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
 
     // FIX: need to consider the positive offset
     // but the original code check the length before adjust the tail
-    if obj.bpf_xdp_adjust_tail(ctx, new_len as i32 - ctx.data_length as i32) != 0 {
+    if obj
+        .bpf_xdp_adjust_tail(ctx, new_len as i32 - ctx.data_length() as i32)
+        .is_ok()
+    {
         bpf_printk!(obj, "adjust tail failed\n");
         return Ok(XDP_DROP as i32);
     }
@@ -474,9 +455,8 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
 #[inline(always)]
 fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
     // payload_index = header_len + MAGIC_LEN + size_of::<u64>()
-    let data_slice = obj.data_slice_mut(ctx);
-    let mut payload = &mut data_slice[payload_index..];
-    let mut len = payload.len();
+    let payload = &mut ctx.data_slice[payload_index..];
+    let len = payload.len();
 
     if len <= FAST_PAXOS_DATA_LEN {
         return Ok(XDP_DROP as i32);
@@ -493,7 +473,7 @@ fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resul
         .bpf_map_lookup_elem(&map_quorum, &idx)
         .ok_or_else(|| 0i32)?;
 
-    if (entry.view != msg_view || entry.opnum != msg_opnum) {
+    if entry.view != msg_view || entry.opnum != msg_opnum {
         return Ok(XDP_PASS as i32);
     }
 
@@ -504,7 +484,10 @@ fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resul
     }
 
     // *context = (void *)payload + typeLen - data;
-    if obj.bpf_xdp_adjust_tail(ctx, -(payload_index as i32)) != 0 {
+    if obj
+        .bpf_xdp_adjust_tail(ctx, -(payload_index as i32))
+        .is_ok()
+    {
         bpf_printk!(obj, "adjust tail failed\n");
         return Ok(XDP_DROP as i32);
     }

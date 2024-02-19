@@ -1,3 +1,4 @@
+#![allow(unused)]
 //
 // Software Name : fast-paxos
 // SPDX-FileCopyrightText: Copyright (c) 2022 Orange
