@@ -445,7 +445,7 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
     // but the original code check the length before adjust the tail
     if obj
         .bpf_xdp_adjust_tail(ctx, new_len as i32 - ctx.data_length() as i32)
-        .is_ok()
+        .is_err()
     {
         bpf_printk!(obj, "adjust tail failed\n");
         return Ok(XDP_DROP as i32);
@@ -488,7 +488,7 @@ fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resul
     // *context = (void *)payload + typeLen - data;
     if obj
         .bpf_xdp_adjust_tail(ctx, -(payload_index as i32))
-        .is_ok()
+        .is_err()
     {
         bpf_printk!(obj, "adjust tail failed\n");
         return Ok(XDP_DROP as i32);
