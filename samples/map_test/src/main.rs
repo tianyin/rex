@@ -88,6 +88,7 @@ fn map_test2(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
+#[inline(always)]
 fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     map_test1(obj).map_err(|e| {
         bpf_printk!(obj, "map_test1 failed with %lld.\n", e as u64);

@@ -324,6 +324,7 @@ fn write_pkt_reply(
     Ok(XDP_TX as i32)
 }
 
+#[inline(always)]
 fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let header_len = size_of::<ethhdr>()
         + size_of::<iphdr>()
@@ -450,6 +451,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     return Ok(TC_ACT_OK as i32);
 }
 
+#[inline(always)]
 fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let header_len = size_of::<iphdr>()
         + size_of::<eth_header>()

@@ -27,18 +27,22 @@ fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
     Ok(0)
 }
 
+#[inline(always)]
 fn trace_enter_open(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &enter_open_map)
 }
 
+#[inline(always)]
 fn trace_enter_open_at(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &enter_open_map)
 }
 
+#[inline(always)]
 fn trace_enter_exit(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &exit_open_map)
 }
 
+#[inline(always)]
 fn trace_enter_exit_at(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &exit_open_map)
 }

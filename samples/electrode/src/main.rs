@@ -31,6 +31,7 @@ macro_rules! swap_field {
 // NOTE: function calls are not allowed while holding a lock....
 // Cause Paxos is in fact a serialized protocol, we limit our to one-core, then no lock is needed.
 
+#[inline(always)]
 fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
     let ip_header = obj.ip_header(ctx);
@@ -64,6 +65,7 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     Ok(XDP_PASS as i32)
 }
 
+#[inline(always)]
 fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let mut header_len = size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
 

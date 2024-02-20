@@ -8,6 +8,7 @@ use inner_unikernel_rt::entry_link;
 use inner_unikernel_rt::tracepoint::*;
 use inner_unikernel_rt::Result;
 
+#[inline(always)]
 fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     let option_task = obj.bpf_get_current_task();
     if let Some(task) = option_task {

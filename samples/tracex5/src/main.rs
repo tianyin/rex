@@ -62,6 +62,7 @@ pub fn func_sys_mmap(obj: &kprobe, _: &pt_regs) -> Result {
 }
 
 #[allow(non_upper_case_globals)]
+#[inline(always)]
 fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     match ctx.rdi() as u32 {
         __NR_read => func_sys_read(obj, ctx),

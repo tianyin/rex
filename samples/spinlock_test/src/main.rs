@@ -36,6 +36,7 @@ fn test2(obj: &tracepoint) {
     }
 }
 
+#[inline(always)]
 fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     test1(obj);
     test2(obj);
