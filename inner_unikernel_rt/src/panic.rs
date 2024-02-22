@@ -129,7 +129,9 @@ impl<'a> CleanupEntries<'a> {
 // TODO: manually optimize
 // The best way to deal with this is probably insert it directly in LLVM IR as
 // an inline asm block
+// For now, use inline(always) to hint the compiler for inlining if LTO is on
 #[no_mangle]
+#[inline(always)]
 unsafe fn __iu_check_stack() {
     // subtract 0x2000 because only 2 pages are supposed to be used by iu progs
     unsafe {
