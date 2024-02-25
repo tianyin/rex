@@ -1,6 +1,5 @@
 // use async_memcached::*;
 use clap::{Parser, Subcommand, ValueEnum};
-use futures::future::join_all;
 use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
 use serde_yaml;
@@ -17,8 +16,11 @@ use std::{collections::HashMap, sync::Arc};
 use rayon::prelude::*;
 use std::net::UdpSocket as StdUdpSocket;
 use tokio::net::UdpSocket;
+use tokio::runtime::Builder;
+use tokio::runtime::Runtime;
 use tub::Pool;
 
+use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -242,32 +244,35 @@ async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
         value_size,
     }) = rx.recv().await
     {
-        // Send
-        let _ = socket.send_to(&buf[..], addr.as_str()).await;
+        let socket_clone = Arc::clone(&socket);
+        tokio::spawn(async move {
+            // Send
+            let _ = socket_clone.send_to(&buf[..], addr.as_str()).await;
 
-        // Then receive
-        let mut buf = [0; BUFFER_SIZE];
-        let my_duration = tokio::time::Duration::from_millis(500);
+            // Then receive
+            let mut buf = [0; BUFFER_SIZE];
+            let my_duration = tokio::time::Duration::from_millis(500);
 
-        if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
-            if !validate {
-                continue;
-            }
-            if let Some(value) = test_dict.get(&key) {
-                let received = String::from_utf8_lossy(&buf[..amt])
-                    .split("VALUE ")
-                    .nth(1)
-                    .unwrap_or_default()[6 + key_size + 1..6 + key_size + value_size + 1]
-                    .to_string();
+            if let Ok(Ok((amt, _))) = timeout(my_duration, socket_clone.recv_from(&mut buf)).await {
+                if !validate {
+                    return;
+                }
+                if let Some(value) = test_dict.get(&key) {
+                    let received = String::from_utf8_lossy(&buf[..amt])
+                        .split("VALUE ")
+                        .nth(1)
+                        .unwrap_or_default()[6 + key_size + 1..6 + key_size + value_size + 1]
+                        .to_string();
 
-                if received != *value.to_string() {
-                    println!(
-                        "response not match key {} buf: {} , value: {}",
-                        key, received, value
-                    );
+                    if received != *value.to_string() {
+                        println!(
+                            "response not match key {} buf: {} , value: {}",
+                            key, received, value
+                        );
+                    }
                 }
             }
-        }
+        });
     }
 }
 
@@ -291,9 +296,12 @@ async fn get_command_benchmark(
     let start = std::time::Instant::now();
 
     // Create the channel
-    let (tx, rx) = mpsc::channel(100000);
+    let (tx, rx) = mpsc::channel(100);
     let socket_clone = Arc::clone(&socket);
     let socket_task = tokio::spawn(socket_task(socket_clone, rx));
+
+    // let metrics = Handle::current().metrics();
+    // let n = metrics.num_workers();
 
     for (key, packet, proto, value) in send_commands {
         // if tcp, use set request
@@ -451,7 +459,7 @@ fn load_test_dict(
     Ok(test_dict)
 }
 
-async fn run_bench() -> Result<(), Box<dyn Error>> {
+fn run_bench() -> Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     let Commands::Bench {
         server_address,
@@ -483,7 +491,15 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
 
     // if memcached server is already imported, skip set memcached value
     if !skip_set {
-        set_memcached_value(test_dict.clone(), server_address.clone(), port.clone()).await?;
+        let rt = Runtime::new()?;
+        let test_dict = test_dict.clone();
+        let server_address = server_address.clone();
+        let port = port.clone();
+        rt.block_on(async move {
+            set_memcached_value(test_dict, server_address, port)
+                .await
+                .unwrap()
+        });
     }
 
     // generate test entries
@@ -530,31 +546,33 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
     let start_time = std::time::SystemTime::now();
 
     for _ in 0..threads {
+        let rt = Builder::new_current_thread().enable_all().build()?;
         let test_dict = Arc::clone(&test_dict);
         let server_address = server_address.clone();
         let port = port.clone();
         let send_commands = send_commands_vec.pop().unwrap();
-        let handle = tokio::spawn(async move {
-            match get_command_benchmark(
-                test_dict,
-                send_commands,
-                server_address,
-                port,
-                validate,
-                key_size,
-                value_size,
-            )
-            .await
-            {
-                Ok(_) => (),
-                Err(e) => eprintln!("Task failed with error: {:?}", e),
-            }
+        let handle = std::thread::spawn(move || {
+            rt.block_on(async move {
+                get_command_benchmark(
+                    test_dict,
+                    send_commands,
+                    server_address,
+                    port,
+                    validate,
+                    key_size,
+                    value_size,
+                )
+                .await
+                .unwrap()
+            })
         });
         handles.push(handle);
     }
     // wait for all tasks to complete
     println!("wait for all tasks to complete");
-    join_all(handles).await;
+    for handle in handles {
+        let _ = handle.join().unwrap();
+    }
 
     let elapsed_time = start_time.elapsed()?.as_secs_f64();
     let throughput = nums as f64 / elapsed_time;
@@ -566,12 +584,11 @@ async fn run_bench() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-#[tokio::main]
-async fn main() -> std::result::Result<(), Box<dyn Error>> {
+fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
     match args.command {
         Commands::Bench { .. } => {
-            run_bench().await?;
+            run_bench()?;
         }
         Commands::GenTestdict {
             key_size,
