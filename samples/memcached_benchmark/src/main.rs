@@ -42,6 +42,7 @@ struct TaskData {
     validate: bool,
     key_size: usize,
     value_size: usize,
+    counter: usize,
 }
 
 #[derive(Parser)]
@@ -233,7 +234,7 @@ fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
     seq_bytes
 }
 
-async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
+async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiver<TaskData>) {
     while let Some(TaskData {
         buf,
         addr,
@@ -242,18 +243,20 @@ async fn socket_task(socket: Arc<UdpSocket>, mut rx: mpsc::Receiver<TaskData>) {
         validate,
         key_size,
         value_size,
+        counter,
     }) = rx.recv().await
     {
-        let socket_clone = Arc::clone(&socket);
+        let socket_pool_clone = Arc::clone(&sockets_pool);
         tokio::spawn(async move {
             // Send
-            let _ = socket_clone.send_to(&buf[..], addr.as_str()).await;
+            let socket: &UdpSocket = &socket_pool_clone[counter & 0x3F];
+            let _ = socket.send_to(&buf[..], addr.as_str()).await;
 
             // Then receive
             let mut buf = [0; BUFFER_SIZE];
             let my_duration = tokio::time::Duration::from_millis(500);
 
-            if let Ok(Ok((amt, _))) = timeout(my_duration, socket_clone.recv_from(&mut buf)).await {
+            if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
                 if !validate {
                     return;
                 }
@@ -287,21 +290,26 @@ async fn get_command_benchmark(
 ) -> Result<(), Box<dyn Error>> {
     // assign client address
     let addr = Arc::new(format!("{}:{}", server_address, port));
-    let socket = UdpSocket::bind("0.0.0.0:0").await?;
-    let socket = Arc::new(socket);
-    // let addr_to: ToSocketAddrs = ToSocketAddrs::to_socket_addrs(addr).unwrap();
+
+    let mut sockets_pool = vec![];
+    for _ in 0..64 {
+        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+        sockets_pool.push(socket);
+    }
+    let sockets_pool = Arc::new(sockets_pool);
 
     let conn = memcache::connect(format!("memcache://{}:{}?timeout=10", server_address, port))?;
 
     let start = std::time::Instant::now();
 
     // Create the channel
-    let (tx, rx) = mpsc::channel(100);
-    let socket_clone = Arc::clone(&socket);
-    let socket_task = tokio::spawn(socket_task(socket_clone, rx));
+    let (tx, rx) = mpsc::channel(500);
+    let socket_task = tokio::spawn(socket_task(sockets_pool, rx));
 
     // let metrics = Handle::current().metrics();
     // let n = metrics.num_workers();
+
+    let mut counter = 0usize;
 
     for (key, packet, proto, value) in send_commands {
         // if tcp, use set request
@@ -309,21 +317,17 @@ async fn get_command_benchmark(
             conn.set(&key, value.as_bytes(), 0)?;
             continue;
         }
-        let send_result = tx
-            .send(TaskData {
-                buf: packet,
-                addr: addr.clone(),
-                key,
-                test_dict: test_dict.clone(),
-                validate,
-                key_size,
-                value_size,
-            })
-            .await;
-        if send_result.is_err() {
-            // The receiver was dropped, break the loop
-            break;
-        }
+        counter = counter.wrapping_add(1);
+        let _send_result = tx.send(TaskData {
+            buf: packet,
+            addr: addr.clone(),
+            key,
+            test_dict: test_dict.clone(),
+            validate,
+            key_size,
+            value_size,
+            counter,
+        });
     }
 
     // Close the channel
