@@ -21,6 +21,8 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
+use tokio_util::task::TaskTracker;
+
 extern crate r2d2_memcache;
 
 const BUFFER_SIZE: usize = 1500;
@@ -235,7 +237,7 @@ fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
     seq_bytes
 }
 
-async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiver<TaskData>) {
+async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiver<TaskData>, tracker: TaskTracker) {
     while let Some(TaskData {
         buf,
         addr,
@@ -248,7 +250,7 @@ async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiv
     }) = rx.recv().await
     {
         let socket_pool_clone = Arc::clone(&sockets_pool);
-        tokio::spawn(async move {
+        tracker.spawn(async move {
             // Send
             let socket: &UdpSocket = &socket_pool_clone[counter & 0x1F];
             let _ = socket.send_to(&buf[..], addr.as_str()).await;
@@ -318,11 +320,15 @@ async fn get_command_benchmark(
         .await
         .expect("TCP memcached connection failed");
 
+    let tracker = TaskTracker::new();
+    let cloned_tracker = tracker.clone();
+
     let start = std::time::Instant::now();
 
     // Create the channel
     let (tx, rx) = mpsc::channel(pipeline);
-    let socket_task = tokio::spawn(socket_task(sockets_pool, rx));
+
+    tracker.spawn(socket_task(sockets_pool, rx, cloned_tracker));
 
     let mut counter = 0usize;
 
@@ -352,7 +358,8 @@ async fn get_command_benchmark(
     drop(tx);
 
     // Wait for the socket task to finish
-    socket_task.await.expect("socket task failed");
+    tracker.close();
+    tracker.wait().await;
 
     let duration = start.elapsed();
     println!("Time elapsed in get_command_benchmark() is: {:?}", duration);
