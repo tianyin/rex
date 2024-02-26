@@ -14,13 +14,10 @@ use std::vec;
 use std::{collections::HashMap, sync::Arc};
 
 use rayon::prelude::*;
-use std::net::UdpSocket as StdUdpSocket;
 use tokio::net::UdpSocket;
 use tokio::runtime::Builder;
 use tokio::runtime::Runtime;
-use tub::Pool;
 
-use tokio::runtime::Handle;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -94,6 +91,10 @@ enum Commands {
         /// skip set memcached value if the data is already imported
         #[arg(long, default_value = "false")]
         skip_set: bool,
+
+        /// bounded mpsc channel for communicating between asynchronous tasks with backpressure
+        #[arg(long, default_value = "200")]
+        pipeline: usize,
 
         /// dict path to load
         #[arg(
@@ -287,6 +288,7 @@ async fn get_command_benchmark(
     validate: bool,
     key_size: usize,
     value_size: usize,
+    pipeline: usize,
 ) -> Result<(), Box<dyn Error>> {
     // assign client address
     let addr = Arc::new(format!("{}:{}", server_address, port));
@@ -303,7 +305,7 @@ async fn get_command_benchmark(
     let start = std::time::Instant::now();
 
     // Create the channel
-    let (tx, rx) = mpsc::channel(500);
+    let (tx, rx) = mpsc::channel(pipeline);
     let socket_task = tokio::spawn(socket_task(sockets_pool, rx));
 
     // let metrics = Handle::current().metrics();
@@ -477,6 +479,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         dict_path,
         dict_entries,
         skip_set,
+        pipeline,
     } = args.command
     else {
         return Err("invalid command".into());
@@ -511,12 +514,6 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
 
     // analyze test entries statistics
     test_entries_statistics(test_entries.clone());
-
-    // UDP:TCP = 30:1 and the total number of clients is 340
-    // generate udp socket pool
-    let _udp_pool: Pool<StdUdpSocket> = (0..328)
-        .map(|_| StdUdpSocket::bind("0.0.0.0:0").unwrap())
-        .into();
 
     // generate tcp connect pool
     let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
@@ -565,6 +562,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
                     validate,
                     key_size,
                     value_size,
+                    pipeline,
                 )
                 .await
                 .unwrap()
