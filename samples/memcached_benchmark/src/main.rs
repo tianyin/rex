@@ -250,7 +250,7 @@ async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiv
         let socket_pool_clone = Arc::clone(&sockets_pool);
         tokio::spawn(async move {
             // Send
-            let socket: &UdpSocket = &socket_pool_clone[counter & 0x3F];
+            let socket: &UdpSocket = &socket_pool_clone[counter & 0x1F];
             let _ = socket.send_to(&buf[..], addr.as_str()).await;
 
             // Then receive
@@ -294,13 +294,29 @@ async fn get_command_benchmark(
     let addr = Arc::new(format!("{}:{}", server_address, port));
 
     let mut sockets_pool = vec![];
-    for _ in 0..64 {
-        let socket = UdpSocket::bind("0.0.0.0:0").await?;
+    for _ in 0..32 {
+        let socket = UdpSocket::bind("0.0.0.0:0")
+            .await
+            .expect("couldn't bind to address");
         sockets_pool.push(socket);
     }
     let sockets_pool = Arc::new(sockets_pool);
 
-    let conn = memcache::connect(format!("memcache://{}:{}?timeout=10", server_address, port))?;
+    // let conn = memcache::connect(format!("memcache://{}:{}?timeout=10", server_address, port))
+    //     .expect("TCP memcached connection failed");
+
+    // let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
+    //     "memcache://{}:{}?timeout=10&tcp_nodelay=true",
+    //     server_address, port
+    // ));
+    // let pool = r2d2_memcache::r2d2::Pool::builder()
+    //     .max_size(10)
+    //     .build(manager)
+    //     .unwrap();
+
+    let mut client = async_memcached::Client::new(format!("{}:{}", server_address, port))
+        .await
+        .expect("TCP memcached connection failed");
 
     let start = std::time::Instant::now();
 
@@ -308,15 +324,15 @@ async fn get_command_benchmark(
     let (tx, rx) = mpsc::channel(pipeline);
     let socket_task = tokio::spawn(socket_task(sockets_pool, rx));
 
-    // let metrics = Handle::current().metrics();
-    // let n = metrics.num_workers();
-
     let mut counter = 0usize;
 
     for (key, packet, proto, value) in send_commands {
         // if tcp, use set request
         if proto == Protocol::Tcp {
-            conn.set(&key, value.as_bytes(), 0)?;
+            client
+                .set(&key, value.as_bytes(), None, None)
+                .await
+                .expect("memcached set command failed");
             continue;
         }
         counter = counter.wrapping_add(1);
@@ -336,7 +352,7 @@ async fn get_command_benchmark(
     drop(tx);
 
     // Wait for the socket task to finish
-    socket_task.await?;
+    socket_task.await.expect("socket task failed");
 
     let duration = start.elapsed();
     println!("Time elapsed in get_command_benchmark() is: {:?}", duration);
