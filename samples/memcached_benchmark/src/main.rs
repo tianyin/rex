@@ -21,6 +21,7 @@ use tokio::runtime::Runtime;
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
+use tokio::runtime::Handle;
 use tokio_util::task::TaskTracker;
 
 extern crate r2d2_memcache;
@@ -237,7 +238,12 @@ fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
     seq_bytes
 }
 
-async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiver<TaskData>, tracker: TaskTracker) {
+async fn socket_task<'a>(
+    sockets_pool: Arc<Vec<UdpSocket>>,
+    mut rx: mpsc::Receiver<TaskData>,
+    tracker: TaskTracker,
+) {
+    let mut cnt = 0u64;
     while let Some(TaskData {
         buf,
         addr,
@@ -250,6 +256,7 @@ async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiv
     }) = rx.recv().await
     {
         let socket_pool_clone = Arc::clone(&sockets_pool);
+        cnt += 1;
         tracker.spawn(async move {
             // Send
             let socket: &UdpSocket = &socket_pool_clone[counter & 0x1F];
@@ -280,6 +287,8 @@ async fn socket_task<'a>(sockets_pool: Arc<Vec<UdpSocket>>, mut rx: mpsc::Receiv
             }
         });
     }
+
+    println!("processed tasks: {}", cnt);
 }
 
 async fn get_command_benchmark(
@@ -331,6 +340,7 @@ async fn get_command_benchmark(
     tracker.spawn(socket_task(sockets_pool, rx, cloned_tracker));
 
     let mut counter = 0usize;
+    let mut handles = vec![];
 
     for (key, packet, proto, value) in send_commands {
         // if tcp, use set request
@@ -342,7 +352,7 @@ async fn get_command_benchmark(
             continue;
         }
         counter = counter.wrapping_add(1);
-        let _send_result = tx.send(TaskData {
+        let send_result = tx.send(TaskData {
             buf: packet,
             addr: addr.clone(),
             key,
@@ -352,6 +362,13 @@ async fn get_command_benchmark(
             value_size,
             counter,
         });
+        handles.push(send_result);
+    }
+
+    for handle in handles {
+        handle.await?;
+        // let metrics = Handle::current().metrics();
+        // let n = metrics.active_tasks_count();
     }
 
     // Close the channel
@@ -565,17 +582,18 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         send_commands_vec.push(send_commands);
     }
 
-    let mut handles = vec![];
-
     let start_time = std::time::SystemTime::now();
 
+    // let rt = Builder::new_multi_thread().enable_all().build()?;
+    let mut handles = vec![];
+
     for _ in 0..threads {
-        let rt = Builder::new_current_thread().enable_all().build()?;
         let test_dict = Arc::clone(&test_dict);
         let server_address = server_address.clone();
         let port = port.clone();
         let send_commands = send_commands_vec.pop().unwrap();
         let handle = std::thread::spawn(move || {
+            let rt = Builder::new_current_thread().enable_all().build().unwrap();
             rt.block_on(async move {
                 get_command_benchmark(
                     test_dict,
@@ -593,15 +611,20 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         });
         handles.push(handle);
     }
+
+    for handle in handles {
+        handle.join().unwrap();
+    }
+
     // wait for all tasks to complete
     println!("wait for all tasks to complete");
-    for handle in handles {
-        let _ = handle.join().unwrap();
-    }
 
     let elapsed_time = start_time.elapsed()?.as_secs_f64();
     let throughput = nums as f64 / elapsed_time;
-    println!("Throughput across all threads: {:.2} reqs/sec", throughput);
+    println!(
+        "Throughput across all threads: {:.2} reqs/sec, elapsed_time {}",
+        throughput, elapsed_time
+    );
 
     // stats
     let stats = server.stats()?;
