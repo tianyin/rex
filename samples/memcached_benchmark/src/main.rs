@@ -16,12 +16,13 @@ use std::{collections::HashMap, sync::Arc};
 use rayon::prelude::*;
 use tokio::net::UdpSocket;
 use tokio::runtime::Builder;
-use tokio::runtime::Runtime;
+// use tokio::runtime::Runtime;
 
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
-use tokio::runtime::Handle;
+// use tokio::runtime::Handle;
+use tokio::task::JoinSet;
 use tokio_util::task::TaskTracker;
 
 extern crate r2d2_memcache;
@@ -171,8 +172,6 @@ fn generate_test_dict_write_to_disk(
     Ok(test_dict)
 }
 
-use tokio::task::JoinSet;
-
 async fn set_memcached_value<'a>(
     test_dict: Arc<HashMap<String, String>>,
     server_address: String,
@@ -218,7 +217,7 @@ async fn set_memcached_value<'a>(
         set.join_next().await;
     }
 
-    println!("Done set memcaced value");
+    println!("Done set memcached value");
 
     Ok(())
 }
