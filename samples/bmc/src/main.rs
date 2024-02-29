@@ -34,6 +34,7 @@ const FNV_OFFSET_BASIS_32: u32 = 2166136261;
 const FNV_PRIME_32: u32 = 16777619;
 // const FNV_PRIME_32: u32 = 5;
 const ETH_ALEN: usize = 6;
+const MEMCACHED_PORT: u16 = 11211;
 
 // TODO: use simple hash function, may need update in the future
 macro_rules! hash_func {
@@ -325,25 +326,90 @@ fn write_pkt_reply(
 }
 
 #[inline(always)]
+fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
+    let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<tcphdr>();
+    let tcp_header = obj.tcp_header(ctx);
+    let port = u16::from_be(tcp_header.dest);
+
+    // start after the tcp header
+    let payload = &ctx.data_slice[header_len..];
+
+    // check if using the memcached port
+    // check if the payload has enough space for a memcached request
+    if port != MEMCACHED_PORT || payload.len() < 4 {
+        return Ok(XDP_PASS as i32);
+    }
+
+    // Calculate the end index ensuring it does not exceed the length
+    let end_index = usize::min(payload.len(), BMC_MAX_KEY_LENGTH);
+    let payload = &payload[..end_index];
+
+    let word = b"set ";
+    let index = payload
+        .windows(word.len())
+        .position(|window| window == word);
+
+    let comm_index = match index {
+        Some(e) => e,
+        None => {
+            return Ok(XDP_PASS as i32);
+        }
+    };
+
+    let mut hash = FNV_OFFSET_BASIS_32;
+
+    let payload = &payload[comm_index + 3..];
+
+    // Find the first index where the byte is not `b' '`
+    let result_index = payload.iter().position(|&x| x != b' ');
+
+    let key_index = match result_index {
+        Some(e) => e,
+        None => {
+            return Ok(XDP_PASS as i32);
+        }
+    };
+
+    let payload = &payload[key_index..];
+
+    payload.iter().take_while(|&&c| c != b' ').for_each(|&c| {
+        hash_func!(hash, c);
+    });
+
+    // get the cache entry
+    let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
+
+    let entry = obj
+        .bpf_map_lookup_elem(&map_kcache, &cache_idx)
+        .ok_or_else(|| 0i32)?;
+    if entry.valid == 1 {
+        let _guard = iu_spinlock_guard::new(&mut entry.lock);
+        entry.valid = 0;
+    }
+
+    Ok(XDP_PASS as i32)
+}
+
+#[inline(always)]
 fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    let header_len = size_of::<ethhdr>()
-        + size_of::<iphdr>()
-        + size_of::<udphdr>()
-        + size_of::<memcached_udp_header>();
     let ip_header_mut = obj.ip_header(ctx);
 
     match u8::from_be(ip_header_mut.protocol) as u32 {
         IPPROTO_TCP => {
-            // NOTE: currently we only take care of UDP memcached
+            return bmc_invalidate_cache(obj, ctx);
         }
         IPPROTO_UDP => {
+            let header_len = size_of::<ethhdr>()
+                + size_of::<iphdr>()
+                + size_of::<udphdr>()
+                + size_of::<memcached_udp_header>();
             let udp_header = obj.udp_header(ctx);
             let port = u16::from_be(udp_header.dest);
             let payload = &ctx.data_slice[header_len..];
 
             // check if using the memcached port
             // check if the payload has enough space for a memcached request
-            if port != 11211 || payload.len() < 4 {
+            if port != MEMCACHED_PORT || payload.len() < 4 {
                 return Ok(XDP_PASS as i32);
             }
 
@@ -448,7 +514,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         // TODO: add stats here
     }
 
-    return Ok(TC_ACT_OK as i32);
+    Ok(TC_ACT_OK as i32)
 }
 
 #[inline(always)]
@@ -472,7 +538,7 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
             let payload = &skb.data_slice[header_len..];
 
             // confirm if using the memcached port
-            if src_port != 11211 && payload.len() < 6 {
+            if src_port != MEMCACHED_PORT && payload.len() < 6 {
                 return Ok(TC_ACT_OK as i32);
             }
 
