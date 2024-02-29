@@ -171,26 +171,52 @@ fn generate_test_dict_write_to_disk(
     Ok(test_dict)
 }
 
-async fn set_memcached_value(
+use tokio::task::JoinSet;
+
+async fn set_memcached_value<'a>(
     test_dict: Arc<HashMap<String, String>>,
     server_address: String,
     port: String,
 ) -> Result<(), MemcacheError> {
-    let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
-        "memcache://{}:{}",
-        server_address, port
-    ));
-    let pool = r2d2_memcache::r2d2::Pool::builder()
-        .max_size(100)
-        .build(manager)
-        .unwrap();
+    let addr = format!("{}:{}", server_address, port);
+    let mut sockets_pool = vec![];
+    for _ in 0..64 {
+        let client = async_memcached::Client::new(addr.as_str())
+            .await
+            .expect("TCP memcached connection failed");
+        sockets_pool.push(Arc::new(tokio::sync::Mutex::new(client)));
+    }
+    let sockets_pool = Arc::new(sockets_pool);
 
-    test_dict.par_iter().for_each(|(key, value)| {
-        let conn = pool.get().unwrap();
-        conn.set(key, value.as_bytes(), 0).unwrap();
-        let result: String = conn.get(key).unwrap().unwrap();
-        assert!(result == *value);
-    });
+    let mut count = 0usize;
+
+    let mut set = JoinSet::new();
+
+    for (key, value) in test_dict.iter() {
+        let sockets_pool_clone = sockets_pool.clone();
+        let key_clone = key.clone();
+        let value_clone = value.clone();
+        set.spawn(async move {
+            let mut socket = sockets_pool_clone[count & 0x3F].lock().await;
+
+            socket
+                .set(&key_clone, value_clone.as_bytes(), None, None)
+                .await
+                .expect("memcached set command failed");
+
+            let ret = socket
+                .get(&key_clone)
+                .await
+                .expect("memcached get command failed");
+
+            let get_value = ret.unwrap();
+            assert_eq!(get_value.data, value_clone.as_bytes());
+        });
+        count += 1;
+    }
+    while !set.is_empty() {
+        set.join_next().await;
+    }
 
     println!("Done set memcaced value");
 
@@ -538,7 +564,12 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
 
     // if memcached server is already imported, skip set memcached value
     if !skip_set {
-        let rt = Runtime::new()?;
+        let rt = Builder::new_multi_thread()
+            .enable_all()
+            .worker_threads(512)
+            .event_interval(31)
+            .build()?;
+
         let test_dict = test_dict.clone();
         let server_address = server_address.clone();
         let port = port.clone();
