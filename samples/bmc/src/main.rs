@@ -77,6 +77,18 @@ struct memcached_key {
     len: u32,
 }
 
+#[repr(C)]
+pub struct bmc_stats {
+    get_recv_count: u32,
+    set_recv_count: u32,
+    get_resp_count: u32,
+    hit_misprediction: u32,
+    hit_count: u32,
+    miss_count: u32,
+    update_count: u32,
+    invalidation_count: u32,
+}
+
 struct parsing_context {
     key_count: u32,
     current_key: u32,
@@ -100,6 +112,8 @@ MAP_DEF!(
     BMC_MAX_KEY_IN_PACKET,
     0
 );
+
+MAP_DEF!(map_stats, u32, bmc_stats, BPF_MAP_TYPE_PERCPU_ARRAY, 1, 0);
 
 // payload after header and 'get '
 #[inline(always)]
@@ -166,14 +180,11 @@ fn hash_key(
             pctx.key_count += 1;
         } else {
             // cache miss
-            // TODO: add stats here
-            // 		bpf_spin_unlock(&entry->lock);
-            // 		struct bmc_stats *stats =
-            // 			bpf_map_lookup_elem(&map_stats, &zero);
-            // 		if (!stats) {
-            // 			return XDP_PASS;
-            // 		}
-            // 		stats->miss_count++;
+            let zero = 0;
+            let stats = obj
+                .bpf_map_lookup_elem(&map_stats, &zero)
+                .ok_or_else(|| 0i32)?;
+            stats.miss_count += 1;
         }
 
         if done_parsing {
@@ -277,6 +288,10 @@ fn write_pkt_reply(
     if cache_hit == 1 {
         // bpf_printk!(obj, "cache hit\n");
         let _off = 0usize;
+        let stats = obj
+            .bpf_map_lookup_elem(&map_stats, &0)
+            .ok_or_else(|| 0i32)?;
+        stats.hit_count += 1;
 
         // bpf_printk!(obj, "length before %d\n", ctx.data_length as u64);
         // const U64_SIZE: usize = size_of::<u64>();
@@ -383,8 +398,12 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         .ok_or_else(|| 0i32)?;
     if entry.valid == 1 {
+        let stats = obj
+            .bpf_map_lookup_elem(&map_stats, &0)
+            .ok_or_else(|| 0i32)?;
         let _guard = iu_spinlock_guard::new(&mut entry.lock);
         entry.valid = 0;
+        stats.invalidation_count += 1;
     }
 
     Ok(XDP_PASS as i32)
@@ -546,6 +565,11 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
             if !payload.starts_with(b"VALUE ") {
                 return Ok(TC_ACT_OK as i32);
             }
+
+            let stats = obj
+                .bpf_map_lookup_elem(&map_stats, &0)
+                .ok_or_else(|| 0i32)?;
+            stats.get_resp_count += 1;
 
             // update cache map based on the packet
             bmc_update_cache(obj, skb, payload, header_len)?;

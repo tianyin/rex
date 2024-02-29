@@ -30,6 +30,17 @@ struct bpf_progs_desc {
 	struct bpf_program *prog;
 };
 
+struct bmc_stats {
+	unsigned int get_recv_count;			// Number of GET command received
+	unsigned int set_recv_count;			// Number of SET command received
+	unsigned int get_resp_count;			// Number of GET command reply analyzed
+	unsigned int hit_misprediction;			// Number of keys that were expected to hit but did not (either because of a hash colision or a race with an invalidation/update)
+	unsigned int hit_count;				// Number of HIT in kernel cache
+	unsigned int miss_count;			// Number of MISS in kernel cache
+	unsigned int update_count;			// Number of kernel cache updates
+	unsigned int invalidation_count;		// Number of kernel cache entry invalidated
+};
+
 static struct bpf_progs_desc progs[] = {
 	{ "xdp_rx_filter", BPF_PROG_TYPE_XDP, 0, -1, NULL },
 	// {"bmc_hash_keys", BPF_PROG_TYPE_XDP, 0, BMC_PROG_XDP_HASH_KEYS, NULL},
@@ -51,6 +62,46 @@ static int libbpf_print_fn(enum libbpf_print_level level, const char *format,
 	if (level == LIBBPF_DEBUG || level == LIBBPF_INFO) {
 		return vfprintf(stderr, format, args);
 	}
+	return 0;
+}
+
+int write_stats_to_file(char *filename, int map_fd)
+{
+	struct bmc_stats stats[nr_cpus];
+	struct bmc_stats aggregate_stats;
+	__u32 key = 0;
+	FILE *fp;
+
+	memset(&aggregate_stats, 0, sizeof(struct bmc_stats));
+
+	assert(bpf_map_lookup_elem(map_fd, &key, stats) == 0);
+	for (int i = 0; i < nr_cpus; i++) {
+		aggregate_stats.get_recv_count += stats[i].get_recv_count;
+		aggregate_stats.set_recv_count += stats[i].set_recv_count;
+		aggregate_stats.get_resp_count += stats[i].get_resp_count;
+		aggregate_stats.hit_misprediction += stats[i].hit_misprediction;
+		aggregate_stats.hit_count += stats[i].hit_count;
+		aggregate_stats.miss_count += stats[i].miss_count;
+		aggregate_stats.update_count += stats[i].update_count;
+		aggregate_stats.invalidation_count += stats[i].invalidation_count;
+	}
+
+	fp = fopen(STATS_PATH, "w+");
+	if (fp == NULL) {
+		fprintf(stderr, "Error: failed to write stats to file '%s'\n", filename);
+		return -1;
+	}
+
+	fprintf(fp, "STAT get_recv_count %u\n", aggregate_stats.get_recv_count);
+	fprintf(fp, "STAT set_recv_count %u\n", aggregate_stats.set_recv_count);
+	fprintf(fp, "STAT get_resp_count %u\n", aggregate_stats.get_resp_count);
+	fprintf(fp, "STAT get_key_count %u\n", aggregate_stats.hit_misprediction);
+	fprintf(fp, "STAT hit_count %u\n", aggregate_stats.hit_count);
+	fprintf(fp, "STAT miss_count %u\n", aggregate_stats.miss_count);
+	fprintf(fp, "STAT update_count %u\n", aggregate_stats.update_count);
+	fprintf(fp, "STAT invalidation_count %u\n", aggregate_stats.invalidation_count);
+
+	fclose(fp);
 	return 0;
 }
 
@@ -205,6 +256,15 @@ int main(int argc, char *argv[])
 	//     }
 	//     return -1;
 	// }
+	
+	int map_stats_fd = bpf_object__find_map_fd_by_name(obj, "map_stats");
+	if (map_stats_fd < 0) {
+		fprintf(stderr, "Error: bpf_object__find_map_fd_by_name failed\n");
+		return 1;
+	}
+
+	printf("Writing stats to file\n");
+	write_stats_to_file(STATS_PATH, map_stats_fd);
 
 	for (int i = 0; i < interface_count; i++) {
 		bpf_set_link_xdp_fd(interfaces_idx[i], -1, xdp_flags);
