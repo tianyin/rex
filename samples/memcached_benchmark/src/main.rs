@@ -2,6 +2,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
+use serde_json::json;
 use serde_yaml;
 use zstd;
 
@@ -658,7 +659,8 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
 
     // stats
     let stats = server.stats()?;
-    println!("stats: {:?}", stats);
+    let obj = json!(stats);
+    println!("{}", serde_json::to_string_pretty(&obj).unwrap());
     Ok(())
 }
 
