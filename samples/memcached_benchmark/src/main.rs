@@ -29,6 +29,7 @@ use tokio_util::task::TaskTracker;
 extern crate r2d2_memcache;
 
 const BUFFER_SIZE: usize = 1500;
+const SEED: u64 = 12312;
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
 enum Protocol {
@@ -151,6 +152,18 @@ fn generate_memcached_test_dict(
         .collect()
 }
 
+/// Generate test dict and write to disk
+/// # Arguments
+/// * `key_size` - key size
+/// * `value_size` - value size
+/// * `nums` - number of entries
+/// * `dict_path` - dict path to store
+/// # Returns
+/// * `Result` - Result<HashMap<String, String>, std::io::Error>
+/// # Example
+/// ```rust
+/// let test_dict = generate_test_dict_write_to_disk(16, 32, 100000, "test_dict.yml.zst");
+/// ```
 fn generate_test_dict_write_to_disk(
     key_size: usize,
     value_size: usize,
@@ -339,18 +352,6 @@ async fn get_command_benchmark(
     }
     let sockets_pool = Arc::new(sockets_pool);
 
-    // let conn = memcache::connect(format!("memcache://{}:{}?timeout=10", server_address, port))
-    //     .expect("TCP memcached connection failed");
-
-    // let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
-    //     "memcache://{}:{}?timeout=10&tcp_nodelay=true",
-    //     server_address, port
-    // ));
-    // let pool = r2d2_memcache::r2d2::Pool::builder()
-    //     .max_size(10)
-    //     .build(manager)
-    //     .unwrap();
-
     let mut client = async_memcached::Client::new(format!("{}:{}", server_address, port))
         .await
         .expect("TCP memcached connection failed");
@@ -474,11 +475,12 @@ fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String, Protocol)>>)
     println!("tcp count: {}, udp count: {}", tcp_count, udp_count);
 }
 
+use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 fn generate_test_entries<'a>(
     test_dict: &'a Arc<HashMap<String, String>>,
     nums: usize,
 ) -> Vec<(&'a String, &'a String, Protocol)> {
-    let mut rng = rand::thread_rng();
+    let mut rng = ChaCha8Rng::seed_from_u64(SEED);
     let zipf = zipf::ZipfDistribution::new(test_dict.len() - 1, 0.99).unwrap();
 
     let mut counter: usize = 0;
@@ -657,9 +659,31 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         throughput, elapsed_time
     );
 
+    macro_rules! build_stats_map {
+    ($result:expr, $($key:expr),*) => {{
+        let mut map = ::std::collections::HashMap::new();
+        $(
+            map.insert($key, &$result[$key]);
+        )*
+        map
+    }};
+}
+
     // stats
     let stats = server.stats()?;
-    let obj = json!(stats);
+    let result = &stats[0].1;
+    let output = build_stats_map!(
+        result,
+        "cmd_get",
+        "cmd_set",
+        "get_hits",
+        "get_misses",
+        "bytes_read",
+        "bytes_written",
+        "curr_items",
+        "total_items"
+    );
+    let obj = json!(output);
     println!("{}", serde_json::to_string_pretty(&obj).unwrap());
     Ok(())
 }
