@@ -2,6 +2,7 @@
 use clap::{Parser, Subcommand, ValueEnum};
 use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
+use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 use serde_json::json;
 use serde_yaml;
 use zstd;
@@ -19,6 +20,7 @@ use tokio::net::UdpSocket;
 use tokio::runtime::Builder;
 // use tokio::runtime::Runtime;
 
+use serde::{Deserialize, Serialize};
 use tokio::sync::mpsc;
 use tokio::time::timeout;
 
@@ -26,12 +28,11 @@ use tokio::time::timeout;
 use tokio::task::JoinSet;
 use tokio_util::task::TaskTracker;
 
-extern crate r2d2_memcache;
-
 const BUFFER_SIZE: usize = 1500;
 const SEED: u64 = 12312;
+const BENCH_ENTRIES_PATH: &str = "bench_entries.yml.zst";
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq)]
+#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 enum Protocol {
     Udp,
     Tcp,
@@ -93,6 +94,10 @@ enum Commands {
         /// number of dict entries to generate
         #[arg(short, long, default_value = "1000000")]
         dict_entries: usize,
+
+        /// load the prepared test_entries from disk
+        #[arg(long, default_value = "false")]
+        load_bench_entries: bool,
 
         /// skip set memcached value if the data is already imported
         #[arg(long, default_value = "false")]
@@ -422,10 +427,8 @@ fn get_server(
     }
 }
 
-fn write_hashmap_to_file(
-    hashmap: &HashMap<String, String>,
-    file_path: &str,
-) -> std::io::Result<()> {
+// Make the function generic over `T` where `T: Serialize`
+fn write_hashmap_to_file<T: Serialize>(hashmap: &T, file_path: &str) -> std::io::Result<()> {
     // Serialize the hashmap to a JSON string
     let serialized = serde_yaml::to_string(hashmap).expect("Failed to serialize");
 
@@ -475,7 +478,14 @@ fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String, Protocol)>>)
     println!("tcp count: {}, udp count: {}", tcp_count, udp_count);
 }
 
-use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
+fn load_bench_entries_from_disk() -> Vec<(String, String, Protocol)> {
+    let file = File::open(BENCH_ENTRIES_PATH).unwrap();
+    let decoder = zstd::stream::read::Decoder::new(file).unwrap();
+    let reader = BufReader::new(decoder);
+    let test_entries: Vec<(String, String, Protocol)> = serde_yaml::from_reader(reader).unwrap();
+    test_entries
+}
+
 fn generate_test_entries<'a>(
     test_dict: &'a Arc<HashMap<String, String>>,
     nums: usize,
@@ -545,6 +555,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         threads,
         protocol,
         dict_path,
+        load_bench_entries,
         dict_entries,
         skip_set,
         pipeline,
@@ -582,21 +593,30 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         });
     }
 
-    // generate test entries
-    let test_entries = Arc::new(generate_test_entries(&test_dict, nums));
+    let test_dict_path = std::path::Path::new(BENCH_ENTRIES_PATH);
+    let test_entries_tmp = if load_bench_entries && test_dict_path.exists() {
+        load_bench_entries_from_disk()
+    } else {
+        vec![]
+    };
+
+    let test_entries = if test_entries_tmp.is_empty() {
+        let test_entries = generate_test_entries(&test_dict, nums);
+        if load_bench_entries {
+            write_hashmap_to_file(&test_entries, BENCH_ENTRIES_PATH)?;
+        }
+        test_entries
+    } else {
+        // convert to Vec<(&String, &String, Protocol)>
+        test_entries_tmp
+            .iter()
+            .map(|(key, value, proto)| (key, value, *proto))
+            .collect()
+    };
+    let test_entries = Arc::new(test_entries);
 
     // analyze test entries statistics
     test_entries_statistics(test_entries.clone());
-
-    // generate tcp connect pool
-    let manager = r2d2_memcache::MemcacheConnectionManager::new(format!(
-        "memcache://{}:{}",
-        server_address, port
-    ));
-    let _tcp_pool = r2d2_memcache::r2d2::Pool::builder()
-        .max_size(11)
-        .build(manager)
-        .unwrap();
 
     let mut send_commands_vec = Vec::new();
 

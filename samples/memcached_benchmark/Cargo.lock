@@ -496,20 +496,6 @@ checksum = "90ed8c1e510134f979dbc4f070f87d4313098b704861a105fe34231c70a3901c"
 
 [[package]]
 name = "memcache"
-version = "0.15.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abda83a771818756924a798597a604cb33fde8ad61b49797c353f4505c4a9a83"
-dependencies = [
- "byteorder",
- "enum_dispatch",
- "openssl",
- "r2d2",
- "rand",
- "url",
-]
-
-[[package]]
-name = "memcache"
 version = "0.17.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "0396084c5d5e2ef2c480a51933b56e9673898f14657212eebbffcbcc12c7153a"
@@ -528,8 +514,7 @@ version = "0.1.0"
 dependencies = [
  "async-memcached",
  "clap",
- "memcache 0.17.2",
- "r2d2-memcache",
+ "memcache",
  "rand",
  "rand_chacha",
  "rayon",
@@ -756,16 +741,6 @@ dependencies = [
  "log",
  "parking_lot",
  "scheduled-thread-pool",
-]
-
-[[package]]
-name = "r2d2-memcache"
-version = "0.6.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "74b9d7bc44a11909bffe6bf1e4bddae23215ecd6186695e4766d6b57d819f640"
-dependencies = [
- "memcache 0.15.2",
- "r2d2",
 ]
 
 [[package]]

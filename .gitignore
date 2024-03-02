@@ -6,5 +6,6 @@ samples/*/loader
 samples/*/entry
 samples/*/.cache
 test_dict.yml.zst
+bench_entries.yml.zst
 compile_commands.json
 
