@@ -10,12 +10,13 @@
 #include <sys/resource.h>
 #include <time.h>
 #include <unistd.h>
+#include <assert.h>
 
 #include "libiu.h"
 
 #define BPF_SYSFS_ROOT "/sys/fs/bpf"
 
-#define STATS_PATH "/tmp/bmc_stats.txt"
+#define STATS_PATH "/tmp/rust_bmc_stats.txt"
 #define STATS_INTERVAL_PATH "/tmp/bmc_stats_interval.txt"
 
 #define EXE "./target/x86_64-unknown-linux-gnu/release/bmc"

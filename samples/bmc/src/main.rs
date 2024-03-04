@@ -315,7 +315,7 @@ fn write_pkt_reply(
         }
         // bpf_printk!(obj, "length after %d\n", ctx.data_length as u64);
 
-        // FIX: currently only support single key and no check
+        // INFO: currently only support single key and no check
 
         // udp check not required
         let ip_header_mut = obj.ip_header(ctx);
@@ -401,9 +401,9 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
         let stats = obj
             .bpf_map_lookup_elem(&map_stats, &0)
             .ok_or_else(|| 0i32)?;
+        stats.invalidation_count += 1;
         let _guard = iu_spinlock_guard::new(&mut entry.lock);
         entry.valid = 0;
-        stats.invalidation_count += 1;
     }
 
     Ok(XDP_PASS as i32)
