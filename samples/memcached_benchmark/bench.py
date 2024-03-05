@@ -1,8 +1,23 @@
 import csv
+import resource
 import subprocess
 
-from tqdm import tqdm
 import numpy as np
+from tqdm import tqdm
+
+def increase_fd_limit(new_limit):
+    # Get the current soft and hard limits
+    soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
+    print(f"Current Limits - Soft: {soft_limit}, Hard: {hard_limit}")
+
+    # Check if the new limit is within the permissible range
+    if new_limit <= hard_limit:
+        # Set the new soft limit
+        resource.setrlimit(resource.RLIMIT_NOFILE, (new_limit, hard_limit))
+        soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+        print(f"File descriptor soft_limit increased to { soft_limit }")
+    else:
+        print("Requested limit exceeds the hard limit. Cannot increase beyond the hard limit.")
 
 def run_bench():
     # cmd = 'cargo run -r -- bench -n 200000000 -t 40 -s 10.0.1.1 -p 11211'.split()
@@ -57,6 +72,7 @@ def run_rust(nr_threads):
 def main():
     max_cpu = 8
     rounds = 1
+    increase_fd_limit(102400)
 
     data = {
         'vanilla': [[0 for j in range(rounds)] for i in range(max_cpu)],
