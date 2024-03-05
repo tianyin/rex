@@ -39,7 +39,7 @@ const MEMCACHED_PORT: u16 = 11211;
 // TODO: use simple hash function, may need update in the future
 macro_rules! hash_func {
     ($hash:expr, $value:expr) => {
-        $hash = $hash.wrapping_pow($value as u32);
+        $hash ^= $value as u32;
         $hash = $hash.wrapping_mul(FNV_PRIME_32);
     };
 }
