@@ -5,6 +5,17 @@ import subprocess
 import numpy as np
 from tqdm import tqdm
 
+class MemcachedCtx:
+    def __init__(self, start, stop):
+        self.start = start
+        self.stop = stop
+
+    def __enter__(self):
+        subprocess.run(self.start, check=True, capture_output=True)
+
+    def __exit__(self, *args):
+        subprocess.run(self.stop, check=True, capture_output=True)
+
 def increase_fd_limit(new_limit):
     # Get the current soft and hard limits
     soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
@@ -37,9 +48,8 @@ def run_vanilla(nr_threads):
     stop = [*'ssh 10.0.0.3 -t'.split(),
             'sudo /root/stop-memcached.sh %d' % nr_threads]
 
-    subprocess.run(start, check=True, capture_output=True)
-    result = run_bench()
-    subprocess.run(stop, check=True, capture_output=True)
+    with MemcachedCtx(start, stop):
+        result = run_bench()
 
     return result
 
@@ -50,9 +60,8 @@ def run_bpf(nr_threads):
     stop = [*'ssh 10.0.0.3 -t'.split(),
             'sudo /root/detach-bpf.sh %d' % nr_threads]
 
-    subprocess.run(start, check=True, capture_output=True)
-    result = run_bench()
-    subprocess.run(stop, check=True, capture_output=True)
+    with MemcachedCtx(start, stop):
+        result = run_bench()
 
     return result
 
@@ -63,9 +72,8 @@ def run_rust(nr_threads):
     stop = [*'ssh 10.0.0.3 -t'.split(),
             'sudo /root/detach-rust.sh %d' % nr_threads]
 
-    subprocess.run(start, check=True, capture_output=True)
-    result = run_bench()
-    subprocess.run(stop, check=True, capture_output=True)
+    with MemcachedCtx(start, stop):
+        result = run_bench()
 
     return result
 
