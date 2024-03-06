@@ -343,55 +343,44 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
         return Ok(XDP_PASS as i32);
     }
 
-    // Calculate the end index ensuring it does not exceed the length
-    let end_index = usize::min(payload.len(), BMC_MAX_KEY_LENGTH);
-    let payload = &payload[..end_index];
-
     let word = b"set ";
-    let index = payload
-        .windows(word.len())
-        .position(|window| window == word);
+    let windows_it = payload.windows(word.len());
 
-    let comm_index = match index {
-        Some(e) => e,
-        None => {
-            return Ok(XDP_PASS as i32);
+    let set_iter =
+        windows_it
+            .enumerate()
+            .filter_map(|(index, value)| if value == word { Some(index) } else { None });
+
+    for index in set_iter {
+        let stats = obj.bpf_map_lookup_elem(&map_stats, &0).ok_or(0i32)?;
+        stats.set_recv_count += 1;
+
+        let mut hash = FNV_OFFSET_BASIS_32;
+        let payload = &payload[index + 4..];
+
+        // limit the size of key
+        payload.iter().take_while(|&&c| c != b' ').for_each(|&c| {
+            hash_func!(hash, c);
+        });
+
+        // get the cache entry
+        let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
+
+        let entry = obj
+            .bpf_map_lookup_elem(&map_kcache, &cache_idx)
+            .ok_or(0i32)?;
+        if entry.valid == 1 {
+            stats.invalidation_count += 1;
+            // bpf_printk!(
+            //     obj,
+            //     "cache_idx %d, hash %x, key %s",
+            //     cache_idx as u64,
+            //     hash as u64,
+            //     payload[0..16].as_ptr() as u64
+            // );
+            let _guard = iu_spinlock_guard::new(&mut entry.lock);
+            entry.valid = 0;
         }
-    };
-
-    let mut hash = FNV_OFFSET_BASIS_32;
-
-    let payload = &payload[comm_index + 3..];
-
-    // Find the first index where the byte is not `b' '`
-    let result_index = payload.iter().position(|&x| x != b' ');
-
-    let key_index = match result_index {
-        Some(e) => e,
-        None => {
-            return Ok(XDP_PASS as i32);
-        }
-    };
-
-    let payload = &payload[key_index..];
-
-    payload.iter().take_while(|&&c| c != b' ').for_each(|&c| {
-        hash_func!(hash, c);
-    });
-
-    // get the cache entry
-    let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
-
-    let entry = obj
-        .bpf_map_lookup_elem(&map_kcache, &cache_idx)
-        .ok_or_else(|| 0i32)?;
-    if entry.valid == 1 {
-        let stats = obj
-            .bpf_map_lookup_elem(&map_stats, &0)
-            .ok_or_else(|| 0i32)?;
-        stats.invalidation_count += 1;
-        let _guard = iu_spinlock_guard::new(&mut entry.lock);
-        entry.valid = 0;
     }
 
     Ok(XDP_PASS as i32)
@@ -425,6 +414,11 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
                 return Ok(XDP_PASS as i32);
             }
 
+            let stats = obj
+                .bpf_map_lookup_elem(&map_stats, &0)
+                .ok_or(XDP_PASS as i32)?;
+            stats.get_recv_count += 1;
+
             let mut off = 4;
             // move offset to the start of the first key
             while off < BMC_MAX_PACKET_LENGTH && off + 1 < payload.len() && payload[off] == b' ' {
@@ -441,7 +435,7 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
             // bpf_printk!(obj, "offset is %d\n", off as u64);
             // TODO: not sure if there is a better way
-            return hash_key(obj, ctx, &mut pctx, off);
+            return hash_key(obj, ctx, &mut pctx, off, stats);
         }
         _ => {}
     };
@@ -451,13 +445,17 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
 // payload after all headers
 #[inline(always)]
-fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len: usize) -> Result {
+fn bmc_update_cache(
+    obj: &sched_cls,
+    skb: &__sk_buff,
+    payload: &[u8],
+    header_len: usize,
+    stats: &mut bmc_stats,
+) -> Result {
     let mut hash = FNV_OFFSET_BASIS_32;
 
     let mut off = 6usize;
-    while off < BMC_MAX_KEY_LENGTH
-        && header_len + off + 1 <= skb.len() as usize
-        && payload[off] != b' '
+    while off < BMC_MAX_KEY_LENGTH && header_len + off < skb.len() as usize && payload[off] != b' '
     {
         hash_func!(hash, payload[off]);
         // bpf_printk!(obj, "current tx hash %d payload %d\n", hash as u64, payload[off] as u64);
@@ -467,19 +465,19 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     // bpf_printk!(obj, "tx key cache idx %d\n", cache_idx as u64);
 
     let entry = obj
-        .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         // return TC_ACT_OK if the cache is not found or map error
-        .ok_or_else(|| 0i32)?;
+        .bpf_map_lookup_elem(&map_kcache, &cache_idx)
+        .ok_or(TC_ACT_OK as i32)?;
     // bpf_printk!(obj, "key hash function\n");
 
     let _guard = iu_spinlock_guard::new(&mut entry.lock);
 
     // check if the cache is up-to-date
-    if entry.valid == 1 || entry.hash == hash {
+    if entry.valid == 1 && entry.hash == hash {
         let mut diff = 0;
         off = 6;
         while off < BMC_MAX_KEY_LENGTH
-            && header_len + off + 1 <= skb.len() as usize
+            && header_len + off < payload.len() as usize
             && (payload[off] != b' ' || entry.data[off] != b' ')
         {
             if entry.data[off] != payload[off] {
@@ -497,10 +495,10 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
     }
 
     // cache is not up-to-date, update it
-
     let (mut count, mut i) = (0usize, 0usize);
     entry.len = 0;
-    while i < BMC_MAX_CACHE_DATA_SIZE && header_len + i + 1 <= skb.len() as usize && count < 2 {
+    // bpf_printk!(obj, "update_cace\n");
+    while i < BMC_MAX_CACHE_DATA_SIZE && header_len + i < skb.len() as usize && count < 2 {
         entry.data[i] = payload[i];
         entry.len += 1;
         if payload[i] == b'\n' {
@@ -518,7 +516,7 @@ fn bmc_update_cache(obj: &sched_cls, skb: &__sk_buff, payload: &[u8], header_len
         // );
         entry.valid = 1;
         entry.hash = hash;
-        // TODO: add stats here
+        stats.update_count += 1;
     }
 
     Ok(TC_ACT_OK as i32)
@@ -538,31 +536,26 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
     let ip_header = obj.ip_header(skb);
 
-    match u8::from_be(ip_header.protocol) as u32 {
-        IPPROTO_UDP => {
-            let udp_header = obj.udp_header(skb);
-            let src_port = u16::from_be(udp_header.source);
-            let payload = &skb.data_slice[header_len..];
+    if u8::from_be(ip_header.protocol) as u32 == IPPROTO_UDP {
+        let udp_header = obj.udp_header(skb);
+        let src_port = u16::from_be(udp_header.source);
+        let payload = &skb.data_slice[header_len..];
 
-            // confirm if using the memcached port
-            if src_port != MEMCACHED_PORT && payload.len() < 6 {
-                return Ok(TC_ACT_OK as i32);
-            }
-
-            // check if a VALUE command
-            if !payload.starts_with(b"VALUE ") {
-                return Ok(TC_ACT_OK as i32);
-            }
-
-            let stats = obj
-                .bpf_map_lookup_elem(&map_stats, &0)
-                .ok_or_else(|| 0i32)?;
-            stats.get_resp_count += 1;
-
-            // update cache map based on the packet
-            bmc_update_cache(obj, skb, payload, header_len)?;
+        // confirm if using the memcached port
+        if src_port != MEMCACHED_PORT && payload.len() < 6 {
+            return Ok(TC_ACT_OK as i32);
         }
-        _ => {}
+
+        // check if a VALUE command
+        if !payload.starts_with(b"VALUE ") {
+            return Ok(TC_ACT_OK as i32);
+        }
+
+        let stats = obj.bpf_map_lookup_elem(&map_stats, &0).ok_or(0i32)?;
+        stats.get_resp_count += 1;
+
+        // update cache map based on the packet
+        bmc_update_cache(obj, skb, payload, header_len, stats)?;
     }
 
     Ok(TC_ACT_OK as i32)
