@@ -37,4 +37,4 @@ with plt.style.context('seaborn-v0_8-talk'):
     ax.set_xticks(x + width, x + 1)
     ax.legend(loc='upper left', ncols=3)
 
-    plt.savefig("bmc.png")
+    plt.savefig("bmc.pdf")
