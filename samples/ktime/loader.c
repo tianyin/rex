@@ -11,7 +11,7 @@
 #include "libiu.h"
 #include <libbpf.h>
 
-#define EXE "./target/debug/ktime"
+#define EXE "./target/x86_64-unknown-linux-gnu/release/ktime"
 
 int main(void)
 {
@@ -30,7 +30,7 @@ int main(void)
 
 	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
 	if (!prog) {
- 		fprintf(stderr, "_start not found\n");
+ 		fprintf(stderr, "Program not found\n");
  		exit(1);
  	}
 

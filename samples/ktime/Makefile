@@ -1,40 +1,54 @@
 LINUX ?= $(HOME)/linux
 
 LINUX_INC = ${LINUX}/usr/include
-LIBBPF_DIR = ${LINUX}/tools/lib/bpf
-LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unikernels/libiu"; else echo "../../libiu"; fi)
+LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
+LIBIU_DIR := $(shell if [ -d "/inner_unikernels/libiu" ]; then echo "/inner_unikernels/libiu"; else echo `realpath ../../libiu`; fi)
 
-NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
+RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Ciu-playground
+CARGO_FLAGS = -Zbuild-std=core --target x86_64-unknown-linux-gnu
 
-RUST_FLAGS = -Z macro-backtrace -C debuginfo=0 -C opt-level=0\
-		-C link-arg=-nostartfiles -A unused -A non_camel_case_types\
-		-A non_upper_case_globals -A non_snake_case ${NO_OPT} -C iu-playground
+CC = gcc
 
-all: target/debug/ktime loader event-trigger
+CFLAGS += -O2 -march=native -pipe -std=gnu11
+CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
+LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
 
-target/debug/ktime: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
-	cargo update -p inner_unikernel_rt
-	cargo rustc -vv -- ${RUST_FLAGS}
+LOADER_INC += -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR}
+LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBIU_DIR} -lbpf -liu -Wl,-rpath=${LIBBPF_DIR} -Wl,-rpath=${LIBIU_DIR}
 
-mir:
-	cargo rustc -vv -- ${RUST_FLAGS} --emit=mir
+V ?= 0
 
-llvm-ir:
-	cargo rustc -vv -- ${RUST_FLAGS} --emit=llvm-ir
+ifeq ($(V),1)
+CARGO_FLAGS += -v
+endif
 
-target/release/ktime: Cargo.toml ./src/*.rs ${LINUX}/vmlinux
-	cargo rustc -vv --release -- ${RUST_FLAGS}
+ifeq ($(V),2)
+CARGO_FLAGS += -vv
+endif
+
+all: target/x86_64-unknown-linux-gnu/release/ktime loader event-trigger
+
+target/x86_64-unknown-linux-gnu/debug/ktime: Cargo.toml ./src/*.rs
+	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
+
+target/x86_64-unknown-linux-gnu/release/ktime: Cargo.toml ./src/*.rs
+	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
+
+llvm-ir: Cargo.toml ./src/*.rs
+	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS} --emit llvm-ir
+
+mir: ./src/*.rs prep_interface.py
+	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit mir
+
+asm: ./src/*.rs prep_interface.py
+	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit asm
 
 loader: loader.c
-	clang -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBIU_DIR} -g -Wl,--as-needed $< -L${LIBBPF_DIR} -L${LIBIU_DIR}\
-		-lbpf -lelf -liu -lz -o $@
+	${CC} ${LOADER_INC} ${CFLAGS} ${LDFLAGS} -o $@ $< ${LOADER_LDFLAGS}
 
 event-trigger: event-trigger.c
-	clang -I${LINUX_INC} -g $< -o $@
+	${CC} -I${LINUX_INC} ${CFLAGS} ${LDFLAGS} -o $@ $<
 
 clean:
-	rm -rf loader event-trigger ./src/linux ./src/stub.rs
 	cargo clean
-
-vmcopy: target/debug/ktime loader
-	cp target/debug/ktime loader ../../rootfs/guest/
+	rm -rf loader event-trigger ./src/linux ./src/stub.rs

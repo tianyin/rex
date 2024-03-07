@@ -2,40 +2,34 @@
 #![no_main]
 
 extern crate inner_unikernel_rt;
-extern crate rlibc;
 
-use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::linux::bpf::*;
-use inner_unikernel_rt::sysctl::{str_to_i64, str_to_u64};
+use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::tracepoint::*;
+use inner_unikernel_rt::{bpf_printk, entry_link, Result, MAP_DEF};
 
-fn iu_prog1_fn(obj: &tracepoint, ctx: &tp_ctx) -> u32 {
-    let option_task = obj.bpf_get_current_task();
+MAP_DEF!(map_hash, u32, u64, BPF_MAP_TYPE_HASH, 1, 0);
+MAP_DEF!(map_array, u32, u64, BPF_MAP_TYPE_ARRAY, 1, 0);
 
-    let time = obj.bpf_ktime_get_ns();
-    bpf_printk!(obj, "Time: %llu\n", time);
-    let origin_time = obj.bpf_ktime_get_boot_ns_origin();
-    bpf_printk!(obj, "Origin Time: %llu\n", origin_time);
-    assert!(origin_time - time < u64::MAX / 10000);
+fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+    let zero = 0u32;
+    let one = 1u64;
 
-    let boot_time = obj.bpf_ktime_get_boot_ns();
-    bpf_printk!(obj, "Boot Time: %llu\n", boot_time);
-    let origin_boot_time = obj.bpf_ktime_get_boot_ns_origin();
-    bpf_printk!(obj, "Origin Boot Time: %llu\n", origin_boot_time);
-    assert!(origin_boot_time - boot_time < u64::MAX / 10000);
+    let start = obj.bpf_ktime_get_ns();
+    obj.bpf_map_lookup_elem(&map_array, &zero);
+    let end = obj.bpf_ktime_get_ns();
 
-    let coarse_time = obj.bpf_ktime_get_coarse_ns();
-    bpf_printk!(obj, "Coarse Time: %llu\n", coarse_time);
+    bpf_printk!(obj, "array map lookup: %llu ns", end - start);
 
-    let u32_random = obj.bpf_get_prandom_u32();
-    bpf_printk!(obj, "Random: %llu\n", u32_random as u64);
+    obj.bpf_map_update_elem(&map_hash, &zero, &one, BPF_ANY as u64)?;
 
-    // test string_to_u64
-    let test_num = str_to_u64("1234234");
-    bpf_printk!(obj, "Test Num: %llu\n", test_num);
+    let start = obj.bpf_ktime_get_ns();
+    obj.bpf_map_lookup_elem(&map_hash, &zero);
+    let end = obj.bpf_ktime_get_ns();
+    bpf_printk!(obj, "hash map lookup: %llu ns", end - start);
 
-    0
+    Ok(0)
 }
 
-#[link_section = "tracepoint/syscalls/sys_enter_dup"]
-static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_ctx::Void);
+#[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_dup)]
+static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_type::Void);
