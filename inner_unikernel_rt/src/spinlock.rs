@@ -5,7 +5,7 @@ use crate::stub;
 /// An RAII implementation of a "scoped lock" of a bpf spinlock. When this
 /// structure is dropped (falls out of scope), the lock will be unlocked.
 ///
-/// Ref: https://doc.rust-lang.org/src/std/sync/mutex.rs.html#206-209
+/// Ref: <https://doc.rust-lang.org/src/std/sync/mutex.rs.html#206-209>
 #[must_use = "if unused the spinlock will immediately unlock"]
 #[clippy::has_significant_drop]
 pub struct iu_spinlock_guard<'a> {
@@ -51,6 +51,6 @@ impl Drop for iu_spinlock_guard<'_> {
 }
 
 /// Unimplement Send and Sync
-/// Ref: https://doc.rust-lang.org/nomicon/send-and-sync.html
+/// Ref: <https://doc.rust-lang.org/nomicon/send-and-sync.html>
 impl !Send for iu_spinlock_guard<'_> {}
 impl !Sync for iu_spinlock_guard<'_> {}
