@@ -47,7 +47,7 @@ macro_rules! MAP_DEF {
     };
 }
 
-pub type IUArrayMap<K, V> = IUMap<BPF_MAP_TYPE_ARRAY, K, V>;
+pub type IUArrayMap<V> = IUMap<BPF_MAP_TYPE_ARRAY, u32, V>;
 pub type IUHashMap<K, V> = IUMap<BPF_MAP_TYPE_HASH, K, V>;
 pub type IURingBuf = IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
 pub type IUStackMap<K, V> = IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>;
