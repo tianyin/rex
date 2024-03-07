@@ -74,6 +74,15 @@ extern "C" {
     /// `u64 notrace ktime_get_boot_fast_ns(void)`
     pub(crate) fn ktime_get_boot_fast_ns() -> u64;
 
+    /// `u64 bpf_ktime_get_ns(void)`
+    pub(crate) fn bpf_ktime_get_ns() -> u64;
+
+    /// `u64 bpf_ktime_get_boot_ns(void)`
+    pub(crate) fn bpf_ktime_get_boot_ns() -> u64;
+
+    /// `u64 bpf_ktime_get_coarse_ns(void)`
+    pub(crate) fn bpf_ktime_get_coarse_ns() -> u64;
+
     /// `u32 get_random_u32(void)`
     pub(crate) fn get_random_u32() -> u32;
 

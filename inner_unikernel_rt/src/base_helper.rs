@@ -249,12 +249,26 @@ pub(crate) fn bpf_get_numa_node_id() -> i64 {
 
 // This two functions call the original helper directly, so that confirm the
 // return value is correct
+/*
 pub(crate) fn bpf_ktime_get_ns_origin() -> u64 {
     unsafe { stub::ktime_get_mono_fast_ns() }
 }
 
 pub(crate) fn bpf_ktime_get_boot_ns_origin() -> u64 {
     unsafe { stub::ktime_get_boot_fast_ns() }
+}
+*/
+
+pub(crate) fn bpf_ktime_get_ns() -> u64 {
+    unsafe { stub::bpf_ktime_get_ns() }
+}
+
+pub(crate) fn bpf_ktime_get_boot_ns() -> u64 {
+    unsafe { stub::bpf_ktime_get_boot_ns() }
+}
+
+pub(crate) fn bpf_ktime_get_coarse_ns() -> u64 {
+    unsafe { stub::bpf_ktime_get_coarse_ns() }
 }
 
 /*
@@ -409,6 +423,8 @@ macro_rules! base_helper_defs {
         pub fn bpf_get_numa_node_id(&self) -> i64 {
             crate::base_helper::bpf_get_numa_node_id()
         }
+
+        /*
         #[inline(always)]
         pub fn bpf_ktime_get_ns_origin(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_ns_origin()
@@ -418,8 +434,9 @@ macro_rules! base_helper_defs {
         pub fn bpf_ktime_get_boot_ns_origin(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_boot_ns_origin()
         }
+        */
 
-        /*
+
         #[inline(always)]
         pub fn bpf_ktime_get_ns(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_ns()
@@ -434,7 +451,7 @@ macro_rules! base_helper_defs {
         pub fn bpf_ktime_get_coarse_ns(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_coarse_ns()
         }
-        */
+
 
         #[inline(always)]
         pub fn bpf_get_prandom_u32(&self) -> u32 {

@@ -27,6 +27,9 @@ KSYM_FUNC(bpf_xdp_adjust_tail)
 KSYM_FUNC(bpf_clone_redirect)
 KSYM_FUNC(bpf_ringbuf_reserve)
 KSYM_FUNC(bpf_ringbuf_submit)
+KSYM_FUNC(bpf_ktime_get_ns)
+KSYM_FUNC(bpf_ktime_get_boot_ns)
+KSYM_FUNC(bpf_ktime_get_coarse_ns)
 
 // Global variables
 int cpu_number;
