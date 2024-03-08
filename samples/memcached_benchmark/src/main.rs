@@ -4,8 +4,6 @@ use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
 use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 use serde_json::json;
-use serde_yaml;
-use zstd;
 
 use std::error::Error;
 use std::fs::File;
@@ -25,12 +23,15 @@ use tokio::sync::mpsc;
 use tokio::time::timeout;
 
 // use tokio::runtime::Handle;
+use std::sync::atomic::*;
 use tokio::task::JoinSet;
 use tokio_util::task::TaskTracker;
 
 const BUFFER_SIZE: usize = 1500;
 const SEED: u64 = 12312;
 const BENCH_ENTRIES_PATH: &str = "bench_entries.yml.zst";
+
+static TIMEOUT_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
 #[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
 enum Protocol {
@@ -206,11 +207,9 @@ async fn set_memcached_value<'a>(
     }
     let sockets_pool = Arc::new(sockets_pool);
 
-    let mut count = 0usize;
-
     let mut set = JoinSet::new();
 
-    for (key, value) in test_dict.iter() {
+    for (count, (key, value)) in test_dict.iter().enumerate() {
         let sockets_pool_clone = sockets_pool.clone();
         let key_clone = key.clone();
         let value_clone = value.clone();
@@ -230,7 +229,6 @@ async fn set_memcached_value<'a>(
             let get_value = ret.unwrap();
             assert_eq!(get_value.data, value_clone.as_bytes());
         });
-        count += 1;
     }
     while !set.is_empty() {
         set.join_next().await;
@@ -327,6 +325,9 @@ async fn socket_task<'a>(
                         );
                     }
                 }
+            } else {
+                // Timeout occurred - increment the counter
+                TIMEOUT_COUNTER.fetch_add(1, Ordering::Relaxed);
             }
         });
     }
@@ -485,17 +486,16 @@ fn load_bench_entries_from_disk() -> Vec<(String, String, Protocol)> {
     test_entries
 }
 
-fn generate_test_entries<'a>(
-    test_dict: &'a Arc<HashMap<String, String>>,
+fn generate_test_entries(
+    test_dict: &Arc<HashMap<String, String>>,
     nums: usize,
-) -> Vec<(&'a String, &'a String, Protocol)> {
+) -> Vec<(&String, &String, Protocol)> {
     let mut rng = ChaCha8Rng::seed_from_u64(SEED);
     let zipf = zipf::ZipfDistribution::new(test_dict.len() - 1, 0.99).unwrap();
 
     let mut counter: usize = 0;
     let keys: Vec<&String> = test_dict.keys().collect();
     (0..nums)
-        .into_iter()
         .map(|_| {
             let key = keys[zipf.sample(&mut rng)];
             let value = test_dict.get(key).unwrap();
@@ -672,7 +672,8 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     println!("wait for all tasks to complete");
 
     let elapsed_time = start_time.elapsed()?.as_secs_f64();
-    let throughput = nums as f64 / elapsed_time;
+    println!("Timeout counter {}", TIMEOUT_COUNTER.load(Ordering::SeqCst));
+    let throughput = (nums - TIMEOUT_COUNTER.load(Ordering::SeqCst)) as f64 / elapsed_time;
     println!(
         "Throughput across all threads: {:.2} reqs/sec, elapsed_time {}",
         throughput, elapsed_time
