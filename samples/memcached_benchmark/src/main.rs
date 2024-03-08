@@ -306,8 +306,9 @@ async fn socket_task<'a>(
 
             // Then receive
             let mut buf = [0; BUFFER_SIZE];
+            let my_duration = tokio::time::Duration::from_millis(500);
 
-            if let Ok((amt, _)) = socket.recv_from(&mut buf).await {
+            if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
                 if !validate {
                     return;
                 }
