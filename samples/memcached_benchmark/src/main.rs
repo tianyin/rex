@@ -640,28 +640,31 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     // let rt = Builder::new_multi_thread().enable_all().build()?;
     let mut handles = vec![];
 
-    for _ in 0..threads {
+    for tid in 0..threads {
         let test_dict = Arc::clone(&test_dict);
         let server_address = server_address.clone();
         let port = port.clone();
         let send_commands = send_commands_vec.pop().unwrap();
-        let handle = std::thread::spawn(move || {
-            let rt = Builder::new_current_thread().enable_all().build().unwrap();
-            rt.block_on(async move {
-                get_command_benchmark(
-                    test_dict,
-                    send_commands,
-                    server_address,
-                    port,
-                    validate,
-                    key_size,
-                    value_size,
-                    pipeline,
-                )
-                .await
-                .unwrap()
+        let handle = std::thread::Builder::new()
+            .name(format!("worker-{tid}"))
+            .spawn(move || {
+                let rt = Builder::new_current_thread().enable_all().build().unwrap();
+                rt.block_on(async move {
+                    get_command_benchmark(
+                        test_dict,
+                        send_commands,
+                        server_address,
+                        port,
+                        validate,
+                        key_size,
+                        value_size,
+                        pipeline,
+                    )
+                    .await
+                    .unwrap()
+                })
             })
-        });
+            .unwrap();
         handles.push(handle);
     }
 
