@@ -39,7 +39,7 @@ RUN ln -s /usr/bin/llvm-dis-16 /usr/bin/llvm-dis
 RUN ln -s /usr/bin/opt-16 /usr/bin/opt
 
 # Rust 
-RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3-toml bindgen libssl-dev pkg-config curl ninja-build git
+RUN DEBIAN_FRONTEND=noninteractive apt-get install -y python3-tomli bindgen libssl-dev pkg-config curl ninja-build git
 RUN DEBIAN_FRONTEND=noninteractive git clone --recursive -j32 --depth=1 --shallow-submodules https://github.com/xlab-uiuc/rust 
 WORKDIR "/rust"
 RUN cp inner-unikernels-config.toml config.toml
