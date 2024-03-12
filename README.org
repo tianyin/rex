@@ -140,12 +140,7 @@ cd inner_unikernels
 ** Build Docker
 
 #+BEGIN_SRC bash
-# use the exist docker image from packages registry
-# ensure that you've logged into ghcr.io by the guidelines below
-# https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry#authenticating-with-a-personal-access-token-classic
-docker pull ghcr.io/djwillia/inner_unikernels/runtime:latest
-docker tag ghcr.io/djwillia/inner_unikernels/runtime:latest runtime:latest
-# or build by docker builder (it takes a lot of time)
+# build by docker builder (it takes a lot of time)
 make docker
 #+END_SRC
 
