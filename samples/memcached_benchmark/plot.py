@@ -30,7 +30,7 @@ with plt.style.context('seaborn-v0_8-paper'):
     multiplier = 0
     y = np.arange(0, max_val, 0.2)
 
-    fig, ax = plt.subplots(layout='constrained')
+    fig, ax = plt.subplots(layout='tight')
     # fig.set_size_inches(8, 4.8) # for slides
     fig.set_size_inches(4.5, 2.7)
 
@@ -40,7 +40,7 @@ with plt.style.context('seaborn-v0_8-paper'):
         multiplier += 1
 
     y_min, y_max = ax.get_ylim()
-    ax.set_ylim(y_min, y_max * 1.1)
+    ax.set_ylim(y_min, y_max * 1.12)
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_xlabel(r'\# of cores', size='large')
