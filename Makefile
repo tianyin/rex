@@ -34,13 +34,22 @@ qemu-ssh:
 	ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p ${SSH_PORT}
 
 bpftool: 
-	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool 
+	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` bpftool
+
+libbpf: 
+	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux/tools/lib/bpf runtime make -j`nproc` 
 
 bpftool-clean:
 	docker run --rm -v ${LINUX}:/linux -w /linux/tools/bpf/bpftool runtime make -j`nproc` clean 
 
 vmlinux: 
 	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux runtime  make -j`nproc` bzImage 
+
+headers-install: 
+	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux runtime  make -j`nproc` headers_install 
+
+kernel:
+	docker run --rm -u ${USER_ID} -v ${LINUX}:/linux -w /linux runtime  make -j`nproc` 
 
 linux-clean:
 	docker run --rm -v ${LINUX}:/linux -w /linux runtime make distclean
@@ -69,6 +78,7 @@ iu-examples:
 	# comment out because the sample test requires rewriting
 	# docker run --network=host --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/syscall_tp runtime make -j32 LLVM=1
 	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/trace_event runtime make -j32 LLVM=1
+	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/ktime runtime make -j32 LLVM=1
 	docker run --network=host -u ${USER_ID} --rm -v ${LINUX}:/linux -v ${BASE_PROJ}:/inner_unikernels -w /inner_unikernels/samples/xdp_test runtime make -j32 LLVM=1
 
 DOCKERCONTEXT=\

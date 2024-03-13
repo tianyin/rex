@@ -48,8 +48,16 @@ RUN python3 x.py build; \
 RUN python3 x.py install cargo
 
 ENV PATH=/usr/local/cargo/bin:/rust/dist/bin:$PATH 
-RUN curl --proto '=https' --tlsv1.2 -sSf https://github.com/rust-lang/rust-bindgen/releases/download/v0.68.1/bindgen-cli-installer.sh | sh
 RUN chmod -R 777 $CARGO_HOME
+
+# bindgen
+RUN git clone https://github.com/rust-lang/rust-bindgen.git /rust-bindgen
+WORKDIR "/rust-bindgen"
+RUN git checkout v0.62.0
+WORKDIR "/rust-bindgen/bindgen-cli"
+COPY ./Cargo.toml /rust-bindgen/bindgen/Cargo.toml
+RUN cat ../bindgen/Cargo.toml
+RUN cargo install --path .
 
 # Qemu
 RUN DEBIAN_FRONTEND=noninteractive apt-get update

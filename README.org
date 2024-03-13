@@ -149,6 +149,10 @@ make docker
 #+BEGIN_SRC bash
 # On host
 cp ./q-script/.config ./linux/.config
+# rebuild kernel
+make kernel
+# build headers_install
+make headers-install
 # build kernel
 make vmlinux
 # build bpf

@@ -5,7 +5,7 @@ test11:
 	$(info $(BASE_PROJ))
 
 docker: Dockerfile
-	docker build --network=host --progress=plain -t runtime .
+	docker buildx build --network=host --progress=plain -t runtime .
 
 linux:
 	docker run --rm -v ${LINUX}:/linux linux-builder make -j`nproc` bzImage 
