@@ -15,6 +15,9 @@ with open('bmc-results.csv', newline='') as csvfile:
     vanilla = [float(row[1]) for row in data]
     bpf = [float(row[2]) for row in data]
     rust = [float(row[3]) for row in data]
+    vanilla_stdev = [float(row[4]) for row in data]
+    bpf_stdev = [float(row[5]) for row in data]
+    rust_stdev = [float(row[6]) for row in data]
 
 max_val = max(*vanilla, *bpf, *rust) / 1000000
 
@@ -22,6 +25,12 @@ bmc_results = {
     'MemcachedSR': np.array(vanilla) / 1000000,
     'eBPF-BMC': np.array(bpf) / 1000000,
     'REX-BMC': np.array(rust) / 1000000,
+}
+
+bmc_results_stdev = {
+    'MemcachedSR': np.array(vanilla_stdev) / 1000000,
+    'eBPF-BMC': np.array(bpf_stdev) / 1000000,
+    'REX-BMC': np.array(rust_stdev) / 1000000,
 }
 
 with plt.style.context('seaborn-v0_8-paper'):
@@ -36,7 +45,8 @@ with plt.style.context('seaborn-v0_8-paper'):
 
     for setup, throughput in bmc_results.items():
         offset = width * multiplier
-        rects = ax.bar(x + offset, throughput, width, label=setup)
+        rects = ax.bar(x + offset, throughput, width, label=setup,
+                       yerr=bmc_results_stdev[setup])
         multiplier += 1
 
     y_min, y_max = ax.get_ylim()
