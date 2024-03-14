@@ -9,6 +9,8 @@ use crate::stub;
 use crate::utils::{to_result, Result};
 // use crate::timekeeping::*;
 
+use core::intrinsics::unlikely;
+
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
     unsafe { this_cpu_read(&stub::cpu_number as *const i32 as u64) }
 }
@@ -35,7 +37,7 @@ pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
     key: &'a K,
 ) -> Option<&'a mut V> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if map_kptr.is_null() {
+    if unlikely(map_kptr.is_null()) {
         return None;
     }
 
@@ -58,7 +60,7 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
     flags: u64,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if map_kptr.is_null() {
+    if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
     }
 
@@ -77,7 +79,7 @@ pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
     key: &K,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if map_kptr.is_null() {
+    if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
     }
 
@@ -95,7 +97,7 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
     flags: u64,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if map_kptr.is_null() {
+    if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
     }
 
@@ -113,7 +115,7 @@ pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
     value: &V,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if map_kptr.is_null() {
+    if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
     }
 
@@ -130,7 +132,7 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     value: &V,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if map_kptr.is_null() {
+    if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
     }
 
@@ -312,7 +314,7 @@ pub(crate) fn bpf_ringbuf_reserve(
     flags: u64,
 ) -> Option<&mut [u8]> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if map_kptr.is_null() {
+    if unlikely(map_kptr.is_null()) {
         return None;
     }
 
@@ -436,7 +438,6 @@ macro_rules! base_helper_defs {
         }
         */
 
-
         #[inline(always)]
         pub fn bpf_ktime_get_ns(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_ns()
@@ -451,7 +452,6 @@ macro_rules! base_helper_defs {
         pub fn bpf_ktime_get_coarse_ns(&self) -> u64 {
             crate::base_helper::bpf_ktime_get_coarse_ns()
         }
-
 
         #[inline(always)]
         pub fn bpf_get_prandom_u32(&self) -> u32 {

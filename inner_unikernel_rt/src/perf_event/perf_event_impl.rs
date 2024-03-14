@@ -12,6 +12,8 @@ use crate::stub;
 use crate::task_struct::TaskStruct;
 use crate::utils::{to_result, Result};
 
+use core::intrinsics::unlikely;
+
 #[derive(Debug)]
 pub struct bpf_perf_event_data<'a> {
     kptr: &'a mut bpf_perf_event_data_kern,
@@ -99,7 +101,7 @@ impl<'a> perf_event<'a> {
         flags: u64,
     ) -> Result {
         let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-        if map_kptr.is_null() {
+        if unlikely(map_kptr.is_null()) {
             return Err(EINVAL as i32);
         }
 
