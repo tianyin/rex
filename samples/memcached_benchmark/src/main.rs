@@ -646,7 +646,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         let port = port.clone();
         let send_commands = send_commands_vec.pop().unwrap();
         let handle = std::thread::Builder::new()
-            .name(format!("worker-{tid}"))
+            .name(format!("bmc-worker-{tid}"))
             .spawn(move || {
                 let rt = Builder::new_current_thread().enable_all().build().unwrap();
                 rt.block_on(async move {
