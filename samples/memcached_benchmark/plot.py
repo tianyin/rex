@@ -61,4 +61,4 @@ with plt.style.context('seaborn-v0_8-paper'):
     ax.set_yticklabels(ax.get_yticklabels(), size='large')
     ax.legend(loc='upper left', ncols=3, fontsize='small')
 
-    plt.savefig("bmc.pdf")
+    plt.savefig("bmc.pdf", bbox_inches="tight")
