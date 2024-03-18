@@ -124,7 +124,7 @@ fn hash_key(
     payload_index: usize,
     stats: &mut bmc_stats,
 ) -> Result {
-    let (mut off, mut done_parsing, mut key_len) = (0usize, false, 0u8);
+    let (mut off, mut done_parsing) = (0usize, false);
     let payload = &ctx.data_slice[payload_index..];
 
     while !done_parsing {
@@ -134,23 +134,18 @@ fn hash_key(
 
         key.hash = FNV_OFFSET_BASIS_32;
 
-        while off < (BMC_MAX_KEY_LENGTH + 1)
-            && (pctx.read_pkt_offset as usize + off + 1) <= ctx.data_length()
-        {
-            if payload[off] == b'\r' {
-                done_parsing = true;
-                break;
-            }
-            if payload[off] == b' ' {
-                break;
-            }
-            if payload[off] != b' ' {
-                hash_func!(key.hash, payload[off]);
-                key_len += 1;
-            }
-            // bpf_printk!(obj, "current hash %d payload %d\n", key.hash as u64, payload[off] as u64);
-            off += 1;
-        }
+        let payload = &payload
+            [..(BMC_MAX_KEY_LENGTH + 1).min(ctx.data_length() - pctx.read_pkt_offset as usize)];
+
+        let key_len = payload
+            .iter()
+            .take_while(|&&byte| byte != b'\r' && byte != b' ')
+            .inspect(|&&byte| {
+                hash_func!(key.hash, byte);
+            })
+            .count(); // Returns the number of elements processed, effectively the key length
+
+        done_parsing = payload[key_len] == b'\r';
 
         // no key found
         if key_len == 0 || key_len as usize > BMC_MAX_KEY_LENGTH {
@@ -172,13 +167,7 @@ fn hash_key(
         // potential cache hit
         if entry_valid {
             // bpf_printk!(obj, "potential cache hit\n");
-            for i in 0..key_len {
-                // end of packet
-                if i as usize + 1 > ctx.data_length() {
-                    break;
-                }
-                key.data[i as usize] = payload[i as usize];
-            }
+            key.data[0..key_len].clone_from_slice(&payload[0..key_len]);
             key.len = key_len as usize;
             pctx.key_count += 1;
         } else {
@@ -346,11 +335,13 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let word = b"set ";
     let windows_it = payload.windows(word.len());
 
+    // get the index for the set command in the payload
     let set_iter =
         windows_it
             .enumerate()
             .filter_map(|(index, value)| if value == word { Some(index) } else { None });
 
+    // iterate through the possible set commands
     for index in set_iter {
         let stats = obj.bpf_map_lookup_elem(&map_stats, &0).ok_or(0i32)?;
         stats.set_recv_count += 1;
@@ -359,6 +350,7 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
         let payload = &payload[index + 4..];
 
         // limit the size of key
+        // hash the key until the first space
         payload.iter().take_while(|&&c| c != b' ').for_each(|&c| {
             hash_func!(hash, c);
         });
