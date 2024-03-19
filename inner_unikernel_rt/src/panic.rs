@@ -148,6 +148,11 @@ unsafe fn __iu_check_stack() {
 }
 
 #[no_mangle]
+unsafe fn __iu_handle_timeout() -> ! {
+    panic!("Timeout in inner-unikernel program");
+}
+
+#[no_mangle]
 unsafe fn __iu_handle_stack_overflow() -> ! {
     panic!("Stack overflow in inner-unikernel program");
 }
