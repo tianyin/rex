@@ -46,7 +46,8 @@ with plt.style.context('seaborn-v0_8-paper'):
     for setup, throughput in bmc_results.items():
         offset = width * multiplier
         rects = ax.bar(x + offset, throughput, width, label=setup,
-                       yerr=bmc_results_stdev[setup])
+                       yerr=bmc_results_stdev[setup], capsize=1,
+                       error_kw={"elinewidth": 0.6, "mew": 0.6})
         multiplier += 1
 
     y_min, y_max = ax.get_ylim()
