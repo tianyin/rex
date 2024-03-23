@@ -52,6 +52,7 @@ with plt.style.context('seaborn-v0_8-paper'):
 
     y_min, y_max = ax.get_ylim()
     ax.set_ylim(y_min, y_max * 1.12)
+    y = np.arange(y_min, y_max, 0.2)
 
     # Add some text for labels, title and custom x-axis tick labels, etc.
     ax.set_xlabel(r'\# of cores', size='large')
