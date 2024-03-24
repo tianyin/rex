@@ -26,9 +26,9 @@ ifeq ($(V),2)
 CARGO_FLAGS += -vv
 endif
 
-all: target/x86_64-unknown-linux-gnu/release/hello loader event-trigger
+all: target/x86_64-unknown-linux-gnu/release/startup_overhead_benchmark loader event-trigger
 
-target/x86_64-unknown-linux-gnu/debug/hello: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/debug/startup_overhead_benchmark: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
 mir:
@@ -37,7 +37,7 @@ mir:
 llvm-ir:
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
 
-target/x86_64-unknown-linux-gnu/release/hello: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/release/startup_overhead_benchmark: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 loader: loader.c

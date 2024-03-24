@@ -25,33 +25,23 @@ int main(void)
 	obj = iu_object__open(EXE);
 	if (!obj) {
 		fprintf(stderr, "Object could not be opened\n");
-		exit(1);
+		return 1;
 	}
 
 	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
 	if (!prog) {
  		fprintf(stderr, "_start not found\n");
- 		exit(1);
+ 		return 1;
  	}
 
 	link = bpf_program__attach(prog);
 	if (libbpf_get_error(link)) {
 		fprintf(stderr, "ERROR: bpf_program__attach failed\n");
 		link = NULL;
-		goto cleanup;
+		return 1;
 	}
 
-	trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe",
-		O_RDONLY);
+	bpf_link__pin(link, "/sys/fs/bpf/kprobe_link");
 
-	for (;;) {
-        char c;
-        if (read(trace_pipe_fd, &c, 1) == 1)
-            putchar(c);
-    }
-
-cleanup:
-	bpf_link__destroy(link);
-	bpf_object__close(obj);
 	return 0;
 }
