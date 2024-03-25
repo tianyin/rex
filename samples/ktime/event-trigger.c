@@ -3,5 +3,8 @@
 
 int main(void)
 {
-	return syscall(__NR_dup, 1);
+    char buf[256];
+    getcwd(buf, 256);
+    // printf("%s\n", buf);
+    return 0;
 }

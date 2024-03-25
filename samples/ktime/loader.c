@@ -41,17 +41,10 @@ int main(void)
 		goto cleanup;
 	}
 
-	trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe",
-		O_RDONLY);
-
-	for (;;) {
-        char c;
-        if (read(trace_pipe_fd, &c, 1) == 1)
-            putchar(c);
-    }
-
+    bpf_link__pin(link, "/sys/fs/bpf/link");
 cleanup:
-	bpf_link__destroy(link);
-	bpf_object__close(obj);
-	return 0;
+	// bpf_link__destroy(link);
+	// bpf_object__close(obj);
+	exit(0);
+	// return 0;
 }
