@@ -168,7 +168,7 @@ fn hash_key(
         if entry_valid {
             // bpf_printk!(obj, "potential cache hit\n");
             key.data[0..key_len].clone_from_slice(&payload[0..key_len]);
-            key.len = key_len as usize;
+            key.len = key_len;
             pctx.key_count += 1;
         } else {
             // cache miss
@@ -332,14 +332,12 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
         return Ok(XDP_PASS as i32);
     }
 
-    let word = b"set ";
-    let windows_it = payload.windows(word.len());
-
     // get the index for the set command in the payload
     let set_iter =
-        windows_it
+        payload
+            .windows(4)
             .enumerate()
-            .filter_map(|(index, value)| if value == word { Some(index) } else { None });
+            .filter_map(|(i, v)| if v == b"set " { Some(i) } else { None });
 
     // iterate through the possible set commands
     for index in set_iter {
