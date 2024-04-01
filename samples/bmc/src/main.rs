@@ -328,7 +328,10 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
     // check if using the memcached port
     // check if the payload has enough space for a memcached request
-    if port != MEMCACHED_PORT || payload.len() < 4 {
+    if port != MEMCACHED_PORT
+        || payload.len() < 4
+        || payload.len() > BMC_MAX_PACKET_LENGTH - header_len
+    {
         return Ok(XDP_PASS as i32);
     }
 
