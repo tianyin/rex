@@ -2,6 +2,7 @@ use crate::bindings::uapi::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_KPROBE};
 use crate::map::*;
 use crate::prog_type::iu_prog;
 use crate::stub;
+use crate::task_struct::TaskStruct;
 use crate::Result;
 
 pub type pt_regs = super::binding::pt_regs;
