@@ -26,18 +26,18 @@ ifeq ($(V),2)
 CARGO_FLAGS += -vv
 endif
 
-all: target/x86_64-unknown-linux-gnu/release/spinlock_test loader event-trigger
+all: target/x86_64-unknown-linux-gnu/release/spinlock_cleanup_benchmark loader event-trigger
 
-target/x86_64-unknown-linux-gnu/debug/spinlock_test: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/debug/spinlock_cleanup_benchmark: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
 mir:
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=mir
 
 llvm-ir:
-	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
+	cargo rustc ${CARGO_FLAGS} -r -- ${RUST_FLAGS} --emit=llvm-ir
 
-target/x86_64-unknown-linux-gnu/release/spinlock_test: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/release/spinlock_cleanup_benchmark: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 loader: loader.c
@@ -50,5 +50,5 @@ clean:
 	rm -rf loader event-trigger ./src/linux ./src/stub.rs
 	cargo clean
 
-vmcopy: target/x86_64-unknown-linux-gnu/release/spinlock_test loader
-	cp target/x86_64-unknown-linux-gnu/release/spinlock_test loader ../../rootfs/guest/
+vmcopy: target/x86_64-unknown-linux-gnu/release/spinlock_cleanup_benchmark loader
+	cp target/x86_64-unknown-linux-gnu/release/spinlock_cleanup_benchmark loader ../../rootfs/guest/
