@@ -13,6 +13,7 @@
 #include <sys/utsname.h>
 #include <unistd.h>
 
+#include <algorithm>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
@@ -62,6 +63,11 @@ struct bpf_sec_def {
   bool is_sleepable;
   attach_fn_t attach_fn;
 };
+
+// Conflicts with std::min
+#ifdef min
+#undef min
+#endif
 
 #define BPF_PROG_SEC_IMPL(string, ptype, eatype, eatype_optional, attachable,  \
                           attach_btf)                                          \
@@ -525,6 +531,7 @@ class iu_obj {
   size_t file_size;
   unsigned char *file_map;
   int prog_fd;
+  std::string basename;
 
   int parse_scns(struct bpf_object *);
   int parse_maps(struct bpf_object *);
@@ -715,6 +722,10 @@ iu_obj::iu_obj(const char *c_path, struct bpf_object *bpf_obj)
   // reference: `man 2 mmap`
   file_map = reinterpret_cast<unsigned char *>(
       mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
+
+  std::string copy(c_path);
+  copy += "-base";
+  basename = ::basename(copy.data());
   // close(fd);
 }
 
@@ -1130,7 +1141,9 @@ int iu_obj::load(struct bpf_object *obj) {
     arr[idx++] = def.first + offsetof(map_def, kptr);
 
   attr.prog_type = BPF_PROG_TYPE_IU_BASE;
-  memcpy(attr.prog_name, "map_test", sizeof("map_test"));
+  // progname was zero-initialized so we don't copy the null terminator
+  memcpy(attr.prog_name, basename.c_str(),
+         std::min(basename.size(), sizeof(attr.prog_name) - 1));
   attr.rustfd = fd;
   attr.license = reinterpret_cast<__u64>("GPL");
 
