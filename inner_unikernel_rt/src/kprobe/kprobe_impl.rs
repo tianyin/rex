@@ -52,6 +52,10 @@ impl<'a> kprobe<'a> {
         regs.rip = unsafe { stub::just_return_func as *const () as u64 };
         return 0;
     }
+
+    pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {
+        TaskStruct::get_current_task()
+    }
 }
 
 impl iu_prog for kprobe<'_> {
