@@ -9,8 +9,8 @@
 #include <linux/unistd.h>
 
 #include "libiu.h"
-#include <bpf/bpf.h>
-#include <bpf/libbpf.h>
+#include <bpf.h>
+#include <libbpf.h>
 
 #define EXE "./target/x86_64-unknown-linux-gnu/release/recursive"
 

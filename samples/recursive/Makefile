@@ -35,7 +35,7 @@ mir:
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=mir
 
 llvm-ir:
-	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
+	cargo rustc -r ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
 
 target/x86_64-unknown-linux-gnu/release/recursive: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
