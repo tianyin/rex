@@ -724,7 +724,7 @@ iu_obj::iu_obj(const char *c_path, struct bpf_object *bpf_obj)
       mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
 
   std::string copy(c_path);
-  copy += "-base";
+  copy += ".base";
   basename = ::basename(copy.data());
   // close(fd);
 }
