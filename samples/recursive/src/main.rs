@@ -31,10 +31,10 @@ fn iu_recursive(obj: &kprobe, _:&mut pt_regs) -> Result {
         return Err(0);
     };
 
-    if (stored_pid as i32) != curr_pid {
-    bpf_printk!(obj, "error 3");
-        return Err(0);
-    }
+    // if (stored_pid as i32) != curr_pid {
+    // bpf_printk!(obj, "error 3");
+    //     return Err(0);
+    // }
 
     let start_time: u64 = obj.bpf_ktime_get_ns();
     bpf_printk!(obj, "Start time: %ul", start_time);
@@ -55,14 +55,14 @@ fn iu_recursive(obj: &kprobe, _:&mut pt_regs) -> Result {
     Ok(0)
 }
 
-// use core::hint::black_box;
+use core::hint::black_box;
 #[inline(never)]
 fn calculate_tail_factorial(n: u32, accum: u32) -> u32 {
     if n == 1 {
         return accum;
     }
 
-    return calculate_tail_factorial(n - 1, accum * n);
+    return black_box(calculate_tail_factorial(n - 1, accum * n));
 }
 
 #[entry_link(inner_unikernel/kprobe/kprobe_target_func)]
