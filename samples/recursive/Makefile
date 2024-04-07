@@ -26,7 +26,7 @@ ifeq ($(V),2)
 CARGO_FLAGS += -vv
 endif
 
-all: target/x86_64-unknown-linux-gnu/release/recursive loader 
+all: target/x86_64-unknown-linux-gnu/release/recursive loader event-trigger
 
 target/x86_64-unknown-linux-gnu/debug/recursive: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
@@ -46,6 +46,9 @@ loader: loader.c
 clean:
 	rm -rf loader ./src/linux ./src/stub.rs
 	cargo clean
+
+event-trigger: event-trigger.c
+	${CC} -I${LINUX_INC} ${CFLAGS} ${LDFLAGS} -o $@ $<
 
 vmcopy: target/x86_64-unknown-linux-gnu/release/recursive loader
 	cp target/x86_64-unknown-linux-gnu/release/recursive loader ../../rootfs/guest/

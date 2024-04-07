@@ -36,14 +36,14 @@ int main(void)
  	}
 
 	// Populate map with starting conditions
-	int data_map_fd = bpf_object__find_map_fd_by_name(obj, "data_map");
-	int pid_key = 0;
-	int n_key = 1;
-	int pid = getpid();
-	printf("PID: %d\n", pid);
-	int n_init = 10;
-	bpf_map_update_elem(data_map_fd, &pid_key, &pid, BPF_ANY);
-	bpf_map_update_elem(data_map_fd, &n_key, &n_init, BPF_ANY);
+	// int data_map_fd = bpf_object__find_map_fd_by_name(obj, "data_map");
+	// int pid_key = 0;
+	// int n_key = 1;
+	// int pid = getpid();
+	// printf("PID: %d\n", pid);
+	// int n_init = 10;
+	// bpf_map_update_elem(data_map_fd, &pid_key, &pid, BPF_ANY);
+	// bpf_map_update_elem(data_map_fd, &n_key, &n_init, BPF_ANY);
 
 	link = bpf_program__attach(prog);
 	if (libbpf_get_error(link)) {
