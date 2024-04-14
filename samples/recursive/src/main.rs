@@ -12,6 +12,7 @@ use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::kprobe::*;
 use inner_unikernel_rt::Result;
 use inner_unikernel_rt::MAP_DEF;
+use core::hint::black_box;
 
 MAP_DEF!(data_map, u32, u32, BPF_MAP_TYPE_ARRAY, 2, 0);
 
@@ -36,10 +37,9 @@ fn iu_recursive(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     //     return Err(0);
     // };
 
-
     // bpf_printk!(obj, "Received n: %d", n as u64);
     let start_time: u64 = obj.bpf_ktime_get_ns();
-    calculate_tail_fib(n, 1);
+    calculate_tail_fib(n);
     let end_time: u64 = obj.bpf_ktime_get_ns();
     // bpf_printk!(obj, "Result: %d", result as u64);
 
@@ -48,14 +48,13 @@ fn iu_recursive(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     Ok(0)
 }
 
-use core::hint::black_box;
 #[inline(never)]
-fn calculate_tail_fib(n: u32, accum: u32) -> u32 {
+fn calculate_tail_fib(n: u32) -> u32 {
     if n == 0 {
-        return accum;
+        return 0;
     }
 
-    return black_box(calculate_tail_fib(n - 1, accum + n));
+    black_box(calculate_tail_fib(black_box(n - 1)))
 }
 
 #[entry_link(inner_unikernel/kprobe/kprobe_target_func)]
