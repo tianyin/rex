@@ -49,12 +49,12 @@ fn iu_recursive(obj: &kprobe, ctx: &mut pt_regs) -> Result {
 }
 
 #[inline(never)]
-fn calculate_tail_fib(n: u32) -> u32 {
+fn calculate_tail_fib(n: u32) {
     if n == 0 {
-        return 0;
+        return;
     }
 
-    black_box(calculate_tail_fib(black_box(n - 1)))
+    black_box(calculate_tail_fib(n - 1))
 }
 
 #[entry_link(inner_unikernel/kprobe/kprobe_target_func)]
