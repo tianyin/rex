@@ -18,6 +18,7 @@ The basic ideas are documented in [[docs/rust-kernel-ext.pdf][a workshop paper]]
 - Linux Kernel: [[https://github.com/rosalab/linux/tree/inner_unikernels]]
 - Rust Toolchain: [[https://github.com/xlab-uiuc/rust]]
 - LLVM CodeGen for Rust: [[https://github.com/xlab-uiuc/llvm-rust]]
+- Paper Repo: [[https://github.com/rosalab/inner-unikernels-paper]]
 
 Check out the [[docs/minutes.org][meeting minutes]].
 
