@@ -4,6 +4,8 @@ use proc_macro::TokenStream;
 use quote::quote;
 use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, ItemStatic, Type, TypePath};
 
+use std::borrow::Cow;
+
 fn type_checking(type_path: &TypePath) -> bool {
     let type_name = type_path.path.segments.last().unwrap().ident.to_string();
 
@@ -105,4 +107,17 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
         }
     };
     gen.into()
+}
+
+/// Ref: <https://github.com/aya-rs/aya/blob/1cf3d3c222bda0351ee6a2bacf9cee5349556764/aya-ebpf-macros/src/lib.rs#L53>
+#[proc_macro_attribute]
+pub fn map(_: TokenStream, item: TokenStream) -> TokenStream {
+    let item: ItemStatic = syn::parse(item).unwrap();
+    let name = item.ident.to_string();
+    let section_name: Cow<'_, _> = ".maps".to_string().into();
+    (quote! {
+        #[link_section = #section_name]
+        #[export_name = #name]
+        #item
+    }).into()
 }

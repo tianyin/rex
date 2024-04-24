@@ -38,15 +38,6 @@ impl<const MT: bpf_map_type, K, V> IUMap<MT, K, V> {
 
 unsafe impl<const MT: bpf_map_type, K, V> Sync for IUMap<MT, K, V> {}
 
-#[macro_export]
-macro_rules! MAP_DEF {
-    ($n:ident, $k:ty, $v:ty, $mt:expr, $ms:expr, $mf:expr) => {
-        #[no_mangle]
-        #[link_section = ".maps"]
-        pub(crate) static $n: IUMap<$mt, $k, $v> = IUMap::new($ms, $mf);
-    };
-}
-
 pub type IUArrayMap<V> = IUMap<BPF_MAP_TYPE_ARRAY, u32, V>;
 pub type IUHashMap<K, V> = IUMap<BPF_MAP_TYPE_HASH, K, V>;
 pub type IURingBuf = IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
