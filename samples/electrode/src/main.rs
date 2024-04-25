@@ -29,11 +29,13 @@ macro_rules! swap_field {
 }
 
 // NOTE: function calls are not allowed while holding a lock....
-// Cause Paxos is in fact a serialized protocol, we limit our to one-core, then no lock is needed.
+// Cause Paxos is in fact a serialized protocol, we limit our to one-core, then
+// no lock is needed.
 
 #[inline(always)]
 fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
+    let header_len =
+        size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
     let ip_header = obj.ip_header(ctx);
 
     match u8::from_be(ip_header.protocol) as u32 {
@@ -51,7 +53,10 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
             }
 
             // NOTE: currently, we don't support reassembly.
-            if payload[0] != 0x18 || payload[1] != 0x03 || payload[2] != 0x05 || payload[3] != 0x20
+            if payload[0] != 0x18 ||
+                payload[1] != 0x03 ||
+                payload[2] != 0x05 ||
+                payload[3] != 0x20
             {
                 return Ok(XDP_PASS as i32);
             }
@@ -67,7 +72,8 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
 #[inline(always)]
 fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
-    let mut header_len = size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
+    let mut header_len =
+        size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
 
     // check if the packet is long enough
     if skb.data_slice.len() <= header_len {
@@ -93,7 +99,10 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
             }
             let payload = &skb.data_slice;
 
-            if payload[0] != 0x18 || payload[1] != 0x03 || payload[2] != 0x05 || payload[3] != 0x20
+            if payload[0] != 0x18 ||
+                payload[1] != 0x03 ||
+                payload[2] != 0x05 ||
+                payload[3] != 0x20
             {
                 return Ok(TC_ACT_OK as i32);
             }
@@ -108,7 +117,10 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
 #[inline(always)]
 fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
-    let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>() + MAGIC_LEN;
+    let header_len = size_of::<ethhdr>() +
+        size_of::<iphdr>() +
+        size_of::<udphdr>() +
+        MAGIC_LEN;
     let payload = &skb.data_slice[header_len..];
 
     let (type_len_bytes, payload) = payload.split_at(size_of::<u64>());
@@ -218,7 +230,8 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
 #[inline(always)]
 fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
+    let header_len =
+        size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
     let payload = &mut ctx.data_slice[header_len + MAGIC_LEN..];
 
     let type_len_bytes = &payload[..size_of::<u64>()];
@@ -264,11 +277,15 @@ fn compute_message_type(payload: &[u8]) -> FastProgXdp {
     // check the message type
     if len > PREPARE_TYPE_LEN && payload[19..27].starts_with(b"PrepareM") {
         return FastProgXdp::FAST_PROG_XDP_HANDLE_PREPARE;
-    } else if len > REQUEST_TYPE_LEN && payload[19..27].starts_with(b"RequestM") {
+    } else if len > REQUEST_TYPE_LEN && payload[19..27].starts_with(b"RequestM")
+    {
         return FastProgXdp::FAST_PROG_XDP_HANDLE_REQUEST;
-    } else if len > PREPAREOK_TYPE_LEN && payload[19..27].starts_with(b"PrepareO") {
+    } else if len > PREPAREOK_TYPE_LEN &&
+        payload[19..27].starts_with(b"PrepareO")
+    {
         return FastProgXdp::FAST_PROG_XDP_HANDLE_PREPAREOK;
-    } else if len > MYPREPAREOK_TYPE_LEN && payload[13..17].starts_with(b"MyPr") {
+    } else if len > MYPREPAREOK_TYPE_LEN && payload[13..17].starts_with(b"MyPr")
+    {
         return FastProgXdp::FAST_PROG_XDP_HANDLE_PREPAREOK;
     }
 
@@ -283,8 +300,8 @@ fn compute_message_type(payload: &[u8]) -> FastProgXdp {
 
 #[inline(always)]
 fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
-    // payload_index = header_len + MAGIC_LEN + size_of::<u64>() + PREPARE_TYPE_LEN
-    // point to extra data
+    // payload_index = header_len + MAGIC_LEN + size_of::<u64>() +
+    // PREPARE_TYPE_LEN point to extra data
     let payload = &mut ctx.data_slice[payload_index..];
 
     // check the message len
@@ -294,8 +311,10 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
 
     // NOTE: may update to struct later
     let msg_view = u32::from_ne_bytes(payload[0..4].try_into().unwrap()) as u64;
-    let msg_last_op = u32::from_ne_bytes(payload[4..8].try_into().unwrap()) as u64;
-    let msg_batch_start = u32::from_ne_bytes(payload[8..12].try_into().unwrap()) as u64;
+    let msg_last_op =
+        u32::from_ne_bytes(payload[4..8].try_into().unwrap()) as u64;
+    let msg_batch_start =
+        u32::from_ne_bytes(payload[8..12].try_into().unwrap()) as u64;
 
     let zero = 0u32;
     let mut ctr_state = obj
@@ -332,8 +351,8 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
 
 #[inline(always)]
 fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
-    // payload_index = header_len + MAGIC_LEN + size_of::<u64>() + PREPARE_TYPE_LEN
-    // check the end of the payload
+    // payload_index = header_len + MAGIC_LEN + size_of::<u64>() +
+    // PREPARE_TYPE_LEN check the end of the payload
     if ctx.data_slice.len() < payload_index + FAST_PAXOS_DATA_LEN {
         return Ok(XDP_PASS as i32);
     }
@@ -362,7 +381,11 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
 }
 
 #[inline(always)]
-fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
+fn prepare_fast_reply(
+    obj: &xdp,
+    ctx: &mut xdp_md,
+    payload_index: usize,
+) -> Result {
     let mut payload = &mut ctx.data_slice[payload_index..];
 
     if payload.len() <= FAST_PAXOS_DATA_LEN + size_of::<u64>() {
@@ -455,7 +478,11 @@ fn prepare_fast_reply(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resu
 }
 
 #[inline(always)]
-fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
+fn handle_prepare_ok(
+    obj: &xdp,
+    ctx: &mut xdp_md,
+    payload_index: usize,
+) -> Result {
     // payload_index = header_len + MAGIC_LEN + size_of::<u64>()
     let payload = &mut ctx.data_slice[payload_index..];
     let len = payload.len();
@@ -468,7 +495,8 @@ fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resul
 
     let msg_view = u32::from_ne_bytes(payload[0..4].try_into().unwrap());
     let msg_opnum = u32::from_ne_bytes(payload[4..8].try_into().unwrap());
-    let msg_replica_idx = u32::from_ne_bytes(payload[8..12].try_into().unwrap());
+    let msg_replica_idx =
+        u32::from_ne_bytes(payload[8..12].try_into().unwrap());
     let idx = msg_opnum & (QUORUM_BITSET_ENTRY - 1);
 
     let entry = obj
@@ -498,7 +526,8 @@ fn handle_prepare_ok(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Resul
 }
 
 #[entry_link(inner_unikernel/xdp)]
-static PROG1: xdp = xdp::new(fast_paxos_main, "fast_paxos", BPF_PROG_TYPE_XDP as u64);
+static PROG1: xdp =
+    xdp::new(fast_paxos_main, "fast_paxos", BPF_PROG_TYPE_XDP as u64);
 
 #[entry_link(inner_unikernel/tc)]
 static PROG2: sched_cls = sched_cls::new(

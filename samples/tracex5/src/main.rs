@@ -69,7 +69,11 @@ fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
         __NR_write => func_sys_write(obj, ctx),
         __NR_mmap => func_sys_mmap(obj, ctx),
         __NR_getuid..=__NR_getsid => {
-            bpf_printk!(obj, "syscall=%d (one of get/set uid/pid/gid)\n", ctx.rdi());
+            bpf_printk!(
+                obj,
+                "syscall=%d (one of get/set uid/pid/gid)\n",
+                ctx.rdi()
+            );
             Ok(0)
         }
         _ => Ok(0),

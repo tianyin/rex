@@ -33,7 +33,9 @@ const BENCH_ENTRIES_PATH: &str = "bench_entries.yml.zst";
 
 static TIMEOUT_COUNTER: AtomicUsize = AtomicUsize::new(0);
 
-#[derive(ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize)]
+#[derive(
+    ValueEnum, Copy, Clone, Debug, PartialEq, Eq, Deserialize, Serialize,
+)]
 enum Protocol {
     Udp,
     Tcp,
@@ -104,7 +106,8 @@ enum Commands {
         #[arg(long, default_value = "false")]
         skip_set: bool,
 
-        /// bounded mpsc channel for communicating between asynchronous tasks with backpressure
+        /// bounded mpsc channel for communicating between asynchronous tasks
+        /// with backpressure
         #[arg(long, default_value = "200")]
         pipeline: usize,
 
@@ -239,7 +242,9 @@ async fn set_memcached_value<'a>(
     Ok(())
 }
 
-fn _validate_server(server: &memcache::Client) -> std::result::Result<(), MemcacheError> {
+fn _validate_server(
+    server: &memcache::Client,
+) -> std::result::Result<(), MemcacheError> {
     // set a string value:
     server.set("foo", "bar", 0)?;
 
@@ -308,7 +313,9 @@ async fn socket_task<'a>(
             let mut buf = [0; BUFFER_SIZE];
             let my_duration = tokio::time::Duration::from_millis(500);
 
-            if let Ok(Ok((amt, _))) = timeout(my_duration, socket.recv_from(&mut buf)).await {
+            if let Ok(Ok((amt, _))) =
+                timeout(my_duration, socket.recv_from(&mut buf)).await
+            {
                 if !validate {
                     return;
                 }
@@ -316,7 +323,8 @@ async fn socket_task<'a>(
                     let received = String::from_utf8_lossy(&buf[..amt])
                         .split("VALUE ")
                         .nth(1)
-                        .unwrap_or_default()[6 + key_size + 1..6 + key_size + value_size + 1]
+                        .unwrap_or_default()
+                        [6 + key_size + 1..6 + key_size + value_size + 1]
                         .to_string();
 
                     if received != *value.to_string() {
@@ -358,9 +366,10 @@ async fn get_command_benchmark(
     }
     let sockets_pool = Arc::new(sockets_pool);
 
-    let mut client = async_memcached::Client::new(format!("{}:{}", server_address, port))
-        .await
-        .expect("TCP memcached connection failed");
+    let mut client =
+        async_memcached::Client::new(format!("{}:{}", server_address, port))
+            .await
+            .expect("TCP memcached connection failed");
 
     let tracker = TaskTracker::new();
     let cloned_tracker = tracker.clone();
@@ -423,15 +432,25 @@ fn get_server(
     protocol: &Protocol,
 ) -> Result<memcache::Client, MemcacheError> {
     match protocol {
-        Protocol::Udp => memcache::connect(format!("memcache+udp://{}:{}?timeout=10", addr, port)),
-        Protocol::Tcp => memcache::connect(format!("memcache://{}:{}?timeout=10", addr, port)),
+        Protocol::Udp => memcache::connect(format!(
+            "memcache+udp://{}:{}?timeout=10",
+            addr, port
+        )),
+        Protocol::Tcp => memcache::connect(format!(
+            "memcache://{}:{}?timeout=10",
+            addr, port
+        )),
     }
 }
 
 // Make the function generic over `T` where `T: Serialize`
-fn write_hashmap_to_file<T: Serialize>(hashmap: &T, file_path: &str) -> std::io::Result<()> {
+fn write_hashmap_to_file<T: Serialize>(
+    hashmap: &T,
+    file_path: &str,
+) -> std::io::Result<()> {
     // Serialize the hashmap to a JSON string
-    let serialized = serde_yaml::to_string(hashmap).expect("Failed to serialize");
+    let serialized =
+        serde_yaml::to_string(hashmap).expect("Failed to serialize");
 
     // Create or open the file
     let file = File::create(file_path)?;
@@ -447,7 +466,9 @@ fn write_hashmap_to_file<T: Serialize>(hashmap: &T, file_path: &str) -> std::io:
 }
 
 // INFO: May need to update based on key and value distributions
-fn test_entries_statistics(test_entries: Arc<Vec<(&String, &String, Protocol)>>) {
+fn test_entries_statistics(
+    test_entries: Arc<Vec<(&String, &String, Protocol)>>,
+) {
     let mut udp_count: usize = 0;
     let mut tcp_count: usize = 0;
 
@@ -483,7 +504,8 @@ fn load_bench_entries_from_disk() -> Vec<(String, String, Protocol)> {
     let file = File::open(BENCH_ENTRIES_PATH).unwrap();
     let decoder = zstd::stream::read::Decoder::new(file).unwrap();
     let reader = BufReader::new(decoder);
-    let test_entries: Vec<(String, String, Protocol)> = serde_yaml::from_reader(reader).unwrap();
+    let test_entries: Vec<(String, String, Protocol)> =
+        serde_yaml::from_reader(reader).unwrap();
     test_entries
 }
 
@@ -526,8 +548,10 @@ fn load_test_dict(
 
     reader.lines().for_each(|line| {
         let line = line.unwrap();
-        // Assuming each line in your file is a valid YAML representing a key-value pair
-        let deserialized_map: HashMap<String, String> = serde_yaml::from_str(&line).unwrap();
+        // Assuming each line in your file is a valid YAML representing a
+        // key-value pair
+        let deserialized_map: HashMap<String, String> =
+            serde_yaml::from_str(&line).unwrap();
         test_dict.extend(deserialized_map);
     });
 
@@ -569,7 +593,12 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     let test_dict_path = std::path::Path::new(dict_path.as_str());
     let test_dict: HashMap<String, String> = if !test_dict_path.exists() {
         // if dict_path is empty, generate dict
-        generate_test_dict_write_to_disk(key_size, value_size, dict_entries, dict_path.as_str())?
+        generate_test_dict_write_to_disk(
+            key_size,
+            value_size,
+            dict_entries,
+            dict_path.as_str(),
+        )?
     } else {
         load_test_dict(test_dict_path)?
     };
@@ -626,10 +655,16 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         let mut send_commands = vec![];
 
         for index in 0..nums / threads {
-            let (key, value, proto) = test_entries[thread_num * nums / threads + index];
+            let (key, value, proto) =
+                test_entries[thread_num * nums / threads + index];
             let packet = wrap_get_command(key.clone(), seq);
             seq = seq.wrapping_add(1);
-            send_commands.push((key.to_string(), packet, proto, value.to_string()));
+            send_commands.push((
+                key.to_string(),
+                packet,
+                proto,
+                value.to_string(),
+            ));
         }
 
         send_commands_vec.push(send_commands);
@@ -648,7 +683,8 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         let handle = std::thread::Builder::new()
             .name(format!("bmc-worker-{tid}"))
             .spawn(move || {
-                let rt = Builder::new_current_thread().enable_all().build().unwrap();
+                let rt =
+                    Builder::new_current_thread().enable_all().build().unwrap();
                 rt.block_on(async move {
                     get_command_benchmark(
                         test_dict,
@@ -677,7 +713,8 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
 
     let elapsed_time = start_time.elapsed()?.as_secs_f64();
     println!("Timeout counter {}", TIMEOUT_COUNTER.load(Ordering::SeqCst));
-    let throughput = (nums - TIMEOUT_COUNTER.load(Ordering::SeqCst)) as f64 / elapsed_time;
+    let throughput =
+        (nums - TIMEOUT_COUNTER.load(Ordering::SeqCst)) as f64 / elapsed_time;
     println!(
         "Throughput across all threads: {:.2} reqs/sec, elapsed_time {}",
         throughput, elapsed_time

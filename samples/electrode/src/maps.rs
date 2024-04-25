@@ -1,6 +1,8 @@
 use crate::common::*;
 
-use inner_unikernel_rt::linux::bpf::{bpf_spin_lock, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_RINGBUF};
+use inner_unikernel_rt::linux::bpf::{
+    bpf_spin_lock, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_RINGBUF,
+};
 use inner_unikernel_rt::map::IUMap;
 use inner_unikernel_rt::utils::*;
 
