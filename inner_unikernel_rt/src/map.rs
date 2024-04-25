@@ -1,6 +1,6 @@
 use crate::linux::bpf::{
-    bpf_map_type, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_RINGBUF,
-    BPF_MAP_TYPE_STACK_TRACE,
+    bpf_map_type, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH,
+    BPF_MAP_TYPE_PERCPU_ARRAY, BPF_MAP_TYPE_RINGBUF, BPF_MAP_TYPE_STACK_TRACE,
 };
 use core::{marker::PhantomData, mem, ptr};
 
@@ -39,6 +39,7 @@ impl<const MT: bpf_map_type, K, V> IUMap<MT, K, V> {
 unsafe impl<const MT: bpf_map_type, K, V> Sync for IUMap<MT, K, V> {}
 
 pub type IUArrayMap<V> = IUMap<BPF_MAP_TYPE_ARRAY, u32, V>;
+pub type IUPerCPUArrayMap<V> = IUMap<BPF_MAP_TYPE_PERCPU_ARRAY, u32, V>;
 pub type IUHashMap<K, V> = IUMap<BPF_MAP_TYPE_HASH, K, V>;
 pub type IURingBuf = IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
 pub type IUStackMap<K, V> = IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>;
