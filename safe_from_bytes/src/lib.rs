@@ -2,7 +2,10 @@ extern crate proc_macro;
 
 use proc_macro::TokenStream;
 use quote::quote;
-use syn::{parse_macro_input, parse_quote, Data, DeriveInput, Fields, ItemStatic, Type, TypePath};
+use syn::{
+    parse_macro_input, parse_quote, Data, DeriveInput, Fields, ItemStatic,
+    Type, TypePath,
+};
 
 use std::borrow::Cow;
 
@@ -39,11 +42,12 @@ pub fn entry_link(attr: TokenStream, item: TokenStream) -> TokenStream {
 fn field_type_check(ty: Type) -> Result<(), TokenStream> {
     if let Type::Path(type_path) = ty {
         if !type_checking(&type_path) {
-            return Err(
-                syn::Error::new_spanned(&type_path, "All fields must be numeric type")
-                    .to_compile_error()
-                    .into(),
-            );
+            return Err(syn::Error::new_spanned(
+                &type_path,
+                "All fields must be numeric type",
+            )
+            .to_compile_error()
+            .into());
         }
     } else if let Type::Array(type_array) = ty {
         // convert [T; N] to T
@@ -53,11 +57,12 @@ fn field_type_check(ty: Type) -> Result<(), TokenStream> {
         return field_type_check(*type_ref.elem);
     } else {
         // TODO: add more detailed type hints
-        return Err(
-            syn::Error::new_spanned(&ty, "All fields must be validate type")
-                .to_compile_error()
-                .into(),
-        );
+        return Err(syn::Error::new_spanned(
+            &ty,
+            "All fields must be validate type",
+        )
+        .to_compile_error()
+        .into());
     }
     Ok(())
 }
@@ -96,7 +101,8 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
         }
     }
 
-    // You can still derive other traits, or just generate an empty implementation
+    // You can still derive other traits, or just generate an empty
+    // implementation
     let gen = quote! {
         impl #struct_name {
             #[inline(always)]
@@ -111,7 +117,7 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
 
 /// Ref: <https://github.com/aya-rs/aya/blob/1cf3d3c222bda0351ee6a2bacf9cee5349556764/aya-ebpf-macros/src/lib.rs#L53>
 #[proc_macro_attribute]
-pub fn map(_: TokenStream, item: TokenStream) -> TokenStream {
+pub fn rex_map(_: TokenStream, item: TokenStream) -> TokenStream {
     let item: ItemStatic = syn::parse(item).unwrap();
     let name = item.ident.to_string();
     let section_name: Cow<'_, _> = ".maps".to_string().into();
@@ -119,5 +125,6 @@ pub fn map(_: TokenStream, item: TokenStream) -> TokenStream {
         #[link_section = #section_name]
         #[export_name = #name]
         #item
-    }).into()
+    })
+    .into()
 }
