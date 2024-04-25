@@ -3,20 +3,23 @@
 
 extern crate inner_unikernel_rt;
 
-use inner_unikernel_rt::linux::bpf::{BPF_ANY, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH};
-use inner_unikernel_rt::map::IUMap;
+use inner_unikernel_rt::linux::bpf::BPF_ANY;
+use inner_unikernel_rt::map::*;
 use inner_unikernel_rt::tracepoint::*;
-use inner_unikernel_rt::{bpf_printk, entry_link, Result, MAP_DEF};
+use inner_unikernel_rt::{bpf_printk, entry_link, rex_map, Result};
 
-MAP_DEF!(map_hash, u32, i64, BPF_MAP_TYPE_HASH, 1024, 0);
-MAP_DEF!(map_array, u32, u64, BPF_MAP_TYPE_ARRAY, 256, 0);
+#[rex_map]
+static MAP_HASH: IUHashMap<u32, i64> = IUHashMap::new(1024, 0);
+
+#[rex_map]
+static MAP_ARRAY: IUArrayMap<u64> = IUArrayMap::new(256, 0);
 
 fn map_test1(obj: &tracepoint) -> Result {
     let key: u32 = 0;
 
     bpf_printk!(obj, "Map Testing 1 Start with key %u\n", key as u64);
 
-    match obj.bpf_map_lookup_elem(&map_hash, &key) {
+    match obj.bpf_map_lookup_elem(&MAP_HASH, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -32,10 +35,10 @@ fn map_test1(obj: &tracepoint) -> Result {
     };
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
-    obj.bpf_map_update_elem(&map_hash, &key, &(pid as i64), BPF_ANY as u64)?;
+    obj.bpf_map_update_elem(&MAP_HASH, &key, &(pid as i64), BPF_ANY as u64)?;
     bpf_printk!(obj, "Map Updated\n");
 
-    match obj.bpf_map_lookup_elem(&map_hash, &key) {
+    match obj.bpf_map_lookup_elem(&MAP_HASH, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -44,10 +47,10 @@ fn map_test1(obj: &tracepoint) -> Result {
         }
     }
 
-    obj.bpf_map_delete_elem(&map_hash, &key)?;
+    obj.bpf_map_delete_elem(&MAP_HASH, &key)?;
     bpf_printk!(obj, "Map delete key\n");
 
-    match obj.bpf_map_lookup_elem(&map_hash, &key) {
+    match obj.bpf_map_lookup_elem(&MAP_HASH, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -71,10 +74,10 @@ fn map_test2(obj: &tracepoint) -> Result {
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
     // Add a new element
-    obj.bpf_map_update_elem(&map_array, &key, &(pid as u64), BPF_ANY as u64)?;
+    obj.bpf_map_update_elem(&MAP_ARRAY, &key, &(pid as u64), BPF_ANY as u64)?;
     bpf_printk!(obj, "Map Updated\n");
 
-    match obj.bpf_map_lookup_elem(&map_array, &key) {
+    match obj.bpf_map_lookup_elem(&MAP_ARRAY, &key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -82,7 +85,7 @@ fn map_test2(obj: &tracepoint) -> Result {
             bpf_printk!(obj, "Found Val=%llu.\n", (*val).try_into().unwrap());
         }
     }
-    // let ret = obj.bpf_map_push_elem(map_array, pid as u64, BPF_EXIST.into());
+    // let ret = obj.bpf_map_push_elem(MAP_ARRAY, pid as u64, BPF_EXIST.into());
     // bpf_printk!(obj, "Map push ret=%llu\n", ret.try_into().unwrap());
 
     Ok(0)
@@ -101,4 +104,5 @@ fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
 }
 
 #[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_dup)]
-static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_type::Void);
+static PROG: tracepoint =
+    tracepoint::new(iu_prog1_fn, "iu_prog1", tp_type::Void);

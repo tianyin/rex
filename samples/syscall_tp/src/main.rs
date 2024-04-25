@@ -1,18 +1,22 @@
 #![no_std]
 #![no_main]
+#![allow(non_upper_case_globals)]
 
 extern crate inner_unikernel_rt;
 
-use inner_unikernel_rt::linux::bpf::{BPF_MAP_TYPE_ARRAY, BPF_NOEXIST};
-use inner_unikernel_rt::map::IUMap;
+use inner_unikernel_rt::linux::bpf::BPF_NOEXIST;
+use inner_unikernel_rt::map::IUArrayMap;
 use inner_unikernel_rt::tracepoint::{tp_ctx, tp_type, tracepoint};
 use inner_unikernel_rt::Result;
-use inner_unikernel_rt::{entry_link, MAP_DEF};
+use inner_unikernel_rt::{entry_link, rex_map};
 
-MAP_DEF!(enter_open_map, u32, u32, BPF_MAP_TYPE_ARRAY, 1, 0);
-MAP_DEF!(exit_open_map, u32, u32, BPF_MAP_TYPE_ARRAY, 1, 0);
+#[rex_map]
+static enter_open_map: IUArrayMap<u32> = IUArrayMap::new(1, 0);
 
-type SyscallTpMap = IUMap<BPF_MAP_TYPE_ARRAY, u32, u32>;
+#[rex_map]
+static exit_open_map: IUArrayMap<u32> = IUArrayMap::new(1, 0);
+
+type SyscallTpMap = IUArrayMap<u32>;
 
 fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
     match obj.bpf_map_lookup_elem(map, &0) {

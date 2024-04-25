@@ -1,5 +1,6 @@
 #![no_std]
 #![no_main]
+#![allow(non_upper_case_globals)]
 
 extern crate inner_unikernel_rt;
 
@@ -8,7 +9,7 @@ use inner_unikernel_rt::linux::bpf::*;
 use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use inner_unikernel_rt::map::*;
 use inner_unikernel_rt::perf_event::*;
-use inner_unikernel_rt::{entry_link, Result, MAP_DEF};
+use inner_unikernel_rt::{entry_link, rex_map, Result};
 
 pub const TASK_COMM_LEN: usize = 16;
 
@@ -21,19 +22,16 @@ pub struct KeyT {
     pub userstack: u32,
 }
 
-MAP_DEF!(counts, KeyT, u64, BPF_MAP_TYPE_HASH, 10000, 0);
+#[rex_map]
+static counts: IUHashMap<KeyT, u64> = IUHashMap::new(10000, 0);
 
-MAP_DEF!(
-    stackmap,
-    u32,
-    [u64; PERF_MAX_STACK_DEPTH as usize],
-    BPF_MAP_TYPE_STACK_TRACE,
-    10000,
-    0
-);
+#[rex_map]
+static stackmap: IUStackMap<u32, [u64; PERF_MAX_STACK_DEPTH as usize]> =
+    IUStackMap::new(10000, 0);
 
 pub const KERN_STACKID_FLAGS: u64 = BPF_F_FAST_STACK_CMP as u64;
-pub const USER_STACKID_FLAGS: u64 = (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
+pub const USER_STACKID_FLAGS: u64 =
+    (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
 #[inline(always)]
 fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
@@ -62,28 +60,28 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     key.kernstack = obj
         .bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS)
         .map_err(|_| {
-            bpf_printk!(
-                obj,
-                "CPU-%d period %lld ip %llx",
-                cpu as u64,
-                ctx.sample_period(),
-                ctx.rip()
-            );
-            0i32
-        })? as u32;
+        bpf_printk!(
+            obj,
+            "CPU-%d period %lld ip %llx",
+            cpu as u64,
+            ctx.sample_period(),
+            ctx.rip()
+        );
+        0i32
+    })? as u32;
 
     key.userstack = obj
         .bpf_get_stackid_pe(ctx, &stackmap, USER_STACKID_FLAGS)
         .map_err(|_| {
-            bpf_printk!(
-                obj,
-                "CPU-%d period %lld ip %llx",
-                cpu as u64,
-                ctx.sample_period(),
-                ctx.rip()
-            );
-            0i32
-        })? as u32;
+        bpf_printk!(
+            obj,
+            "CPU-%d period %lld ip %llx",
+            cpu as u64,
+            ctx.sample_period(),
+            ctx.rip()
+        );
+        0i32
+    })? as u32;
 
     obj.bpf_perf_prog_read_value(ctx, &mut value_buf)
         .map_or_else(

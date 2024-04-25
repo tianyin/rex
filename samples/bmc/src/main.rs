@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![allow(non_camel_case_types)]
+#![allow(non_upper_case_globals)]
 
 extern crate inner_unikernel_rt;
 
@@ -8,16 +9,14 @@ use core::mem::{size_of, swap};
 
 use inner_unikernel_rt::bpf_printk;
 use inner_unikernel_rt::entry_link;
-use inner_unikernel_rt::linux::bpf::{
-    bpf_spin_lock, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_PERCPU_ARRAY,
-};
-use inner_unikernel_rt::map::IUMap;
+use inner_unikernel_rt::linux::bpf::bpf_spin_lock;
+use inner_unikernel_rt::map::*;
+use inner_unikernel_rt::rex_map;
 use inner_unikernel_rt::sched_cls::*;
 use inner_unikernel_rt::spinlock::*;
 use inner_unikernel_rt::utils::*;
 use inner_unikernel_rt::xdp::*;
 use inner_unikernel_rt::FieldTransmute;
-use inner_unikernel_rt::MAP_DEF;
 
 const BMC_MAX_PACKET_LENGTH: usize = 1500;
 const BMC_CACHE_ENTRY_COUNT: u32 = 3250000;
@@ -96,24 +95,16 @@ struct parsing_context {
     _write_pkt_offset: u8,
 }
 
-MAP_DEF!(
-    map_kcache,
-    u32,
-    bmc_cache_entry,
-    BPF_MAP_TYPE_ARRAY,
-    BMC_CACHE_ENTRY_COUNT,
-    0
-);
-MAP_DEF!(
-    map_keys,
-    u32,
-    memcached_key,
-    BPF_MAP_TYPE_PERCPU_ARRAY,
-    BMC_MAX_KEY_IN_PACKET,
-    0
-);
+#[rex_map]
+static map_kcache: IUArrayMap<bmc_cache_entry> =
+    IUArrayMap::new(BMC_CACHE_ENTRY_COUNT, 0);
 
-MAP_DEF!(map_stats, u32, bmc_stats, BPF_MAP_TYPE_PERCPU_ARRAY, 1, 0);
+#[rex_map]
+static map_keys: IUPerCPUArrayMap<memcached_key> =
+    IUPerCPUArrayMap::new(BMC_MAX_KEY_IN_PACKET, 0);
+
+#[rex_map]
+static map_stats: IUPerCPUArrayMap<bmc_stats> = IUPerCPUArrayMap::new(1, 0);
 
 // payload after header and 'get '
 #[inline(always)]
@@ -134,8 +125,8 @@ fn hash_key(
 
         key.hash = FNV_OFFSET_BASIS_32;
 
-        let payload = &payload
-            [..(BMC_MAX_KEY_LENGTH + 1).min(ctx.data_length() - pctx.read_pkt_offset as usize)];
+        let payload = &payload[..(BMC_MAX_KEY_LENGTH + 1)
+            .min(ctx.data_length() - pctx.read_pkt_offset as usize)];
 
         let key_len = payload
             .iter()
@@ -272,9 +263,11 @@ fn write_pkt_reply(
 
         // bpf_printk!(obj, "length before %d\n", ctx.data_length as u64);
         // const U64_SIZE: usize = size_of::<u64>();
-        // NOTE: data end is determined by slice length limit, may changed in future
-        // while off + U64_SIZE < BMC_MAX_CACHE_DATA_SIZE && off + U64_SIZE <= entry.len as usize {}
-        let padding = (entry.len as i32 - (ctx.data_length() - payload_index) as i32) + 1;
+        // NOTE: data end is determined by slice length limit, may changed in
+        // future while off + U64_SIZE < BMC_MAX_CACHE_DATA_SIZE && off
+        // + U64_SIZE <= entry.len as usize {}
+        let padding =
+            (entry.len as i32 - (ctx.data_length() - payload_index) as i32) + 1;
         // bpf_printk!(
         //     obj,
         //     "entry len %d payload_index %d padding %d\n",
@@ -296,15 +289,18 @@ fn write_pkt_reply(
 
         // udp check not required
         let ip_header_mut = obj.ip_header(ctx);
-        ip_header_mut.tot_len = (u16::from_be(ip_header_mut.tot_len) + padding as u16).to_be();
+        ip_header_mut.tot_len =
+            (u16::from_be(ip_header_mut.tot_len) + padding as u16).to_be();
         ip_header_mut.check = compute_ip_checksum(ip_header_mut);
 
         let udp_header = obj.udp_header(ctx);
-        udp_header.len = (u16::from_be(udp_header.len) + padding as u16).to_be();
+        udp_header.len =
+            (u16::from_be(udp_header.len) + padding as u16).to_be();
         udp_header.check = 0;
 
         let payload = &mut ctx.data_slice[payload_index - 4..];
-        payload[0..entry.len as usize].clone_from_slice(&entry.data[0..entry.len as usize]);
+        payload[0..entry.len as usize]
+            .clone_from_slice(&entry.data[0..entry.len as usize]);
 
         let end = b"END\r\n";
         for i in entry.len as usize..(entry.len + 5) as usize {
@@ -319,7 +315,8 @@ fn write_pkt_reply(
 
 #[inline(always)]
 fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    let header_len = size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<tcphdr>();
+    let header_len =
+        size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<tcphdr>();
     let tcp_header = obj.tcp_header(ctx);
     let port = u16::from_be(tcp_header.dest);
 
@@ -333,11 +330,13 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
     }
 
     // get the index for the set command in the payload
-    let set_iter =
-        payload
-            .windows(4)
-            .enumerate()
-            .filter_map(|(i, v)| if v == b"set " { Some(i) } else { None });
+    let set_iter = payload.windows(4).enumerate().filter_map(|(i, v)| {
+        if v == b"set " {
+            Some(i)
+        } else {
+            None
+        }
+    });
 
     // iterate through the possible set commands
     for index in set_iter {
@@ -385,10 +384,10 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
             return bmc_invalidate_cache(obj, ctx);
         }
         IPPROTO_UDP => {
-            let header_len = size_of::<ethhdr>()
-                + size_of::<iphdr>()
-                + size_of::<udphdr>()
-                + size_of::<memcached_udp_header>();
+            let header_len = size_of::<ethhdr>() +
+                size_of::<iphdr>() +
+                size_of::<udphdr>() +
+                size_of::<memcached_udp_header>();
             let udp_header = obj.udp_header(ctx);
             let port = u16::from_be(udp_header.dest);
             let payload = &ctx.data_slice[header_len..];
@@ -411,7 +410,10 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
             let mut off = 4;
             // move offset to the start of the first key
-            while off < BMC_MAX_PACKET_LENGTH && off + 1 < payload.len() && payload[off] == b' ' {
+            while off < BMC_MAX_PACKET_LENGTH &&
+                off + 1 < payload.len() &&
+                payload[off] == b' '
+            {
                 off += 1;
             }
             off += header_len;
@@ -445,10 +447,13 @@ fn bmc_update_cache(
     let mut hash = FNV_OFFSET_BASIS_32;
 
     let mut off = 6usize;
-    while off < BMC_MAX_KEY_LENGTH && header_len + off < skb.len() as usize && payload[off] != b' '
+    while off < BMC_MAX_KEY_LENGTH &&
+        header_len + off < skb.len() as usize &&
+        payload[off] != b' '
     {
         hash_func!(hash, payload[off]);
-        // bpf_printk!(obj, "current tx hash %d payload %d\n", hash as u64, payload[off] as u64);
+        // bpf_printk!(obj, "current tx hash %d payload %d\n", hash as u64,
+        // payload[off] as u64);
         off += 1;
     }
     let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
@@ -466,9 +471,9 @@ fn bmc_update_cache(
     if entry.valid == 1 && entry.hash == hash {
         let mut diff = 0;
         off = 6;
-        while off < BMC_MAX_KEY_LENGTH
-            && header_len + off < payload.len() as usize
-            && (payload[off] != b' ' || entry.data[off] != b' ')
+        while off < BMC_MAX_KEY_LENGTH &&
+            header_len + off < payload.len() as usize &&
+            (payload[off] != b' ' || entry.data[off] != b' ')
         {
             if entry.data[off] != payload[off] {
                 diff = 1;
@@ -488,7 +493,10 @@ fn bmc_update_cache(
     let (mut count, mut i) = (0usize, 0usize);
     entry.len = 0;
     // bpf_printk!(obj, "update_cace\n");
-    while i < BMC_MAX_CACHE_DATA_SIZE && header_len + i < skb.len() as usize && count < 2 {
+    while i < BMC_MAX_CACHE_DATA_SIZE &&
+        header_len + i < skb.len() as usize &&
+        count < 2
+    {
         entry.data[i] = payload[i];
         entry.len += 1;
         if payload[i] == b'\n' {
@@ -514,10 +522,10 @@ fn bmc_update_cache(
 
 #[inline(always)]
 fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
-    let header_len = size_of::<iphdr>()
-        + size_of::<eth_header>()
-        + size_of::<udphdr>()
-        + size_of::<memcached_udp_header>();
+    let header_len = size_of::<iphdr>() +
+        size_of::<eth_header>() +
+        size_of::<udphdr>() +
+        size_of::<memcached_udp_header>();
 
     // check if the packet is long enough
     if skb.len() as usize <= header_len {
@@ -551,7 +559,8 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     Ok(TC_ACT_OK as i32)
 }
 #[entry_link(inner_unikernel/xdp)]
-static PROG1: xdp = xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
+static PROG1: xdp =
+    xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
 
 #[entry_link(inner_unikernel/tc)]
 static PROG2: sched_cls = sched_cls::new(
