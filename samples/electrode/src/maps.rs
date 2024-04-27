@@ -1,13 +1,11 @@
 use crate::common::*;
 
-use inner_unikernel_rt::linux::bpf::{
-    bpf_spin_lock, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_RINGBUF,
-};
-use inner_unikernel_rt::map::IUMap;
+use inner_unikernel_rt::linux::bpf::bpf_spin_lock;
+use inner_unikernel_rt::map::*;
 use inner_unikernel_rt::utils::*;
 
+use inner_unikernel_rt::rex_map;
 use inner_unikernel_rt::FieldTransmute;
-use inner_unikernel_rt::MAP_DEF;
 
 #[repr(C)]
 pub(crate) struct paxos_quorum {
@@ -32,39 +30,29 @@ pub(crate) struct paxos_batch {
     lock: bpf_spin_lock,
 }
 
-MAP_DEF!(
-    map_configure,
-    u32,
-    PaxosConfigure,
-    BPF_MAP_TYPE_ARRAY,
-    FAST_REPLICA_MAX,
-    0
-);
+#[rex_map]
+pub(crate) static MAP_CONFIGURE: IUArrayMap<PaxosConfigure> =
+    IUArrayMap::new(FAST_REPLICA_MAX, 0);
 
-MAP_DEF!(
-    map_ctr_state,
-    u32,
-    paxos_ctr_state,
-    BPF_MAP_TYPE_ARRAY,
-    1,
-    0
-);
+#[rex_map]
+pub(crate) static map_ctr_state: IUArrayMap<paxos_ctr_state> =
+    IUArrayMap::new(1, 0);
 
-MAP_DEF!(map_msg_last_op, u32, u64, BPF_MAP_TYPE_ARRAY, 1, 0);
+#[rex_map]
+pub(crate) static map_msg_last_op: IUArrayMap<u64> = IUArrayMap::new(1, 0);
 
-MAP_DEF!(
-    map_quorum,
-    u32,
-    paxos_quorum,
-    BPF_MAP_TYPE_ARRAY,
-    QUORUM_BITSET_ENTRY,
-    0
-);
+#[rex_map]
+pub(crate) static map_quorum: IUArrayMap<paxos_quorum> =
+    IUArrayMap::new(QUORUM_BITSET_ENTRY, 0);
 
-MAP_DEF!(batch_context, u32, paxos_batch, BPF_MAP_TYPE_ARRAY, 1, 0);
+#[rex_map]
+pub(crate) static batch_context: IUArrayMap<paxos_batch> =
+    IUArrayMap::new(1, 0);
 
-MAP_DEF!(map_prepare_buffer, (), (), BPF_MAP_TYPE_RINGBUF, 1 << 20, 0);
-MAP_DEF!(map_request_buffer, (), (), BPF_MAP_TYPE_RINGBUF, 1 << 20, 0);
+#[rex_map]
+pub(crate) static map_prepare_buffer: IURingBuf = IURingBuf::new(1 << 20, 0);
+#[rex_map]
+pub(crate) static map_request_buffer: IURingBuf = IURingBuf::new(1 << 20, 0);
 
 #[derive(FieldTransmute)]
 #[repr(C, packed)]

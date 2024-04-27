@@ -11,10 +11,12 @@ use inner_unikernel_rt::map::IUMap;
 // use inner_unikernel_rt::tracepoint::*;
 use core::hint::black_box;
 use inner_unikernel_rt::kprobe::*;
+use inner_unikernel_rt::map::IUArrayMap;
+use inner_unikernel_rt::rex_map;
 use inner_unikernel_rt::Result;
-use inner_unikernel_rt::MAP_DEF;
 
-MAP_DEF!(data_map, u32, u32, BPF_MAP_TYPE_ARRAY, 2, 0);
+#[rex_map]
+static data_map: IUArrayMap<u32> = IUArrayMap::new(2, 0);
 
 #[inline(always)]
 fn iu_recursive(obj: &kprobe, ctx: &mut pt_regs) -> Result {

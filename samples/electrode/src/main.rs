@@ -209,7 +209,7 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
     let key = id as u32;
     let replica_info = obj
-        .bpf_map_lookup_elem(&map_configure, &key)
+        .bpf_map_lookup_elem(&MAP_CONFIGURE, &key)
         .ok_or_else(|| TC_ACT_SHOT as i32)?;
 
     let udp_header = obj.udp_header(skb);
@@ -404,7 +404,7 @@ fn prepare_fast_reply(
     // struct paxos_configure *leaderInfo =
     // bpf_map_lookup_elem(&map_configure, &ctr_state->leaderIdx);
     let leader_info = obj
-        .bpf_map_lookup_elem(&map_configure, &ctr_state.leader_idx)
+        .bpf_map_lookup_elem(&MAP_CONFIGURE, &ctr_state.leader_idx)
         .ok_or_else(|| 0i32)?;
 
     // Write NONFRAG_MAGIC to the start of the payload
