@@ -13,11 +13,6 @@ bindgen_cmd = 'bindgen --use-core --no-doc-comments --rust-target=1.64 '\
         '--translate-enum-integer-types --no-layout-tests '\
         '--no-prepend-enum-name --blocklist-type pt_regs'.split()
 
-stub_skel = """#[inline(always)]
-pub(crate) const unsafe fn %s_addr() -> u64 {
-    0x%%s
-}
-"""
 bindgen_kernel_cmd = '''bindgen %s --allowlist-type="(task_struct|tk_read_base|
 seqcount_raw_spinlock_t|clocksource|seqcount_t|seqcount_latch_t|timekeeper|
 kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern|xdp_buff|ethhdr|iphdr|tcphdr|udphdr|sk_buff|sock)"
