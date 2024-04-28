@@ -34,9 +34,10 @@ def run_make(directory):
 
         os.chdir(directory)
         subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
-        print(f"Build succeeded in {directory}")
+        # print(f"Build succeeded in {directory}")
     except subprocess.CalledProcessError as e:
-        print(f"Build failed in {directory}\nError: {e.stderr}")
+        print(f"Build failed in {directory}")
+        print(f"Error: {e.stderr}")
     finally:
         os.chdir("..")
 
