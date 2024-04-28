@@ -14,7 +14,7 @@ doctest = false
 [dependencies]
 paste = "1.0.14"
 rlibc = "1.0.0"
-safe_from_bytes = { path = "../safe_from_bytes" }
+rex-macros = { path = "../rex-macros" }
 
 [profile.dev]
 debug = 0

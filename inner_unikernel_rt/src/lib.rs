@@ -37,7 +37,7 @@ extern crate rlibc;
 
 use crate::prog_type::iu_prog;
 use core::panic::PanicInfo;
-pub use safe_from_bytes::*;
+pub use rex_macros::*;
 
 use paste::paste;
 
