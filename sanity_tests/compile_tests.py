@@ -1,14 +1,14 @@
 #!/bin/python
 
-import os
 import argparse
+import os
 import subprocess
-from tqdm import tqdm
-from pathlib import Path
+import time
 
+from pathlib import Path
+from tqdm import tqdm
 
 exclusion_list = ["cpustat", "memcached_benchmark"]
-
 
 script_path = Path(__file__).resolve()
 repo_path = script_path.parent.parent
@@ -21,7 +21,6 @@ rust_path = repo_path.joinpath("./rust/dist/bin")
 os.environ["PATH"] = str(rust_path) + os.pathsep + os.environ["PATH"]
 os.environ["LINUX"] = str(kernel_path)
 os.environ["RUST_BACKTRACE"] = "1"
-
 
 # Run make
 def run_make(directory):
@@ -41,7 +40,6 @@ def run_make(directory):
     finally:
         os.chdir("..")
 
-
 def parse_arguments():
     parser = argparse.ArgumentParser(
         description="Run make commands in specified directories."
@@ -51,20 +49,18 @@ def parse_arguments():
     )
     return parser.parse_args()
 
+def is_sample(path):
+    return path.is_dir() and path.name not in exclusion_list
 
 def main():
-
     original_dir = os.getcwd()
     os.chdir(repo_path)
 
     # get samples_list
     samples_list = list(samples_path.iterdir())
     # filter out directory
-    samples_list = [
-        item
-        for item in samples_list
-        if item.is_dir() and item.name not in exclusion_list
-    ]
+    samples_list = sorted(filter(is_sample, samples_list),
+                          key=lambda x: x.name)
 
     # import concurrent.futures
     # with concurrent.futures.ThreadPoolExecutor() as executor:
@@ -75,11 +71,20 @@ def main():
     #             desc="Building",
     #         )
     #     )
-    for dir in tqdm(samples_list, desc="Building"):
-        run_make(dir)
-    print("All builds completed.")
-    os.chdir(original_dir)
+    with tqdm(total=len(samples_list), desc='   \033[34mBuilding\033[0m',
+              leave=False, dynamic_ncols=True) as pbar:
+        start_time = time.time()
+        for dir in samples_list:
+            print('', end='\x1b[1K\r')
+            print('   \033[32mCompiling\033[0m %s' % dir.name)
+            pbar.display()
+            run_make(dir)
+            pbar.update(1)
+        end_time = time.time()
 
+    elapsed = end_time - start_time
+    print("All builds completed successfully in %.3fs." % elapsed)
+    os.chdir(original_dir)
 
 if __name__ == "__main__":
     main()
