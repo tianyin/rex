@@ -4,8 +4,7 @@ CXX = g++
 LD = g++
 AR = gcc-ar
 
-INC += -I${LINUX}/tools/lib -I${LINUX}/tools/include -I${LINUX}/usr/include
-INC += -I${LINUX}/tools/include/uapi
+INC += -I${LINUX}/tools/lib -I${LINUX}/usr/include
 
 CXXFLAGS += -O2 -march=native -pipe -std=gnu++17 -fPIC -fno-exceptions
 CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
