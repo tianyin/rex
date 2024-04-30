@@ -2,14 +2,14 @@
 #![no_main]
 #![allow(non_upper_case_globals)]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::bpf_printk;
-use inner_unikernel_rt::linux::bpf::*;
-use inner_unikernel_rt::linux::perf_event::PERF_MAX_STACK_DEPTH;
-use inner_unikernel_rt::map::*;
-use inner_unikernel_rt::perf_event::*;
-use inner_unikernel_rt::{entry_link, rex_map, Result};
+use rex::bpf_printk;
+use rex::linux::bpf::*;
+use rex::linux::perf_event::PERF_MAX_STACK_DEPTH;
+use rex::map::*;
+use rex::perf_event::*;
+use rex::{entry_link, rex_map, Result};
 
 pub const TASK_COMM_LEN: usize = 16;
 

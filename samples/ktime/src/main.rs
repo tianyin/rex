@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::linux::bpf::*;
-use inner_unikernel_rt::map::*;
-use inner_unikernel_rt::tracepoint::*;
-use inner_unikernel_rt::{bpf_printk, entry_link, rex_map, Result};
+use rex::linux::bpf::*;
+use rex::map::*;
+use rex::tracepoint::*;
+use rex::{bpf_printk, entry_link, rex_map, Result};
 
 #[rex_map]
 static MAP_HASH: IUHashMap<u32, u64> = IUHashMap::new(1, 0);

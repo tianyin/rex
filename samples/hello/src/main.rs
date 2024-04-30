@@ -1,12 +1,12 @@
 #![no_std]
 #![no_main]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::bpf_printk;
-use inner_unikernel_rt::entry_link;
-use inner_unikernel_rt::tracepoint::*;
-use inner_unikernel_rt::Result;
+use rex::bpf_printk;
+use rex::entry_link;
+use rex::tracepoint::*;
+use rex::Result;
 
 #[inline(always)]
 fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {

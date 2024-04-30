@@ -2,17 +2,17 @@
 #![no_main]
 #![allow(non_camel_case_types)]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
 use core::mem::{size_of, swap};
 
-use inner_unikernel_rt::bpf_printk;
-use inner_unikernel_rt::entry_link;
+use rex::bpf_printk;
+use rex::entry_link;
 
-use inner_unikernel_rt::sched_cls::*;
+use rex::sched_cls::*;
 
-use inner_unikernel_rt::utils::*;
-use inner_unikernel_rt::xdp::*;
+use rex::utils::*;
+use rex::xdp::*;
 
 pub mod common;
 pub mod maps;

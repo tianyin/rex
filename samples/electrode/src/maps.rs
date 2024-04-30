@@ -1,11 +1,11 @@
 use crate::common::*;
 
-use inner_unikernel_rt::linux::bpf::bpf_spin_lock;
-use inner_unikernel_rt::map::*;
-use inner_unikernel_rt::utils::*;
+use rex::linux::bpf::bpf_spin_lock;
+use rex::map::*;
+use rex::utils::*;
 
-use inner_unikernel_rt::rex_map;
-use inner_unikernel_rt::FieldTransmute;
+use rex::rex_map;
+use rex::FieldTransmute;
 
 #[repr(C)]
 pub(crate) struct paxos_quorum {
