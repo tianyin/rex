@@ -165,6 +165,9 @@ extern "C" {
 
     /// void bpf_ringbuf_submit(void *data, u64 flags)
     pub(crate) fn bpf_ringbuf_submit(data: *mut (), flags: u64);
+
+    /// void bpf_ringbuf_discard(void *data, u64 flags)
+    pub(crate) fn bpf_ringbuf_discard(data: *mut (), flags: u64);
 }
 
 /// Global variables

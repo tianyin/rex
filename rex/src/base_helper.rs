@@ -33,7 +33,7 @@ pub(crate) fn bpf_trace_printk(
 }
 
 pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
-    map: &'static RexMap<MT, K, V>,
+    map: &'static RexMapHandle<MT, K, V>,
     key: &'a K,
 ) -> Option<&'a mut V> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
@@ -54,7 +54,7 @@ pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
 }
 
 pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
-    map: &'static RexMap<MT, K, V>,
+    map: &'static RexMapHandle<MT, K, V>,
     key: &K,
     value: &V,
     flags: u64,
@@ -75,7 +75,7 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
 }
 
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
-    map: &'static RexMap<MT, K, V>,
+    map: &'static RexMapHandle<MT, K, V>,
     key: &K,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
@@ -92,7 +92,7 @@ pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
 }
 
 pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
-    map: &'static RexMap<MT, K, V>,
+    map: &'static RexMapHandle<MT, K, V>,
     value: &V,
     flags: u64,
 ) -> Result {
@@ -111,7 +111,7 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
 }
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
-    map: &'static RexMap<MT, K, V>,
+    map: &'static RexMapHandle<MT, K, V>,
     value: &V,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
@@ -128,7 +128,7 @@ pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
-    map: &'static RexMap<MT, K, V>,
+    map: &'static RexMapHandle<MT, K, V>,
     value: &V,
 ) -> Result {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
@@ -144,23 +144,21 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     }
 }
 
-/*
-pub(crate) fn bpf_for_each_map_elem<const MT: bpf_map_type, K, V>(
-    map: &RexMap<MT, K, V>,
-    callback_fn: *const (),
-    callback_ctx: *const (),
-    flags: u64,
-) -> i64 {
-    let helper: extern "C" fn(
-        &RexMap<MT, K, V>,
-        *const (),
-        *const (),
-        u64,
-    ) -> i64 =
-        unsafe { core::mem::transmute(stub::bpf_for_each_map_elem_addr()) };
-    helper(map, callback_fn, callback_ctx, flags)
-}
-*/
+// pub(crate) fn bpf_for_each_map_elem<const MT: bpf_map_type, K, V, C>(
+//     map: &'static RexMapHandle<MT, K, V>,
+//     callback_fn: extern "C" fn(*const (), *const K, *const V, *const C) -> i64,
+//     callback_ctx: &C,
+//     flags: u64,
+// ) -> Result {
+//     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+//     if unlikely(map_kptr.is_null()) {
+//         return Err(EINVAL as i32);
+//     }
+
+//     unsafe {
+//         to_result!(stub::bpf_for_each_map_elem(map_kptr, callback_fn as *const (), callback_ctx as *const C as *const (), flags) as i32)
+//     }
+// }
 
 // Design decision: Make the destination a generic type so that probe read
 // kernel can directly fill in variables of certain type. This also achieves
@@ -336,6 +334,10 @@ pub(crate) fn bpf_ringbuf_submit(data: &mut [u8], flags: u64) {
     unsafe { stub::bpf_ringbuf_submit(data.as_mut_ptr() as *mut (), flags) }
 }
 
+pub(crate) fn bpf_ringbuf_discard(data: &mut [u8], flags: u64) {
+    unsafe { stub::bpf_ringbuf_discard(data.as_mut_ptr() as *mut (), flags) }
+}
+
 macro_rules! base_helper_defs {
     () => {
         #[inline(always)]
@@ -358,7 +360,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_lookup_elem<'b, const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static crate::map::RexMap<MT, K, V>,
+            map: &'static crate::map::RexMapHandle<MT, K, V>,
             key: &'b K,
         ) -> Option<&'b mut V> {
             crate::base_helper::bpf_map_lookup_elem(map, key)
@@ -367,7 +369,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static crate::map::RexMap<MT, K, V>,
+            map: &'static crate::map::RexMapHandle<MT, K, V>,
             key: &K,
             value: &V,
             flags: u64,
@@ -378,7 +380,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static crate::map::RexMap<MT, K, V>,
+            map: &'static crate::map::RexMapHandle<MT, K, V>,
             key: &K,
         ) -> crate::Result {
             crate::base_helper::bpf_map_delete_elem(map, key)
@@ -387,7 +389,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static crate::map::RexMap<MT, K, V>,
+            map: &'static crate::map::RexMapHandle<MT, K, V>,
             value: &V,
             flags: u64,
         ) -> crate::Result {
@@ -397,7 +399,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static crate::map::RexMap<MT, K, V>,
+            map: &'static crate::map::RexMapHandle<MT, K, V>,
             value: &V,
         ) -> crate::Result {
             crate::base_helper::bpf_map_pop_elem(map, value)
@@ -406,7 +408,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
             &self,
-            map: &'static crate::map::RexMap<MT, K, V>,
+            map: &'static crate::map::RexMapHandle<MT, K, V>,
             value: &V,
         ) -> crate::Result {
             crate::base_helper::bpf_map_peek_elem(map, value)
