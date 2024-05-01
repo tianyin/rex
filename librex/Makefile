@@ -6,7 +6,7 @@ AR = gcc-ar
 
 INC += -I${LINUX}/tools/lib -I${LINUX}/usr/include
 
-CXXFLAGS += -O2 -march=native -pipe -std=gnu++17 -fPIC -fno-exceptions
+CXXFLAGS += -O2 -march=native -pipe -std=c++23 -fPIC
 CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
 CXXFLAGS += -flto=auto -ffat-lto-objects -fuse-linker-plugin
 

@@ -2,7 +2,6 @@
 
 #include <bpf/libbpf.h>
 #include <fcntl.h>
-#include <gelf.h>
 #include <libelf.h>
 #include <libgen.h>
 #include <linux/bpf.h>
@@ -10,23 +9,22 @@
 #include <linux/unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
-#include <sys/utsname.h>
 #include <unistd.h>
 
 #include <algorithm>
 #include <cstdint>
-#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
 #include <memory>
+#include <optional>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
-#include "librex.h"
 #include "bindings.h"
+#include "librex.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
 
@@ -44,7 +42,8 @@ static const struct bpf_sec_def *find_sec_def(const char *sec_name) {
       continue;
     return &section_defs[i];
   }
-  return NULL;
+
+  return nullptr;
 }
 
 class rex_obj; // forward declaration
@@ -104,7 +103,7 @@ public:
 };
 
 rex_map::rex_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
-               const char *c_name)
+                 const char *c_name)
     : map_fd(-1), name(c_name) {
   auto def_addr = reinterpret_cast<uint64_t>(data->d_buf) + off - base;
   this->def = *reinterpret_cast<map_def *>(def_addr);
@@ -143,18 +142,31 @@ int rex_map::create() {
   return this->map_fd;
 }
 
-class rex_obj {
-  struct rex_prog {
-    std::string name;
-    int prog_type;
-    Elf64_Off offset;
-    int fd;
+class rex_prog {
+  std::string name;
+  std::string scn_name;
+  enum bpf_prog_type prog_type;
+  Elf64_Off offset;
+  std::optional<int> prog_fd;
+  std::unique_ptr<struct bpf_program> bpf_prog_ptr;
+  rex_obj &obj;
 
-    rex_prog() = delete;
-    rex_prog(const char *nm, int prog_ty, Elf64_Off off)
-        : name(nm), prog_type(prog_ty), offset(off), fd(-1) {}
-    ~rex_prog() = default;
-  };
+public:
+  rex_prog() = delete;
+  rex_prog(const char *nm, const char *scn_nm, Elf64_Off off, rex_obj &obj)
+      : name(nm), scn_name(scn_nm), offset(off), obj(obj) {
+    prog_type = find_sec_def(scn_name.c_str())->prog_type;
+  }
+  ~rex_prog() {
+    prog_fd.and_then([](int fd) { return std::make_optional(close(fd)); });
+  }
+
+  struct bpf_program *bpf_prog();
+
+  friend class rex_obj;
+};
+
+class rex_obj {
 
   std::unordered_map<Elf64_Off, rex_map> map_defs;
   std::unordered_map<std::string, const rex_map *> name2map;
@@ -201,9 +213,36 @@ public:
   int load();
   int find_map_by_name(const char *) const;
   int find_prog_by_name(const char *) const;
+
+  struct bpf_object *bpf_obj() { return nullptr; }
 };
 
 } // namespace
+
+struct bpf_program *rex_prog::bpf_prog() {
+  // Do not create a bpf_program if the prog has not been loaded
+  if (!prog_fd)
+    return nullptr;
+
+  // Return the previously created ptr
+  if (bpf_prog_ptr)
+    return bpf_prog_ptr.get();
+
+  // Create a new ptr
+  bpf_prog_ptr = std::make_unique<struct bpf_program>();
+  memset(bpf_prog_ptr.get(), 0, sizeof(struct bpf_program));
+
+  // bpf_prog_ptr will never outlive "this", so just redirect pointers
+  bpf_prog_ptr->sec_name = scn_name.data();
+  bpf_prog_ptr->name = name.data();
+  bpf_prog_ptr->obj = obj.bpf_obj();
+  bpf_prog_ptr->type = prog_type;
+  bpf_prog_ptr->instances.nr = 1;
+  // noexcept since prog_fd is checked
+  bpf_prog_ptr->instances.fds = &prog_fd.value();
+
+  return bpf_prog_ptr.get();
+}
 
 rex_obj::rex_obj(const char *c_path)
     : map_defs(), symtab_scn(nullptr), dynsym_scn(nullptr), maps_scn(nullptr),
@@ -384,8 +423,7 @@ int rex_obj::parse_progs() {
     int prog_type = sec_def->prog_type;
 
     sym_name = elf_strptr(elf, strtabidx, sym->st_name);
-    progs.try_emplace(sym_name, sym_name, prog_type, sym->st_value);
-
+    progs.try_emplace(sym_name, sym_name, scn_name, sym->st_value, *this);
   }
   return 0;
 };
@@ -591,24 +629,25 @@ int rex_obj::load() {
     attr.base_prog_fd = this->prog_fd;
     attr.prog_offset = it.second.offset;
     attr.license = (__u64) "GPL";
-    it.second.fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
+    it.second.prog_fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
 
-    if (it.second.fd < 0) {
+    if (it.second.prog_fd < 0) {
       perror("bpf_prog_load_rex");
       goto close_fds;
     }
 
     if (debug)
-      std::clog << "Program " << it.first << " loaded, fd = " << it.second.fd
+      std::clog << "Program " << it.first
+                << " loaded, fd = " << it.second.prog_fd.value_or(-1)
                 << std::endl;
   }
   return ret;
 
 close_fds:
-  for (auto &it : progs) {
-    if (it.second.fd >= 0)
-      close(it.second.fd);
-  }
+  /*   for (auto &it : progs) { */
+  /*     if (it.second.fd >= 0) */
+  /*       close(it.second.fd); */
+  /*   } */
   close(this->prog_fd);
   return -1;
 }
@@ -620,7 +659,7 @@ int rex_obj::find_map_by_name(const char *name) const {
 
 int rex_obj::find_prog_by_name(const char *name) const {
   auto it = progs.find(name);
-  return it != progs.end() ? it->second.fd : -1;
+  return it != progs.end() ? it->second.prog_fd.value_or(-1) : -1;
 }
 
 void rex_set_debug(const int val) { debug = val; }
@@ -664,4 +703,3 @@ int rex_obj_get_prog(int prog_fd, const char *prog_name) {
   auto it = objs.find(prog_fd);
   return it != objs.end() ? it->second->find_prog_by_name(prog_name) : -1;
 }
-

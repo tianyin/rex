@@ -1,8 +1,13 @@
+// This file contains the non-portable part, it has to mirror some libbpf types
+// for now
+
 #ifndef _LIBREX_BINDINGS_H
 #define _LIBREX_BINDINGS_H
 
+#include <gelf.h>
+
 struct list_head {
-	struct list_head *prev, *next;
+  struct list_head *prev, *next;
 };
 
 struct bpf_sec_def;
@@ -340,4 +345,4 @@ struct bpf_map {
   bool reused;
 };
 
-#endif /* _LIBREX_BINDINGS_H */
+#endif // _LIBREX_BINDINGS_H
