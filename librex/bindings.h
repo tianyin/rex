@@ -1,5 +1,5 @@
-#ifndef _LIBIU_BINDINGS_H
-#define _LIBIU_BINDINGS_H
+#ifndef _LIBREX_BINDINGS_H
+#define _LIBREX_BINDINGS_H
 
 struct list_head {
 	struct list_head *prev, *next;
@@ -340,4 +340,4 @@ struct bpf_map {
   bool reused;
 };
 
-#endif /* _LIBIU_BINDINGS_H */
+#endif /* _LIBREX_BINDINGS_H */

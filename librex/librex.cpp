@@ -25,12 +25,16 @@
 #include <utility>
 #include <vector>
 
-#include "libiu.h"
+#include "librex.h"
 #include "bindings.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
 
 namespace { // begin anynomous namespace
+
+// FIXME: Temporary fix until kernel migrates from iu to rex
+using rex_rela_dyn = iu_rela_dyn;
+using rex_dyn_sym = iu_dyn_sym;
 
 static const struct bpf_sec_def *find_sec_def(const char *sec_name) {
   int i, n = ARRAY_SIZE(section_defs);
@@ -43,10 +47,10 @@ static const struct bpf_sec_def *find_sec_def(const char *sec_name) {
   return NULL;
 }
 
-class iu_obj; // forward declaration
+class rex_obj; // forward declaration
 
 static int debug = 0;
-static std::unordered_map<int, std::unique_ptr<iu_obj>> objs;
+static std::unordered_map<int, std::unique_ptr<rex_obj>> objs;
 
 static inline int64_t get_file_size(int fd) {
   struct stat st;
@@ -84,22 +88,22 @@ struct map_def {
   void *kptr;
 };
 
-class iu_map {
+class rex_map {
   map_def def;
   int map_fd;
   const std::string name; // for debug msg
 
 public:
-  iu_map() = delete;
-  iu_map(const Elf_Data *, Elf64_Addr, Elf64_Off, const char *);
-  ~iu_map();
+  rex_map() = delete;
+  rex_map(const Elf_Data *, Elf64_Addr, Elf64_Off, const char *);
+  ~rex_map();
 
   int create();
 
-  friend class iu_obj; // for debug msg
+  friend class rex_obj; // for debug msg
 };
 
-iu_map::iu_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
+rex_map::rex_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
                const char *c_name)
     : map_fd(-1), name(c_name) {
   auto def_addr = reinterpret_cast<uint64_t>(data->d_buf) + off - base;
@@ -115,12 +119,12 @@ iu_map::iu_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
   }
 }
 
-iu_map::~iu_map() {
+rex_map::~rex_map() {
   if (map_fd >= 0)
     close(map_fd);
 }
 
-int iu_map::create() {
+int rex_map::create() {
   const auto &def = this->def;
 
   union bpf_attr attr;
@@ -139,22 +143,22 @@ int iu_map::create() {
   return this->map_fd;
 }
 
-class iu_obj {
-  struct iu_prog {
+class rex_obj {
+  struct rex_prog {
     std::string name;
     int prog_type;
     Elf64_Off offset;
     int fd;
 
-    iu_prog() = delete;
-    iu_prog(const char *nm, int prog_ty, Elf64_Off off)
+    rex_prog() = delete;
+    rex_prog(const char *nm, int prog_ty, Elf64_Off off)
         : name(nm), prog_type(prog_ty), offset(off), fd(-1) {}
-    ~iu_prog() = default;
+    ~rex_prog() = default;
   };
 
-  std::unordered_map<Elf64_Off, iu_map> map_defs;
-  std::unordered_map<std::string, const iu_map *> name2map;
-  std::unordered_map<std::string, iu_prog> progs;
+  std::unordered_map<Elf64_Off, rex_map> map_defs;
+  std::unordered_map<std::string, const rex_map *> name2map;
+  std::unordered_map<std::string, rex_prog> progs;
 
   Elf *elf;
   Elf_Scn *symtab_scn;
@@ -166,8 +170,8 @@ class iu_obj {
 
   // Dynamic relocation for PIE
   Elf_Scn *rela_dyn_scn;
-  std::vector<iu_rela_dyn> dyn_relas;
-  std::vector<iu_dyn_sym> dyn_syms;
+  std::vector<rex_rela_dyn> dyn_relas;
+  std::vector<rex_dyn_sym> dyn_syms;
 
   size_t file_size;
   unsigned char *file_map;
@@ -181,14 +185,14 @@ class iu_obj {
   int parse_rela_dyn();
 
 public:
-  iu_obj() = delete;
-  explicit iu_obj(const char *);
-  iu_obj(const iu_obj &) = delete;
-  iu_obj(iu_obj &&) = delete;
-  ~iu_obj();
+  rex_obj() = delete;
+  explicit rex_obj(const char *);
+  rex_obj(const rex_obj &) = delete;
+  rex_obj(rex_obj &&) = delete;
+  ~rex_obj();
 
-  iu_obj &operator=(const iu_obj &) = delete;
-  iu_obj &operator=(iu_obj &&) = delete;
+  rex_obj &operator=(const rex_obj &) = delete;
+  rex_obj &operator=(rex_obj &&) = delete;
 
   // Making this a separate function to avoid exceptions in constructor
   int parse_elf();
@@ -201,7 +205,7 @@ public:
 
 } // namespace
 
-iu_obj::iu_obj(const char *c_path)
+rex_obj::rex_obj(const char *c_path)
     : map_defs(), symtab_scn(nullptr), dynsym_scn(nullptr), maps_scn(nullptr),
       prog_fd(-1) {
   int fd = open(c_path, 0, O_RDONLY);
@@ -220,7 +224,7 @@ iu_obj::iu_obj(const char *c_path)
   close(fd);
 }
 
-iu_obj::~iu_obj() {
+rex_obj::~rex_obj() {
   if (this->elf)
     elf_end(this->elf);
 
@@ -231,7 +235,7 @@ iu_obj::~iu_obj() {
     close(prog_fd);
 }
 
-int iu_obj::parse_scns() {
+int rex_obj::parse_scns() {
   size_t shstrndx;
 
   if (elf_getshdrstrndx(elf, &shstrndx)) {
@@ -279,7 +283,7 @@ int iu_obj::parse_scns() {
   return 0;
 }
 
-int iu_obj::parse_maps() {
+int rex_obj::parse_maps() {
   Elf_Data *maps, *syms;
   int nr_syms, nr_maps = 0, maps_shndx;
   size_t strtabidx;
@@ -337,7 +341,7 @@ int iu_obj::parse_maps() {
 
 // get sec name
 // get function symbols
-int iu_obj::parse_progs() {
+int rex_obj::parse_progs() {
   size_t shstrndx, strtabidx;
   Elf_Data *syms;
   int nr_syms;
@@ -386,10 +390,10 @@ int iu_obj::parse_progs() {
   return 0;
 };
 
-int iu_obj::parse_rela_dyn() {
+int rex_obj::parse_rela_dyn() {
   int ret;
   Elf64_Shdr *rela_dyn;
-  iu_rela_dyn *rela_dyn_data;
+  rex_rela_dyn *rela_dyn_data;
   uint64_t rela_dyn_addr, rela_dyn_size, nr_dyn_relas;
   int idx;
 
@@ -404,7 +408,7 @@ int iu_obj::parse_rela_dyn() {
   }
 
   rela_dyn_data =
-      reinterpret_cast<iu_rela_dyn *>(elf_getdata(rela_dyn_scn, 0)->d_buf);
+      reinterpret_cast<rex_rela_dyn *>(elf_getdata(rela_dyn_scn, 0)->d_buf);
   rela_dyn_addr = rela_dyn->sh_addr;
   rela_dyn_size = rela_dyn->sh_size;
 
@@ -413,12 +417,12 @@ int iu_obj::parse_rela_dyn() {
               << ", .rela.dyn size=" << std::dec << rela_dyn_size << std::endl;
   }
 
-  if (rela_dyn_size % sizeof(iu_rela_dyn)) {
+  if (rela_dyn_size % sizeof(rex_rela_dyn)) {
     std::cerr << "elf: ill-formed .rela.dyn section" << std::endl;
     return -1;
   }
 
-  nr_dyn_relas = rela_dyn_size / sizeof(iu_rela_dyn);
+  nr_dyn_relas = rela_dyn_size / sizeof(rex_rela_dyn);
 
   for (idx = 0; idx < nr_dyn_relas; idx++) {
     // Need to skip the map relocs, these are handled differently in the kernel
@@ -432,7 +436,7 @@ int iu_obj::parse_rela_dyn() {
       Elf_Data *syms = elf_getdata(dynsym_scn, 0);
       size_t strtabidx = elf64_getshdr(dynsym_scn)->sh_link;
       Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + dynsym_idx;
-      iu_dyn_sym dyn_sym = {0};
+      rex_dyn_sym dyn_sym = {0};
       char *name = strdup(elf_strptr(elf, strtabidx, sym->st_name));
 
       if (!name) {
@@ -466,7 +470,7 @@ int iu_obj::parse_rela_dyn() {
   return 0;
 }
 
-int iu_obj::parse_elf() {
+int rex_obj::parse_elf() {
   int ret;
 
   if (!elf) {
@@ -482,7 +486,7 @@ int iu_obj::parse_elf() {
   return ret;
 }
 
-int iu_obj::fix_maps() {
+int rex_obj::fix_maps() {
   Elf64_Addr maps_shaddr;
   Elf64_Off maps_shoff;
 
@@ -531,7 +535,7 @@ int iu_obj::fix_maps() {
   return 0;
 }
 
-int iu_obj::load() {
+int rex_obj::load() {
   int fd;
   auto arr = std::make_unique<uint64_t[]>(map_defs.size());
   union bpf_attr attr = {0};
@@ -567,7 +571,7 @@ int iu_obj::load() {
   ret = bpf(BPF_PROG_LOAD_IU_BASE, &attr, sizeof(attr));
 
   if (ret < 0) {
-    perror("bpf_prog_load_iu_base");
+    perror("bpf_prog_load_rex_base");
     return -1;
   }
 
@@ -590,7 +594,7 @@ int iu_obj::load() {
     it.second.fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
 
     if (it.second.fd < 0) {
-      perror("bpf_prog_load_iu");
+      perror("bpf_prog_load_rex");
       goto close_fds;
     }
 
@@ -609,19 +613,19 @@ close_fds:
   return -1;
 }
 
-int iu_obj::find_map_by_name(const char *name) const {
+int rex_obj::find_map_by_name(const char *name) const {
   auto it = name2map.find(name);
   return it != name2map.end() ? it->second->map_fd : -1;
 }
 
-int iu_obj::find_prog_by_name(const char *name) const {
+int rex_obj::find_prog_by_name(const char *name) const {
   auto it = progs.find(name);
   return it != progs.end() ? it->second.fd : -1;
 }
 
-void iu_set_debug(const int val) { debug = val; }
+void rex_set_debug(const int val) { debug = val; }
 
-int iu_obj_load(const char *file_path) {
+int rex_obj_load(const char *file_path) {
   int ret;
 
   if (elf_version(EV_CURRENT) == EV_NONE) {
@@ -629,7 +633,7 @@ int iu_obj_load(const char *file_path) {
     return -1;
   }
 
-  auto obj = std::make_unique<iu_obj>(file_path);
+  auto obj = std::make_unique<rex_obj>(file_path);
 
   ret = obj->parse_elf();
   ret = ret ?: obj->fix_maps();
@@ -641,7 +645,7 @@ int iu_obj_load(const char *file_path) {
   return ret;
 }
 
-int iu_obj_close(int prog_fd) {
+int rex_obj_close(int prog_fd) {
   auto it = objs.find(prog_fd);
   if (it != objs.end()) {
     objs.erase(it);
@@ -651,12 +655,12 @@ int iu_obj_close(int prog_fd) {
   return -1;
 }
 
-int iu_obj_get_map(int prog_fd, const char *map_name) {
+int rex_obj_get_map(int prog_fd, const char *map_name) {
   auto it = objs.find(prog_fd);
   return it != objs.end() ? it->second->find_map_by_name(map_name) : -1;
 }
 
-int iu_obj_get_prog(int prog_fd, const char *prog_name) {
+int rex_obj_get_prog(int prog_fd, const char *prog_name) {
   auto it = objs.find(prog_fd);
   return it != objs.end() ? it->second->find_prog_by_name(prog_name) : -1;
 }

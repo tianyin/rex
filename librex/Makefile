@@ -13,16 +13,16 @@ CXXFLAGS += -flto=auto -ffat-lto-objects -fuse-linker-plugin
 LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
 EXTRA_LDFLAGS += -L${LINUX}/tools/lib/bpf -lbpf -lelf
 
-all: libiu.a libiu.so
+all: librex.a librex.so
 
-libiu.a: libiu.o
+librex.a: librex.o
 	+${AR} rcs $@ $<
 
-libiu.so: libiu.o
+librex.so: librex.o
 	+${LD} ${CXXFLAGS} ${LDFLAGS} -shared -o $@ $< ${EXTRA_LDFLAGS}
 
-libiu.o: libiu.cpp libiu.h
-	+${CXX} ${INC} ${CXXFLAGS} -o $@ -c libiu.cpp
+librex.o: librex.cpp librex.h
+	+${CXX} ${INC} ${CXXFLAGS} -o $@ -c librex.cpp
 
 clean:
-	rm -f libiu.o libiu.a libiu.so
+	rm -f librex.o librex.a librex.so
