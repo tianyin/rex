@@ -88,8 +88,8 @@ impl<V> core::ops::IndexMut<u32> for IUArrayMap<V> {
 }
 
 impl IURingBuf {
-    pub fn reserve(&mut self, size: u64) -> Option<IURingBufEntry> {
-        bpf_ringbuf_reserve(self, size, 0).map(|data| IURingBufEntry { data, has_used: false })
+    pub fn reserve(&mut self, size: u64, submit_by_default: bool) -> Option<IURingBufEntry> {
+        bpf_ringbuf_reserve(self, size, 0).map(|data| IURingBufEntry { data, submit_by_default, has_used: false })
     }
 }
 
@@ -107,6 +107,7 @@ impl<K, V> IUStackMap<K, V> {
 
 pub struct IURingBufEntry<'a> {
     data: &'a mut [u8],
+    submit_by_default: bool,
     has_used: bool
 }
 
@@ -124,7 +125,11 @@ impl<'a> IURingBufEntry<'a> {
 impl<'a> core::ops::Drop for IURingBufEntry<'a> {
     fn drop(&mut self) {
         if !self.has_used {
-            bpf_ringbuf_discard(self.data, 0);
+            if self.submit_by_default {
+                bpf_ringbuf_submit(self.data, 0);
+            } else {
+                bpf_ringbuf_discard(self.data, 0);
+            }
         }
     }
 }
