@@ -1,12 +1,22 @@
-use crate::{base_helper::{bpf_map_delete_elem, bpf_map_lookup_elem, bpf_map_peek_elem, bpf_map_pop_elem, bpf_map_push_elem, bpf_map_update_elem, bpf_ringbuf_discard, bpf_ringbuf_reserve, bpf_ringbuf_submit}, linux::bpf::{
-    bpf_map_type, BPF_MAP_TYPE_ARRAY, BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_RINGBUF,
-    BPF_MAP_TYPE_STACK_TRACE, BPF_ANY, BPF_EXIST, BPF_NOEXIST
-}};
+use crate::base_helper::bpf_ringbuf_query;
 use crate::utils::{to_result, Result};
+use crate::{
+    base_helper::{
+        bpf_map_delete_elem, bpf_map_lookup_elem, bpf_map_peek_elem,
+        bpf_map_pop_elem, bpf_map_push_elem, bpf_map_update_elem,
+        bpf_ringbuf_discard, bpf_ringbuf_reserve, bpf_ringbuf_submit,
+    },
+    linux::bpf::{
+        bpf_map_type, BPF_ANY, BPF_EXIST, BPF_MAP_TYPE_ARRAY,
+        BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_RINGBUF, BPF_MAP_TYPE_STACK_TRACE,
+        BPF_NOEXIST, BPF_RB_AVAIL_DATA, BPF_RB_RING_SIZE, BPF_RB_CONS_POS,
+        BPF_RB_PROD_POS
+    },
+};
 use core::{marker::PhantomData, mem, ptr};
 
 #[repr(C)]
-pub(crate) struct IUMapHandle<const MT: bpf_map_type, K, V> {
+pub struct IUMapHandle<const MT: bpf_map_type, K, V> {
     // Map metadata
     map_type: u32,
     key_size: u32,
@@ -15,7 +25,7 @@ pub(crate) struct IUMapHandle<const MT: bpf_map_type, K, V> {
     map_flag: u32,
 
     // Actual kernel side map pointer
-    pub(crate) kptr: *mut (),
+    pub kptr: *mut (),
 
     // Zero-sized marker
     key_type: PhantomData<K>,
@@ -44,7 +54,7 @@ macro_rules! MAP_DEF {
     ($n:ident, $k:ty, $v:ty, $mt:expr, $ms:expr, $mf:expr) => {
         #[no_mangle]
         #[link_section = ".maps"]
-        pub(crate) static $n: IUMap<$mt, $k, $v> = IUMap::new($ms, $mf);
+        pub(crate) static $n: IUMapHandle<$mt, $k, $v> = IUMapHandle::new($ms, $mf);
     };
 }
 
@@ -57,18 +67,23 @@ impl<K, V> IUHashMap<K, V> {
     pub fn insert(&mut self, key: &K, value: &V) -> Result {
         bpf_map_update_elem(self, key, value, BPF_ANY as u64)
     }
+
     pub fn insert_new(&mut self, key: &K, value: &V) -> Result {
         bpf_map_update_elem(self, key, value, BPF_NOEXIST as u64)
     }
+
     pub fn update(&mut self, key: &K, value: &V) -> Result {
         bpf_map_update_elem(self, key, value, BPF_EXIST as u64)
     }
+
     pub fn get(&self, key: &K) -> Option<&V> {
-        bpf_map_lookup_elem(self, key).map(|&mut v| &v)
+        bpf_map_lookup_elem(self, key).map(|v| &*v)
     }
+
     pub fn get_mut(&mut self, key: &K) -> Option<&mut V> {
         bpf_map_lookup_elem(self, key)
     }
+
     pub fn delete(&mut self, key: &K) -> Result {
         bpf_map_delete_elem(self, key)
     }
@@ -76,6 +91,7 @@ impl<K, V> IUHashMap<K, V> {
 
 impl<V> core::ops::Index<u32> for IUArrayMap<V> {
     type Output = V;
+
     fn index(&self, index: u32) -> &Self::Output {
         bpf_map_lookup_elem(self, &index).unwrap()
     }
@@ -88,8 +104,28 @@ impl<V> core::ops::IndexMut<u32> for IUArrayMap<V> {
 }
 
 impl IURingBuf {
-    pub fn reserve(&mut self, size: u64, submit_by_default: bool) -> Option<IURingBufEntry> {
-        bpf_ringbuf_reserve(self, size, 0).map(|data| IURingBufEntry { data, submit_by_default, has_used: false })
+    pub fn reserve(
+        &mut self,
+        size: u64,
+        submit_by_default: bool,
+    ) -> Option<IURingBufEntry> {
+        bpf_ringbuf_reserve(self, size, 0).map(|data| IURingBufEntry {
+            data,
+            submit_by_default,
+            has_used: false,
+        })
+    }
+    pub fn available_data(&mut self) -> Option<u64> {
+        bpf_ringbuf_query(self, BPF_RB_AVAIL_DATA as u64)
+    }
+    pub fn size(&mut self) -> Option<u64> {
+        bpf_ringbuf_query(self, BPF_RB_RING_SIZE as u64)
+    }
+    pub fn consumer_position(&mut self) -> Option<u64> {
+        bpf_ringbuf_query(self, BPF_RB_CONS_POS as u64)
+    }
+    pub fn producer_position(&mut self) -> Option<u64> {
+        bpf_ringbuf_query(self, BPF_RB_PROD_POS as u64)
     }
 }
 
@@ -97,9 +133,11 @@ impl<K, V> IUStackMap<K, V> {
     pub fn push(&mut self, value: &V, flags: u64) -> Result {
         bpf_map_push_elem(self, value, flags)
     }
+
     pub fn pop(&mut self, value: &V) -> Result {
         bpf_map_pop_elem(self, value)
     }
+
     pub fn peek(&self, value: &V) -> Result {
         bpf_map_peek_elem(self, value)
     }
@@ -108,7 +146,7 @@ impl<K, V> IUStackMap<K, V> {
 pub struct IURingBufEntry<'a> {
     data: &'a mut [u8],
     submit_by_default: bool,
-    has_used: bool
+    has_used: bool,
 }
 
 impl<'a> IURingBufEntry<'a> {
@@ -116,6 +154,7 @@ impl<'a> IURingBufEntry<'a> {
         self.has_used = true;
         bpf_ringbuf_submit(self.data, 0)
     }
+
     pub fn discard(mut self) {
         self.has_used = true;
         bpf_ringbuf_discard(self.data, 0)

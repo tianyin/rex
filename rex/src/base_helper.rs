@@ -156,8 +156,8 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
 //     }
 
 //     unsafe {
-//         to_result!(stub::bpf_for_each_map_elem(map_kptr, callback_fn as *const (), callback_ctx as *const C as *const (), flags) as i32)
-//     }
+//         to_result!(stub::bpf_for_each_map_elem(map_kptr, callback_fn as
+// *const (), callback_ctx as *const C as *const (), flags) as i32)     }
 // }
 
 // Design decision: Make the destination a generic type so that probe read
@@ -336,6 +336,14 @@ pub(crate) fn bpf_ringbuf_submit(data: &mut [u8], flags: u64) {
 
 pub(crate) fn bpf_ringbuf_discard(data: &mut [u8], flags: u64) {
     unsafe { stub::bpf_ringbuf_discard(data.as_mut_ptr() as *mut (), flags) }
+}
+
+pub(crate) fn bpf_ringbuf_query(map: &IURingBuf, flags: u64) -> Option<u64> {
+    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+    if unlikely(map_kptr.is_null()) {
+        return None;
+    }
+    Some(unsafe { stub::bpf_ringbuf_query(map_kptr, flags) })
 }
 
 macro_rules! base_helper_defs {
