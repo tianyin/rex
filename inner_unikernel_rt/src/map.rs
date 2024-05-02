@@ -8,9 +8,9 @@ use crate::{
     },
     linux::bpf::{
         bpf_map_type, BPF_ANY, BPF_EXIST, BPF_MAP_TYPE_ARRAY,
-        BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_RINGBUF, BPF_MAP_TYPE_STACK_TRACE,
-        BPF_NOEXIST, BPF_RB_AVAIL_DATA, BPF_RB_RING_SIZE, BPF_RB_CONS_POS,
-        BPF_RB_PROD_POS
+        BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_RINGBUF, BPF_MAP_TYPE_STACK,
+        BPF_NOEXIST, BPF_RB_AVAIL_DATA, BPF_RB_CONS_POS, BPF_RB_PROD_POS,
+        BPF_RB_RING_SIZE,
     },
 };
 use core::{marker::PhantomData, mem, ptr};
@@ -54,14 +54,15 @@ macro_rules! MAP_DEF {
     ($n:ident, $k:ty, $v:ty, $mt:expr, $ms:expr, $mf:expr) => {
         #[no_mangle]
         #[link_section = ".maps"]
-        pub(crate) static $n: IUMapHandle<$mt, $k, $v> = IUMapHandle::new($ms, $mf);
+        pub(crate) static $n: IUMapHandle<$mt, $k, $v> =
+            IUMapHandle::new($ms, $mf);
     };
 }
 
 pub type IUArrayMap<V> = IUMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>;
 pub type IUHashMap<K, V> = IUMapHandle<BPF_MAP_TYPE_HASH, K, V>;
 pub type IURingBuf = IUMapHandle<BPF_MAP_TYPE_RINGBUF, (), ()>;
-pub type IUStackMap<K, V> = IUMapHandle<BPF_MAP_TYPE_STACK_TRACE, K, V>;
+pub type IUStackMap<K, V> = IUMapHandle<BPF_MAP_TYPE_STACK, K, V>;
 
 impl<K, V> IUHashMap<K, V> {
     pub fn insert(&mut self, key: &K, value: &V) -> Result {
@@ -115,23 +116,31 @@ impl IURingBuf {
             has_used: false,
         })
     }
+
     pub fn available_data(&mut self) -> Option<u64> {
         bpf_ringbuf_query(self, BPF_RB_AVAIL_DATA as u64)
     }
+
     pub fn size(&mut self) -> Option<u64> {
         bpf_ringbuf_query(self, BPF_RB_RING_SIZE as u64)
     }
+
     pub fn consumer_position(&mut self) -> Option<u64> {
         bpf_ringbuf_query(self, BPF_RB_CONS_POS as u64)
     }
+
     pub fn producer_position(&mut self) -> Option<u64> {
         bpf_ringbuf_query(self, BPF_RB_PROD_POS as u64)
     }
 }
 
 impl<K, V> IUStackMap<K, V> {
-    pub fn push(&mut self, value: &V, flags: u64) -> Result {
-        bpf_map_push_elem(self, value, flags)
+    pub fn push(&mut self, value: &V) -> Result {
+        bpf_map_push_elem(self, value, BPF_ANY as u64)
+    }
+
+    pub fn force_push(&mut self, value: &V) -> Result {
+        bpf_map_push_elem(self, value, BPF_EXIST as u64)
     }
 
     pub fn pop(&mut self, value: &V) -> Result {
