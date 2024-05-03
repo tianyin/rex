@@ -34,7 +34,7 @@ namespace { // begin anynomous namespace
 using rex_rela_dyn = iu_rela_dyn;
 using rex_dyn_sym = iu_dyn_sym;
 
-static const struct bpf_sec_def *find_sec_def(const char *sec_name) {
+static const bpf_sec_def *find_sec_def(const char *sec_name) {
   int i, n = ARRAY_SIZE(section_defs);
 
   for (i = 0; i < n; i++) {
@@ -46,7 +46,7 @@ static const struct bpf_sec_def *find_sec_def(const char *sec_name) {
   return nullptr;
 }
 
-class rex_obj; // forward declaration
+struct rex_obj; // forward declaration
 
 static int debug = 0;
 static std::unordered_map<int, std::unique_ptr<rex_obj>> objs;
@@ -87,7 +87,8 @@ struct map_def {
   void *kptr;
 };
 
-class rex_map {
+struct rex_map {
+private:
   map_def def;
   int map_fd;
   const std::string name; // for debug msg
@@ -99,7 +100,7 @@ public:
 
   int create();
 
-  friend class rex_obj; // for debug msg
+  friend struct rex_obj; // for debug msg
 };
 
 rex_map::rex_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
@@ -142,13 +143,14 @@ int rex_map::create() {
   return this->map_fd;
 }
 
-class rex_prog {
+struct rex_prog {
+private:
   std::string name;
   std::string scn_name;
   enum bpf_prog_type prog_type;
   Elf64_Off offset;
   std::optional<int> prog_fd;
-  std::unique_ptr<struct bpf_program> bpf_prog_ptr;
+  std::unique_ptr<bpf_program> bpf_prog_ptr;
   rex_obj &obj;
 
 public:
@@ -161,13 +163,13 @@ public:
     prog_fd.and_then([](int fd) { return std::make_optional(close(fd)); });
   }
 
-  struct bpf_program *bpf_prog();
+  bpf_program *bpf_prog();
 
-  friend class rex_obj;
+  friend struct rex_obj;
 };
 
-class rex_obj {
-
+struct rex_obj {
+private:
   std::unordered_map<Elf64_Off, rex_map> map_defs;
   std::unordered_map<std::string, const rex_map *> name2map;
   std::unordered_map<std::string, rex_prog> progs;
@@ -214,12 +216,12 @@ public:
   int find_map_by_name(const char *) const;
   int find_prog_by_name(const char *) const;
 
-  struct bpf_object *bpf_obj() { return nullptr; }
+  bpf_object *bpf_obj() { return nullptr; }
 };
 
 } // namespace
 
-struct bpf_program *rex_prog::bpf_prog() {
+bpf_program *rex_prog::bpf_prog() {
   // Do not create a bpf_program if the prog has not been loaded
   if (!prog_fd)
     return nullptr;
@@ -229,8 +231,8 @@ struct bpf_program *rex_prog::bpf_prog() {
     return bpf_prog_ptr.get();
 
   // Create a new ptr
-  bpf_prog_ptr = std::make_unique<struct bpf_program>();
-  memset(bpf_prog_ptr.get(), 0, sizeof(struct bpf_program));
+  bpf_prog_ptr = std::make_unique<bpf_program>();
+  memset(bpf_prog_ptr.get(), 0, sizeof(bpf_program));
 
   // bpf_prog_ptr will never outlive "this", so just redirect pointers
   bpf_prog_ptr->sec_name = scn_name.data();
@@ -364,7 +366,7 @@ int rex_obj::parse_maps() {
                 << std::endl;
     }
 
-    if (sym->st_size == sizeof(struct map_def)) {
+    if (sym->st_size == sizeof(map_def)) {
       map_defs.try_emplace(sym->st_value, maps, maps_shaddr, sym->st_value,
                            name);
     }
@@ -405,7 +407,7 @@ int rex_obj::parse_progs() {
     Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + i;
     Elf_Scn *scn = elf_getscn(this->elf, sym->st_shndx);
     char *scn_name, *sym_name;
-    const struct bpf_sec_def *sec_def;
+    const bpf_sec_def *sec_def;
 
     if (!scn || ELF64_ST_TYPE(sym->st_info) != STT_FUNC)
       continue;
