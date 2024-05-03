@@ -221,7 +221,8 @@ public:
 
 } // namespace
 
-bpf_program *rex_prog::bpf_prog() {
+// FIXME: Temporary hack to make cc1plus happy
+__attribute__((__unused__)) bpf_program *rex_prog::bpf_prog() {
   // Do not create a bpf_program if the prog has not been loaded
   if (!prog_fd)
     return nullptr;
@@ -422,7 +423,6 @@ int rex_obj::parse_progs() {
     sec_def = find_sec_def(scn_name);
     if (!sec_def)
       continue;
-    int prog_type = sec_def->prog_type;
 
     sym_name = elf_strptr(elf, strtabidx, sym->st_name);
     progs.try_emplace(sym_name, sym_name, scn_name, sym->st_value, *this);
@@ -431,11 +431,10 @@ int rex_obj::parse_progs() {
 };
 
 int rex_obj::parse_rela_dyn() {
-  int ret;
   Elf64_Shdr *rela_dyn;
   rex_rela_dyn *rela_dyn_data;
   uint64_t rela_dyn_addr, rela_dyn_size, nr_dyn_relas;
-  int idx;
+  size_t idx;
 
   if (!this->rela_dyn_scn)
     return 0;
@@ -519,9 +518,9 @@ int rex_obj::parse_elf() {
   }
 
   ret = this->parse_scns();
-  ret = ret < 0 ?: this->parse_maps();
-  ret = ret < 0 ?: this->parse_progs();
-  ret = ret < 0 ?: this->parse_rela_dyn();
+  ret = ret < 0 ? ret : this->parse_maps();
+  ret = ret < 0 ? ret : this->parse_progs();
+  ret = ret < 0 ? ret : this->parse_rela_dyn();
 
   return ret;
 }
@@ -578,7 +577,7 @@ int rex_obj::fix_maps() {
 int rex_obj::load() {
   int fd;
   auto arr = std::make_unique<uint64_t[]>(map_defs.size());
-  union bpf_attr attr = {0};
+  union bpf_attr attr = {};
   int idx = 0, ret = 0;
 
   // TODO: Will have race condition if multiple objs loaded at same time
