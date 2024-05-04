@@ -1,12 +1,13 @@
 use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
 use crate::debug::printk;
-use crate::linux::bpf::{bpf_map_type, BPF_MAP_TYPE_RINGBUF};
+use crate::linux::bpf::bpf_map_type;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
 use crate::utils::{to_result, Result};
+use core::mem::MaybeUninit;
 // use crate::timekeeping::*;
 
 use core::intrinsics::unlikely;
@@ -112,36 +113,45 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
     map: &'static RexMapHandle<MT, K, V>,
-    value: &V,
-) -> Result {
+) -> Option<V> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
-        return Err(EINVAL as i32);
+        return None;
     }
 
-    unsafe {
+    let mut value: MaybeUninit<V> = MaybeUninit::uninit();
+
+    let res = unsafe {
         to_result!(stub::bpf_map_pop_elem(
             map_kptr,
-            value as *const V as *const ()
+            value.as_mut_ptr() as *mut ()
         ) as i32)
-    }
+    };
+    res.map(|_| unsafe {
+        value.assume_init()   
+    }).ok()
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     map: &'static RexMapHandle<MT, K, V>,
-    value: &V,
-) -> Result {
+) -> Option<V> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
-        return Err(EINVAL as i32);
+        return None;
     }
 
-    unsafe {
+    let mut value: MaybeUninit<V> = MaybeUninit::uninit();
+
+    let res = unsafe {
         to_result!(stub::bpf_map_peek_elem(
             map_kptr,
-            value as *const V as *const ()
+            value.as_mut_ptr() as *mut ()
         ) as i32)
-    }
+    };
+
+    res.map(|_| unsafe {
+        value.assume_init()   
+    }).ok()
 }
 
 // pub(crate) fn bpf_for_each_map_elem<const MT: bpf_map_type, K, V, C>(
@@ -338,7 +348,10 @@ pub(crate) fn bpf_ringbuf_discard(data: &mut [u8], flags: u64) {
     unsafe { stub::bpf_ringbuf_discard(data.as_mut_ptr() as *mut (), flags) }
 }
 
-pub(crate) fn bpf_ringbuf_query(map: &'static IURingBuf, flags: u64) -> Option<u64> {
+pub(crate) fn bpf_ringbuf_query<const MT: bpf_map_type>(
+    map: &'static IUMapHandle<MT, (), ()>,
+    flags: u64,
+) -> Option<u64> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return None;
@@ -408,18 +421,16 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static crate::map::RexMapHandle<MT, K, V>,
-            value: &V,
-        ) -> crate::Result {
-            crate::base_helper::bpf_map_pop_elem(map, value)
+        ) -> Option<V> {
+            crate::base_helper::bpf_map_pop_elem(map)
         }
 
         #[inline(always)]
         pub fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static crate::map::RexMapHandle<MT, K, V>,
-            value: &V,
-        ) -> crate::Result {
-            crate::base_helper::bpf_map_peek_elem(map, value)
+        ) -> Option<V> {
+            crate::base_helper::bpf_map_peek_elem(map)
         }
 
         #[inline(always)]
@@ -479,7 +490,7 @@ macro_rules! base_helper_defs {
         }
 
         #[inline(always)]
-        pub fn bpf_ringbuf_reserve(
+        pub fn bpf_ringbuf_reserve<const MT: bpf_map_type>(
             &self,
             map: &'static RexRingBuf,
             size: u64,

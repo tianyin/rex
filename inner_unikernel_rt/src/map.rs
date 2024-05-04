@@ -8,10 +8,9 @@ use crate::{
     },
     linux::bpf::{
         bpf_map_type, BPF_ANY, BPF_EXIST, BPF_MAP_TYPE_ARRAY,
-        BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_RINGBUF, BPF_MAP_TYPE_STACK, BPF_MAP_TYPE_QUEUE,
-        BPF_MAP_TYPE_STACK_TRACE,
-        BPF_NOEXIST, BPF_RB_AVAIL_DATA, BPF_RB_CONS_POS, BPF_RB_PROD_POS,
-        BPF_RB_RING_SIZE,
+        BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_QUEUE, BPF_MAP_TYPE_RINGBUF,
+        BPF_MAP_TYPE_STACK, BPF_MAP_TYPE_STACK_TRACE, BPF_NOEXIST,
+        BPF_RB_AVAIL_DATA, BPF_RB_CONS_POS, BPF_RB_PROD_POS, BPF_RB_RING_SIZE,
     },
 };
 use core::{marker::PhantomData, mem, ptr};
@@ -34,7 +33,7 @@ pub struct IUMapHandle<const MT: bpf_map_type, K, V> {
 }
 
 impl<const MT: bpf_map_type, K, V> IUMapHandle<MT, K, V> {
-    pub const fn new(ms: u32, mf: u32) -> IUMapHandle<MT, K, V> {
+    pub(crate) const fn new(ms: u32, mf: u32) -> IUMapHandle<MT, K, V> {
         Self {
             map_type: MT,
             key_size: mem::size_of::<K>() as u32,
@@ -50,56 +49,134 @@ impl<const MT: bpf_map_type, K, V> IUMapHandle<MT, K, V> {
 
 unsafe impl<const MT: bpf_map_type, K, V> Sync for IUMapHandle<MT, K, V> {}
 
+// #[macro_export]
+// macro_rules! MAP_DEF {
+//     ($n:ident, $k:ty, $v:ty, $mt:expr, $ms:expr, $mf:expr) => {
+//         #[no_mangle]
+//         #[link_section = ".maps"]
+//         pub(crate) static $n: IUMapHandle<$mt, $k, $v> =
+//             IUMapHandle::new($ms, $mf);
+//     };
+// }
+
+//pub type IUArray<V> = IUMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>;
+//pub type IUHashMap<K, V> = IUMapHandle<BPF_MAP_TYPE_HASH, K, V>;
+//pub type IURingBuf = IUMapHandle<BPF_MAP_TYPE_RINGBUF, (), ()>;
+//pub type IUStack<V> = IUMapHandle<BPF_MAP_TYPE_STACK, (), V>;
+//pub type IUQueue<V> = IUMapHandle<BPF_MAP_TYPE_QUEUE, (), V>;
+pub type IUStackTrace<K, V> = IUMapHandle<BPF_MAP_TYPE_STACK_TRACE, K, V>;
+
+#[repr(C)]
+pub struct IUArray<V> {
+    map: IUMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>,
+}
+
+#[repr(C)]
+pub struct IUHashMap<K, V> {
+    map: IUMapHandle<BPF_MAP_TYPE_HASH, K, V>,
+}
+
+#[repr(C)]
+pub struct IURingBuf {
+    map: IUMapHandle<BPF_MAP_TYPE_RINGBUF, (), ()>,
+}
+
+#[repr(C)]
+pub struct IUStack<V> {
+    map: IUMapHandle<BPF_MAP_TYPE_STACK, (), V>,
+}
+
+#[repr(C)]
+pub struct IUQueue<V> {
+    map: IUMapHandle<BPF_MAP_TYPE_QUEUE, (), V>,
+}
+
 #[macro_export]
-macro_rules! MAP_DEF {
-    ($n:ident, $k:ty, $v:ty, $mt:expr, $ms:expr, $mf:expr) => {
+macro_rules! ARRAY {
+    ($n:ident, $v:ty, $ms:expr, $mf:expr) => {
         #[no_mangle]
         #[link_section = ".maps"]
-        pub(crate) static $n: IUMapHandle<$mt, $k, $v> =
-            IUMapHandle::new($ms, $mf);
+        pub(crate) static $n: IUArray<$v> = IUArray::new($ms, $mf);
     };
 }
 
-pub type IUArray<V> = IUMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>;
-pub type IUHashMap<K, V> = IUMapHandle<BPF_MAP_TYPE_HASH, K, V>;
-pub type IURingBuf = IUMapHandle<BPF_MAP_TYPE_RINGBUF, (), ()>;
-pub type IUStack<V> = IUMapHandle<BPF_MAP_TYPE_STACK, (), V>;
-pub type IUQueue<V> = IUMapHandle<BPF_MAP_TYPE_QUEUE, (), V>;
-pub type IUStackTrace<K, V> = IUMapHandle<BPF_MAP_TYPE_STACK_TRACE, K, V>;
+#[macro_export]
+macro_rules! HASH_MAP {
+    ($n:ident, $k:ty, $v:ty, $ms:expr, $mf:expr) => {
+        #[no_mangle]
+        #[link_section = ".maps"]
+        pub(crate) static $n: IUHashMap<$k, $v> = IUHashMap::new($ms, $mf);
+    };
+}
+
+#[macro_export]
+macro_rules! RING_BUF {
+    ($n:ident, $ms:expr, $mf:expr) => {
+        #[no_mangle]
+        #[link_section = ".maps"]
+        pub(crate) static $n: IURingBuf = IURingBuf::new($ms, $mf);
+    };
+}
+
+#[macro_export]
+macro_rules! STACK {
+    ($n:ident, $v:ty, $ms:expr, $mf:expr) => {
+        #[no_mangle]
+        #[link_section = ".maps"]
+        pub(crate) static $n: IUStack<$v> = IUStack::new($ms, $mf);
+    };
+}
+
+#[macro_export]
+macro_rules! QUEUE {
+    ($n:ident, $v:ty, $ms:expr, $mf:expr) => {
+        #[no_mangle]
+        #[link_section = ".maps"]
+        pub(crate) static $n: IUQueue<$v> = IUQueue::new($ms, $mf);
+    };
+}
 
 impl<'a, K, V> IUHashMap<K, V> {
+    pub const fn new(ms: u32, mf: u32) -> IUHashMap<K, V> {
+        IUHashMap { map: IUMapHandle::new(ms, mf) }
+    }
+
     pub fn insert(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(self, key, value, BPF_ANY as u64)
+        bpf_map_update_elem(&self.map, key, value, BPF_ANY as u64)
     }
 
     pub fn insert_new(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(self, key, value, BPF_NOEXIST as u64)
+        bpf_map_update_elem(&self.map, key, value, BPF_NOEXIST as u64)
     }
 
     pub fn update(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(self, key, value, BPF_EXIST as u64)
+        bpf_map_update_elem(&self.map, key, value, BPF_EXIST as u64)
     }
 
     pub fn get_mut(&'static self, key: &'a K) -> Option<&'a mut V> {
-        bpf_map_lookup_elem(self, key)
+        bpf_map_lookup_elem(&self.map, key)
     }
 
     pub fn delete(&'static self, key: &K) -> Result {
-        bpf_map_delete_elem(self, key)
+        bpf_map_delete_elem(&self.map, key)
     }
 }
 
 impl<'a, V> IUArray<V> {
+    pub const fn new(ms: u32, mf: u32) -> IUArray<V> {
+        IUArray { map: IUMapHandle::new(ms, mf) }
+    }
+
     pub fn insert(&'static self, key: &u32, value: &V) -> Result {
-        bpf_map_update_elem(self, key, value, BPF_ANY as u64)
+        bpf_map_update_elem(&self.map, key, value, BPF_ANY as u64)
     }
 
     pub fn get_mut(&'static self, key: &'a u32) -> Option<&'a mut V> {
-        bpf_map_lookup_elem(self, key)
+        bpf_map_lookup_elem(&self.map, key)
     }
 
     pub fn delete(&'static self, key: &u32) -> Result {
-        bpf_map_delete_elem(self, key)
+        bpf_map_delete_elem(&self.map, key)
     }
 }
 
@@ -118,12 +195,16 @@ impl<'a, V> IUArray<V> {
 // }
 
 impl IURingBuf {
+    pub const fn new(ms: u32, mf: u32) -> IURingBuf {
+        IURingBuf { map: IUMapHandle::new(ms, mf) }
+    }
+
     pub fn reserve(
         &'static self,
         size: u64,
         submit_by_default: bool,
     ) -> Option<IURingBufEntry> {
-        bpf_ringbuf_reserve(self, size, 0).map(|data| IURingBufEntry {
+        bpf_ringbuf_reserve(&self.map, size, 0).map(|data| IURingBufEntry {
             data,
             submit_by_default,
             has_used: false,
@@ -131,55 +212,63 @@ impl IURingBuf {
     }
 
     pub fn available_bytes(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_AVAIL_DATA as u64)
+        bpf_ringbuf_query(&self.map, BPF_RB_AVAIL_DATA as u64)
     }
 
     pub fn size(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_RING_SIZE as u64)
+        bpf_ringbuf_query(&self.map, BPF_RB_RING_SIZE as u64)
     }
 
     pub fn consumer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_CONS_POS as u64)
+        bpf_ringbuf_query(&self.map, BPF_RB_CONS_POS as u64)
     }
 
     pub fn producer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_PROD_POS as u64)
+        bpf_ringbuf_query(&self.map, BPF_RB_PROD_POS as u64)
     }
 }
 
 impl<V> IUStack<V> {
+    pub const fn new(ms: u32, mf: u32) -> IUStack<V> {
+        IUStack { map: IUMapHandle::new(ms, mf) }
+    }
+
     pub fn push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(self, value, BPF_ANY as u64)
+        bpf_map_push_elem(&self.map, value, BPF_ANY as u64)
     }
 
     pub fn force_push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(self, value, BPF_EXIST as u64)
+        bpf_map_push_elem(&self.map, value, BPF_EXIST as u64)
     }
 
-    pub fn pop(&'static self, value: &V) -> Result {
-        bpf_map_pop_elem(self, value)
+    pub fn pop(&'static self) -> Option<V> {
+        bpf_map_pop_elem(&self.map)
     }
 
-    pub fn peek(&'static self, value: &V) -> Result {
-        bpf_map_peek_elem(self, value)
+    pub fn peek(&'static self) -> Option<V> {
+        bpf_map_peek_elem(&self.map)
     }
 }
 
 impl<V> IUQueue<V> {
+    pub const fn new(ms: u32, mf: u32) -> IUQueue<V> {
+        IUQueue { map: IUMapHandle::new(ms, mf) }
+    }
+
     pub fn push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(self, value, BPF_ANY as u64)
+        bpf_map_push_elem(&self.map, value, BPF_ANY as u64)
     }
 
     pub fn force_push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(self, value, BPF_EXIST as u64)
+        bpf_map_push_elem(&self.map, value, BPF_EXIST as u64)
     }
 
-    pub fn pop(&'static self, value: &V) -> Result {
-        bpf_map_pop_elem(self, value)
+    pub fn pop(&'static self) -> Option<V> {
+        bpf_map_pop_elem(&self.map)
     }
 
-    pub fn peek(&'static self, value: &V) -> Result {
-        bpf_map_peek_elem(self, value)
+    pub fn peek(&'static self) -> Option<V> {
+        bpf_map_peek_elem(&self.map)
     }
 }
 
