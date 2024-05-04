@@ -127,9 +127,7 @@ pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
             value.as_mut_ptr() as *mut ()
         ) as i32)
     };
-    res.map(|_| unsafe {
-        value.assume_init()   
-    }).ok()
+    res.map(|_| unsafe { value.assume_init() }).ok()
 }
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
@@ -149,9 +147,7 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
         ) as i32)
     };
 
-    res.map(|_| unsafe {
-        value.assume_init()   
-    }).ok()
+    res.map(|_| unsafe { value.assume_init() }).ok()
 }
 
 // pub(crate) fn bpf_for_each_map_elem<const MT: bpf_map_type, K, V, C>(

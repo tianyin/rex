@@ -138,7 +138,9 @@ macro_rules! QUEUE {
 
 impl<'a, K, V> IUHashMap<K, V> {
     pub const fn new(ms: u32, mf: u32) -> IUHashMap<K, V> {
-        IUHashMap { map: IUMapHandle::new(ms, mf) }
+        IUHashMap {
+            map: IUMapHandle::new(ms, mf),
+        }
     }
 
     pub fn insert(&'static self, key: &K, value: &V) -> Result {
@@ -164,7 +166,9 @@ impl<'a, K, V> IUHashMap<K, V> {
 
 impl<'a, V> IUArray<V> {
     pub const fn new(ms: u32, mf: u32) -> IUArray<V> {
-        IUArray { map: IUMapHandle::new(ms, mf) }
+        IUArray {
+            map: IUMapHandle::new(ms, mf),
+        }
     }
 
     pub fn insert(&'static self, key: &u32, value: &V) -> Result {
@@ -196,7 +200,9 @@ impl<'a, V> IUArray<V> {
 
 impl IURingBuf {
     pub const fn new(ms: u32, mf: u32) -> IURingBuf {
-        IURingBuf { map: IUMapHandle::new(ms, mf) }
+        IURingBuf {
+            map: IUMapHandle::new(ms, mf),
+        }
     }
 
     pub fn reserve(
@@ -230,7 +236,9 @@ impl IURingBuf {
 
 impl<V> IUStack<V> {
     pub const fn new(ms: u32, mf: u32) -> IUStack<V> {
-        IUStack { map: IUMapHandle::new(ms, mf) }
+        IUStack {
+            map: IUMapHandle::new(ms, mf),
+        }
     }
 
     pub fn push(&'static self, value: &V) -> Result {
@@ -252,7 +260,9 @@ impl<V> IUStack<V> {
 
 impl<V> IUQueue<V> {
     pub const fn new(ms: u32, mf: u32) -> IUQueue<V> {
-        IUQueue { map: IUMapHandle::new(ms, mf) }
+        IUQueue {
+            map: IUMapHandle::new(ms, mf),
+        }
     }
 
     pub fn push(&'static self, value: &V) -> Result {
