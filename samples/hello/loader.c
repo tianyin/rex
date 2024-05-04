@@ -46,6 +46,7 @@ int main(void)
 
 	for (;;) {
         char c;
+		fflush(stdout);
         if (read(trace_pipe_fd, &c, 1) == 1)
             putchar(c);
     }
