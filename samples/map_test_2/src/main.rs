@@ -1,23 +1,30 @@
 #![no_std]
 #![no_main]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::map::{IUHashMap, IUArray, IUStack, IUQueue};
-use inner_unikernel_rt::tracepoint::*;
-use inner_unikernel_rt::{bpf_printk, entry_link, Result, ARRAY, HASH_MAP, STACK, QUEUE};
+use rex::map::*;
+use rex::tracepoint::*;
+use rex::{bpf_printk, entry_link, rex_map, Result};
 
-HASH_MAP!(map_hash, u32, i64, 1024, 0);
-ARRAY!(map_array, i64, 256, 0);
-STACK!(map_stack, i64, 256, 0);
-QUEUE!(map_queue, i64, 256, 0);
+#[rex_map]
+static MAP_HASH: IUHashMap<u32, i64> = IUHashMap::new(1024, 0);
+
+#[rex_map]
+static ARRAY: IUArray<i64> = IUArray::new(256, 0);
+
+#[rex_map]
+static STACK: IUStack<i64> = IUStack::new(256, 0);
+
+#[rex_map]
+static QUEUE: IUQueue<i64> = IUQueue::new(256, 0);
 
 fn map_test_hash(obj: &tracepoint) -> Result {
     let key: u32 = 0;
 
     bpf_printk!(obj, "Map Testing Hash Start with key %u\n", key as u64);
 
-    match map_hash.get_mut(&key) {
+    match MAP_HASH.get_mut(&key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -33,10 +40,10 @@ fn map_test_hash(obj: &tracepoint) -> Result {
     };
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
-    map_hash.insert(&key, &(pid as i64))?;
+    MAP_HASH.insert(&key, &(pid as i64))?;
     bpf_printk!(obj, "Map Updated\n");
 
-    match map_hash.get_mut(&key) {
+    match MAP_HASH.get_mut(&key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -45,10 +52,10 @@ fn map_test_hash(obj: &tracepoint) -> Result {
         }
     }
 
-    map_hash.delete(&key)?;
+    MAP_HASH.delete(&key)?;
     bpf_printk!(obj, "Map delete key\n");
 
-    match map_hash.get_mut(&key) {
+    match MAP_HASH.get_mut(&key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -72,10 +79,10 @@ fn map_test_array(obj: &tracepoint) -> Result {
     };
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
-    map_array.insert(&key, &(pid as i64))?;
+    ARRAY.insert(&key, &(pid as i64))?;
     bpf_printk!(obj, "Map Updated\n");
 
-    match map_array.get_mut(&key) {
+    match ARRAY.get_mut(&key) {
         None => {
             bpf_printk!(obj, "Not found.\n");
         }
@@ -97,21 +104,21 @@ fn map_test_stack(obj: &tracepoint) -> Result {
     };
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
-    map_stack.push(&(pid as i64))?;
+    STACK.push(&(pid as i64))?;
     bpf_printk!(obj, "Pushed %llu onto stack\n", pid as u64);
 
-    map_stack.push(&((pid + 1) as i64))?;
+    STACK.push(&((pid + 1) as i64))?;
     bpf_printk!(obj, "Pushed %llu onto stack\n", (pid + 1) as u64);
 
-    match map_stack.peek() {
+    match STACK.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
         Some(top) => bpf_printk!(obj, "Top of stack: %llu\n", top as u64),
     };
 
-    map_stack.pop();
+    STACK.pop();
     bpf_printk!(obj, "Popped top of stack\n");
 
-    match map_stack.peek() {
+    match STACK.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
         Some(next_top) => bpf_printk!(obj, "Next top of stack: %llu\n", next_top as u64),
     };
@@ -129,21 +136,21 @@ fn map_test_queue(obj: &tracepoint) -> Result {
     };
     bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
 
-    map_queue.push(&(pid as i64))?;
+    QUEUE.push(&(pid as i64))?;
     bpf_printk!(obj, "Pushed %llu into queue\n", pid as u64);
 
-    map_queue.push(&((pid + 1) as i64))?;
+    QUEUE.push(&((pid + 1) as i64))?;
     bpf_printk!(obj, "Pushed %llu into queue\n", (pid + 1) as u64);
 
-    match map_queue.peek() {
+    match QUEUE.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
         Some(front) => bpf_printk!(obj, "Front of queue: %llu\n", front as u64),
     };
 
-    map_queue.pop();
+    QUEUE.pop();
     bpf_printk!(obj, "Popped front of queue\n");
 
-    match map_queue.peek() {
+    match QUEUE.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
         Some(next_front) => bpf_printk!(obj, "Next front of queue: %llu\n", next_front as u64),
     };
