@@ -338,7 +338,7 @@ pub(crate) fn bpf_ringbuf_discard(data: &mut [u8], flags: u64) {
     unsafe { stub::bpf_ringbuf_discard(data.as_mut_ptr() as *mut (), flags) }
 }
 
-pub(crate) fn bpf_ringbuf_query(map: &IURingBuf, flags: u64) -> Option<u64> {
+pub(crate) fn bpf_ringbuf_query(map: &'static IURingBuf, flags: u64) -> Option<u64> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return None;
