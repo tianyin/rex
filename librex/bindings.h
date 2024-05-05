@@ -4,6 +4,7 @@
 #ifndef _LIBREX_BINDINGS_H
 #define _LIBREX_BINDINGS_H
 
+#include <bpf/libbpf.h>
 #include <gelf.h>
 
 struct list_head {

@@ -1,9 +1,7 @@
 #define _DEFAULT_SOURCE
 
-#include <bpf/libbpf.h>
 #include <fcntl.h>
 #include <libelf.h>
-#include <libgen.h>
 #include <linux/bpf.h>
 #include <linux/types.h>
 #include <linux/unistd.h>
@@ -18,6 +16,8 @@
 #include <iostream>
 #include <memory>
 #include <optional>
+#include <stdexcept>
+#include <system_error>
 #include <type_traits>
 #include <unordered_map>
 #include <utility>
@@ -50,16 +50,6 @@ struct rex_obj; // forward declaration
 
 static int debug = 0;
 static std::unordered_map<int, std::unique_ptr<rex_obj>> objs;
-
-static inline int64_t get_file_size(int fd) {
-  struct stat st;
-  if (fstat(fd, &st) < 0) {
-    perror("fstat");
-    return -1;
-  }
-
-  return st.st_size;
-}
 
 template <typename T, std::enable_if_t<std::is_integral<T>::value, bool> = true>
 static inline T val_from_buf(const unsigned char *buf) {
@@ -159,9 +149,14 @@ public:
       : name(nm), scn_name(scn_nm), offset(off), obj(obj) {
     prog_type = find_sec_def(scn_name.c_str())->prog_type;
   }
+  rex_prog(const rex_prog &) = delete;
+  rex_prog(rex_prog &&) = delete;
   ~rex_prog() {
-    prog_fd.and_then([](int fd) { return std::make_optional(close(fd)); });
+    prog_fd.transform([](int fd) { return close(fd); });
   }
+
+  rex_prog &operator=(const rex_prog &) = delete;
+  rex_prog &operator=(rex_prog &&) = delete;
 
   bpf_program *bpf_prog();
 
@@ -170,11 +165,26 @@ public:
 
 struct rex_obj {
 private:
+  struct elf_del {
+    [[gnu::always_inline]] void operator()(Elf *ep) const { elf_end(ep); }
+  };
+
+  struct file_map_del {
+    size_t size;
+
+    file_map_del() = default;
+    explicit file_map_del(size_t sz) : size(sz) {}
+
+    [[gnu::always_inline]] void operator()(unsigned char *ep) const {
+      munmap(ep, size);
+    }
+  };
+
   std::unordered_map<Elf64_Off, rex_map> map_defs;
   std::unordered_map<std::string, const rex_map *> name2map;
   std::unordered_map<std::string, rex_prog> progs;
 
-  Elf *elf;
+  std::unique_ptr<Elf, elf_del> elf;
   Elf_Scn *symtab_scn;
   Elf_Scn *dynsym_scn;
   Elf_Scn *maps_scn;
@@ -187,10 +197,11 @@ private:
   std::vector<rex_rela_dyn> dyn_relas;
   std::vector<rex_dyn_sym> dyn_syms;
 
-  size_t file_size;
-  unsigned char *file_map;
-  int prog_fd;
+  std::unique_ptr<unsigned char[], file_map_del> file_map;
+  std::optional<int> prog_fd;
+  bool loaded;
   std::string basename;
+  std::unique_ptr<bpf_object> bpf_obj_ptr;
 
   int parse_scns();
   int parse_maps();
@@ -216,13 +227,13 @@ public:
   int find_map_by_name(const char *) const;
   int find_prog_by_name(const char *) const;
 
-  bpf_object *bpf_obj() { return nullptr; }
+  bpf_object *bpf_obj();
 };
 
 } // namespace
 
 // FIXME: Temporary hack to make cc1plus happy
-__attribute__((__unused__)) bpf_program *rex_prog::bpf_prog() {
+[[maybe_unused]] bpf_program *rex_prog::bpf_prog() {
   // Do not create a bpf_program if the prog has not been loaded
   if (!prog_fd)
     return nullptr;
@@ -233,7 +244,6 @@ __attribute__((__unused__)) bpf_program *rex_prog::bpf_prog() {
 
   // Create a new ptr
   bpf_prog_ptr = std::make_unique<bpf_program>();
-  memset(bpf_prog_ptr.get(), 0, sizeof(bpf_program));
 
   // bpf_prog_ptr will never outlive "this", so just redirect pointers
   bpf_prog_ptr->sec_name = scn_name.data();
@@ -249,16 +259,29 @@ __attribute__((__unused__)) bpf_program *rex_prog::bpf_prog() {
 
 rex_obj::rex_obj(const char *c_path)
     : map_defs(), symtab_scn(nullptr), dynsym_scn(nullptr), maps_scn(nullptr),
-      prog_fd(-1) {
+      prog_fd(-1), loaded(false) {
+  struct stat st;
+  void *mmap_ret;
   int fd = open(c_path, 0, O_RDONLY);
-  this->elf = elf_begin(fd, ELF_C_READ_MMAP, NULL);
-  file_size = get_file_size(fd);
+  Elf *ep = elf_begin(fd, ELF_C_READ_MMAP, NULL);
+  if (!ep) {
+    throw std::invalid_argument(std::string("elf: failed to open file ") +
+                                c_path);
+  }
 
-  // MAP_PRIVATE ensures the changes are not carried through to the backing
-  // file
-  // reference: `man 2 mmap`
-  file_map = reinterpret_cast<unsigned char *>(
-      mmap(NULL, file_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0));
+  elf = std::unique_ptr<Elf, elf_del>(ep, elf_del());
+
+  if (fstat(fd, &st) < 0)
+    throw std::system_error(errno, std::system_category(), "fstat");
+
+  // MAP_PRIVATE ensures the changes to the memory mapped by mmap(2) are not
+  // carried through to the backing file
+  mmap_ret = mmap(NULL, st.st_size, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0);
+  if (mmap_ret == MAP_FAILED)
+    throw std::system_error(errno, std::system_category(), "mmap");
+
+  file_map = std::unique_ptr<unsigned char[], file_map_del>(
+      reinterpret_cast<unsigned char *>(mmap_ret), file_map_del(st.st_size));
 
   std::string copy(c_path);
   copy += ".base";
@@ -267,26 +290,20 @@ rex_obj::rex_obj(const char *c_path)
 }
 
 rex_obj::~rex_obj() {
-  if (this->elf)
-    elf_end(this->elf);
-
-  if (file_map)
-    munmap(file_map, file_size);
-
-  if (prog_fd >= 0)
-    close(prog_fd);
+  prog_fd.and_then([](int fd) { return std::make_optional(close(fd)); });
 }
 
 int rex_obj::parse_scns() {
   size_t shstrndx;
 
-  if (elf_getshdrstrndx(elf, &shstrndx)) {
+  if (elf_getshdrstrndx(elf.get(), &shstrndx)) {
     std::cerr << "elf: failed to get section names section index for "
               << std::endl;
     return -1;
   }
 
-  for (auto scn = elf_nextscn(elf, NULL); scn; scn = elf_nextscn(elf, scn)) {
+  for (auto scn = elf_nextscn(elf.get(), NULL); scn;
+       scn = elf_nextscn(elf.get(), scn)) {
     char *name;
     int idx = elf_ndxscn(scn);
     Elf64_Shdr *sh = elf64_getshdr(scn);
@@ -296,7 +313,7 @@ int rex_obj::parse_scns() {
       return -1;
     }
 
-    name = elf_strptr(this->elf, shstrndx, sh->sh_name);
+    name = elf_strptr(elf.get(), shstrndx, sh->sh_name);
 
     if (!name) {
       std::cerr << "elf: failed to get section name" << std::endl;
@@ -360,7 +377,7 @@ int rex_obj::parse_maps() {
         ELF64_ST_TYPE(sym->st_info) != STT_OBJECT)
       continue;
 
-    name = elf_strptr(elf, strtabidx, sym->st_name);
+    name = elf_strptr(elf.get(), strtabidx, sym->st_name);
     if (debug) {
       std::clog << "symbol: " << name << ", st_value=0x" << std::hex
                 << sym->st_value << ", st_size=" << std::dec << sym->st_size
@@ -390,7 +407,7 @@ int rex_obj::parse_progs() {
 
   strtabidx = elf64_getshdr(symtab_scn)->sh_link;
 
-  if (elf_getshdrstrndx(elf, &shstrndx)) {
+  if (elf_getshdrstrndx(elf.get(), &shstrndx)) {
     std::cerr << "elf: failed to get section names section index" << std::endl;
     return -1;
   }
@@ -406,15 +423,15 @@ int rex_obj::parse_progs() {
 
   for (int i = 0; i < nr_syms; i++) {
     Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + i;
-    Elf_Scn *scn = elf_getscn(this->elf, sym->st_shndx);
+    Elf_Scn *scn = elf_getscn(elf.get(), sym->st_shndx);
     char *scn_name, *sym_name;
     const bpf_sec_def *sec_def;
 
     if (!scn || ELF64_ST_TYPE(sym->st_info) != STT_FUNC)
       continue;
 
-    scn_name = elf_strptr(this->elf, shstrndx, elf64_getshdr(scn)->sh_name);
-    sym_name = elf_strptr(elf, strtabidx, sym->st_name);
+    scn_name = elf_strptr(elf.get(), shstrndx, elf64_getshdr(scn)->sh_name);
+    sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
     /*if (debug) {
             std::clog << "section: \"" << scn_name << "\"" << std::endl;
             std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
@@ -424,7 +441,7 @@ int rex_obj::parse_progs() {
     if (!sec_def)
       continue;
 
-    sym_name = elf_strptr(elf, strtabidx, sym->st_name);
+    sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
     progs.try_emplace(sym_name, sym_name, scn_name, sym->st_value, *this);
   }
   return 0;
@@ -475,8 +492,9 @@ int rex_obj::parse_rela_dyn() {
       Elf_Data *syms = elf_getdata(dynsym_scn, 0);
       size_t strtabidx = elf64_getshdr(dynsym_scn)->sh_link;
       Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + dynsym_idx;
-      rex_dyn_sym dyn_sym = {0};
-      char *name = strdup(elf_strptr(elf, strtabidx, sym->st_name));
+      rex_dyn_sym dyn_sym = {};
+      // FIXME: mem leak
+      char *name = strdup(elf_strptr(elf.get(), strtabidx, sym->st_name));
 
       if (!name) {
         std::cerr << "failed to alloc symbol name" << std::endl;
@@ -541,11 +559,6 @@ int rex_obj::fix_maps() {
               << elf64_getshdr(maps_scn)->sh_offset << std::dec << std::endl;
   }
 
-  if (this->file_size < 0 || reinterpret_cast<int64_t>(this->file_map) < 0) {
-    perror("mmap");
-    return -1;
-  }
-
   for (auto &def : map_defs) {
     size_t kptr_file_off =
         def.first + offsetof(map_def, kptr) - maps_shaddr + maps_shoff;
@@ -583,7 +596,7 @@ int rex_obj::load() {
   // TODO: Will have race condition if multiple objs loaded at same time
   std::ofstream output("rust.out", std::ios::out | std::ios::binary);
 
-  output.write((char *)this->file_map, this->file_size);
+  output.write((char *)this->file_map.get(), this->file_map.get_deleter().size);
   output.close();
 
   fd = open("rust.out", O_RDONLY);
@@ -625,31 +638,42 @@ int rex_obj::load() {
   }
 
   for (auto &it : progs) {
+    int curr_fd;
     attr.prog_type = it.second.prog_type;
     strncpy(attr.prog_name, it.second.name.c_str(), sizeof(attr.prog_name) - 1);
-    attr.base_prog_fd = this->prog_fd;
+    attr.base_prog_fd = this->prog_fd.value();
     attr.prog_offset = it.second.offset;
     attr.license = (__u64) "GPL";
-    it.second.prog_fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
+    curr_fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
 
-    if (it.second.prog_fd < 0) {
+    if (curr_fd < 0) {
       perror("bpf_prog_load_rex");
       goto close_fds;
     }
+
+    it.second.prog_fd = curr_fd;
 
     if (debug)
       std::clog << "Program " << it.first
                 << " loaded, fd = " << it.second.prog_fd.value_or(-1)
                 << std::endl;
   }
+
+  loaded = true;
   return ret;
 
 close_fds:
-  /*   for (auto &it : progs) { */
-  /*     if (it.second.fd >= 0) */
-  /*       close(it.second.fd); */
-  /*   } */
-  close(this->prog_fd);
+  for (auto &it : progs) {
+    it.second.prog_fd =
+        it.second.prog_fd.and_then([](int fd) -> std::optional<int> {
+          close(fd);
+          return {};
+        });
+  }
+  prog_fd = prog_fd.and_then([](int fd) -> std::optional<int> {
+    close(fd);
+    return {};
+  });
   return -1;
 }
 
@@ -661,6 +685,23 @@ int rex_obj::find_map_by_name(const char *name) const {
 int rex_obj::find_prog_by_name(const char *name) const {
   auto it = progs.find(name);
   return it != progs.end() ? it->second.prog_fd.value_or(-1) : -1;
+}
+
+bpf_object *rex_obj::bpf_obj() {
+  // Do not create a bpf_object if the obj has not been loaded
+  if (!loaded)
+    return nullptr;
+
+  // Return the previously created ptr
+  if (bpf_obj_ptr)
+    return bpf_obj_ptr.get();
+
+  // Create a new ptr
+  bpf_obj_ptr = std::make_unique<bpf_object>();
+
+  // FIXME: Initialize the ptr
+
+  return bpf_obj_ptr.get();
 }
 
 void rex_set_debug(const int val) { debug = val; }
