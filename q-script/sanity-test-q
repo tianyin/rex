@@ -221,7 +221,6 @@ host() {
 	init+="$ENVIRON_ARG "
 	# grading script specific
 	init+="REPONAME='$REPONAME' "
-	init+="GRADING_SRC='/home/chin39/Documents/cs423/cs423_grade/MP2/'"
 
 	init+=" $(realpath $0) "
 

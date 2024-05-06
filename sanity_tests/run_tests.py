@@ -43,7 +43,7 @@ def main():
 
     with tqdm(
         total=len(samples_list),
-        desc="   \033[34mBuilding\033[0m",
+        desc="   \033[34mRunning\033[0m",
         leave=False,
         dynamic_ncols=True,
     ) as pbar:
@@ -54,8 +54,14 @@ def main():
 
             # check if test exist
             if not test_path.is_file():
+                print("", end="\x1b[1K\r")
+                print("   \033[32mSkipped\033[0m %s" % sample.name)
+                pbar.update(1)
                 continue
 
+            print("", end="\x1b[1K\r")
+            print("   \033[32mTesting\033[0m %s" % sample.name)
+            pbar.display()
             cmd = " ".join([str(q_script), "-r", str(sample)])
             try:
                 # print(cmd)
@@ -68,17 +74,20 @@ def main():
                     text=True,
                     shell=True,
                 )
-                print(f"{sample.name}  {output.stdout}")
+                if output.stdout.strip() != "success":
+                    print("", end="\x1b[1K\r")
+                    print("   \033[91mFailed\033[0m  %s" % sample.name)
 
             except Exception:
                 print(f"{sample.name} test run failed")
                 subprocess.run("pkill qemu-system-x86", shell=True)
             finally:
+                pbar.update(1)
                 subprocess.run("rm auto_grade.txt", shell=True)
         end_time = time.time()
 
     elapsed = end_time - start_time
-    print("All sanity tests completed successfully in %.3fs." % elapsed)
+    print("All sanity tests completed in %.3fs." % elapsed)
     os.chdir(original_dir)
 
 
