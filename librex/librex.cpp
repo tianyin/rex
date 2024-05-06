@@ -10,6 +10,7 @@
 #include <unistd.h>
 
 #include <algorithm>
+#include <concepts>
 #include <cstdint>
 #include <cstring>
 #include <fstream>
@@ -18,7 +19,6 @@
 #include <optional>
 #include <stdexcept>
 #include <system_error>
-#include <type_traits>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -51,12 +51,12 @@ struct rex_obj; // forward declaration
 static int debug = 0;
 static std::unordered_map<int, std::unique_ptr<rex_obj>> objs;
 
-template <typename T, std::enable_if_t<std::is_integral<T>::value, bool> = true>
+template <std::integral T>
 static inline T val_from_buf(const unsigned char *buf) {
   return *reinterpret_cast<const T *>(buf);
 }
 
-template <typename T, std::enable_if_t<std::is_integral<T>::value, bool> = true>
+template <std::integral T>
 static inline void val_to_buf(unsigned char *buf, const T val) {
   *reinterpret_cast<T *>(buf) = val;
 }
@@ -290,7 +290,7 @@ rex_obj::rex_obj(const char *c_path)
 }
 
 rex_obj::~rex_obj() {
-  prog_fd.and_then([](int fd) { return std::make_optional(close(fd)); });
+  prog_fd.transform([](int fd) { return close(fd); });
 }
 
 int rex_obj::parse_scns() {
