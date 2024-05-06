@@ -10,7 +10,7 @@ LD = g++
 AR = gcc-ar
 endif
 
-INC += -I${LINUX}/tools/lib -I${LINUX}/usr/include
+INC += -I${LINUX}/usr/include -I${LINUX}/tools/lib
 
 CXXFLAGS += -O2 -march=native -pipe -std=c++23 -fPIC -Wall -Werror
 CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
