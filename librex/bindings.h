@@ -1,5 +1,4 @@
 // This file contains the non-portable part, it has to mirror some libbpf types
-// for now
 
 #ifndef _LIBREX_BINDINGS_H
 #define _LIBREX_BINDINGS_H
@@ -31,10 +30,13 @@ struct bpf_sec_def {
 #define BPF_PROG_SEC_IMPL(string, ptype, eatype, eatype_optional, attachable,  \
                           attach_btf)                                          \
   {                                                                            \
-    .sec = string, .len = sizeof(string) - 1, .prog_type = ptype,              \
-    .expected_attach_type = (enum bpf_attach_type)eatype,                      \
-    .is_exp_attach_type_optional = eatype_optional,                            \
-    .is_attachable = attachable, .is_attach_btf = attach_btf,                  \
+      .sec = string,                                                           \
+      .len = sizeof(string) - 1,                                               \
+      .prog_type = ptype,                                                      \
+      .expected_attach_type = (enum bpf_attach_type)eatype,                    \
+      .is_exp_attach_type_optional = eatype_optional,                          \
+      .is_attachable = attachable,                                             \
+      .is_attach_btf = attach_btf,                                             \
   }
 
 /* Programs that can NOT be attached. */
@@ -58,25 +60,10 @@ struct bpf_sec_def {
 #define BPF_APROG_COMPAT(string, ptype) BPF_PROG_SEC(string, ptype)
 
 #define SEC_DEF(sec_pfx, ptype, ...)                                           \
-  {                                                                            \
-    .sec = sec_pfx, .len = sizeof(sec_pfx) - 1,                                \
-    .prog_type = BPF_PROG_TYPE_##ptype, __VA_ARGS__                            \
-  }
-
-extern "C" {
-extern struct bpf_link *attach_kprobe(const struct bpf_sec_def *sec,
-                                      struct bpf_program *prog);
-extern struct bpf_link *attach_tp(const struct bpf_sec_def *sec,
-                                  struct bpf_program *prog);
-extern struct bpf_link *attach_raw_tp(const struct bpf_sec_def *sec,
-                                      struct bpf_program *prog);
-extern struct bpf_link *attach_trace(const struct bpf_sec_def *sec,
-                                     struct bpf_program *prog);
-extern struct bpf_link *attach_lsm(const struct bpf_sec_def *sec,
-                                   struct bpf_program *prog);
-extern struct bpf_link *attach_iter(const struct bpf_sec_def *sec,
-                                    struct bpf_program *prog);
-}
+  {.sec = sec_pfx,                                                             \
+   .len = sizeof(sec_pfx) - 1,                                                 \
+   .prog_type = BPF_PROG_TYPE_##ptype,                                         \
+   __VA_ARGS__}
 
 static const struct bpf_sec_def section_defs[] = {
     BPF_PROG_SEC("socket", BPF_PROG_TYPE_SOCKET_FILTER),
@@ -84,42 +71,38 @@ static const struct bpf_sec_def section_defs[] = {
                    BPF_SK_REUSEPORT_SELECT_OR_MIGRATE),
     BPF_EAPROG_SEC("sk_reuseport", BPF_PROG_TYPE_SK_REUSEPORT,
                    BPF_SK_REUSEPORT_SELECT),
-    SEC_DEF("kprobe/", KPROBE, .attach_fn = attach_kprobe),
+    SEC_DEF("kprobe/", KPROBE),
     BPF_PROG_SEC("uprobe/", BPF_PROG_TYPE_KPROBE),
-    SEC_DEF("kretprobe/", KPROBE, .attach_fn = attach_kprobe),
+    SEC_DEF("kretprobe/", KPROBE),
     BPF_PROG_SEC("uretprobe/", BPF_PROG_TYPE_KPROBE),
     BPF_PROG_SEC("tc", BPF_PROG_TYPE_SCHED_CLS),
     BPF_PROG_SEC("classifier", BPF_PROG_TYPE_SCHED_CLS),
     BPF_PROG_SEC("action", BPF_PROG_TYPE_SCHED_ACT),
-    SEC_DEF("tracepoint/", TRACEPOINT, .attach_fn = attach_tp),
-    SEC_DEF("tp/", TRACEPOINT, .attach_fn = attach_tp),
-    SEC_DEF("raw_tracepoint/", RAW_TRACEPOINT, .attach_fn = attach_raw_tp),
-    SEC_DEF("raw_tp/", RAW_TRACEPOINT, .attach_fn = attach_raw_tp),
+    SEC_DEF("tracepoint/", TRACEPOINT),
+    SEC_DEF("tp/", TRACEPOINT),
+    SEC_DEF("raw_tracepoint/", RAW_TRACEPOINT),
+    SEC_DEF("raw_tp/", RAW_TRACEPOINT),
     SEC_DEF("tp_btf/", TRACING, .expected_attach_type = BPF_TRACE_RAW_TP,
-            .is_attach_btf = true, .attach_fn = attach_trace),
+            .is_attach_btf = true),
     SEC_DEF("fentry/", TRACING, .expected_attach_type = BPF_TRACE_FENTRY,
-            .is_attach_btf = true, .attach_fn = attach_trace),
+            .is_attach_btf = true),
     SEC_DEF("fmod_ret/", TRACING, .expected_attach_type = BPF_MODIFY_RETURN,
-            .is_attach_btf = true, .attach_fn = attach_trace),
+            .is_attach_btf = true),
     SEC_DEF("fexit/", TRACING, .expected_attach_type = BPF_TRACE_FEXIT,
-            .is_attach_btf = true, .attach_fn = attach_trace),
+            .is_attach_btf = true),
     SEC_DEF("fentry.s/", TRACING, .expected_attach_type = BPF_TRACE_FENTRY,
-            .is_attach_btf = true, .is_sleepable = true,
-            .attach_fn = attach_trace),
+            .is_attach_btf = true, .is_sleepable = true),
     SEC_DEF("fmod_ret.s/", TRACING, .expected_attach_type = BPF_MODIFY_RETURN,
-            .is_attach_btf = true, .is_sleepable = true,
-            .attach_fn = attach_trace),
+            .is_attach_btf = true, .is_sleepable = true),
     SEC_DEF("fexit.s/", TRACING, .expected_attach_type = BPF_TRACE_FEXIT,
-            .is_attach_btf = true, .is_sleepable = true,
-            .attach_fn = attach_trace),
-    SEC_DEF("freplace/", EXT, .is_attach_btf = true, .attach_fn = attach_trace),
+            .is_attach_btf = true, .is_sleepable = true),
+    SEC_DEF("freplace/", EXT, .is_attach_btf = true),
     SEC_DEF("lsm/", LSM, .expected_attach_type = BPF_LSM_MAC,
-            .is_attach_btf = true, .attach_fn = attach_lsm),
+            .is_attach_btf = true),
     SEC_DEF("lsm.s/", LSM, .expected_attach_type = BPF_LSM_MAC,
-            .is_attach_btf = true, .is_sleepable = true,
-            .attach_fn = attach_lsm),
+            .is_attach_btf = true, .is_sleepable = true),
     SEC_DEF("iter/", TRACING, .expected_attach_type = BPF_TRACE_ITER,
-            .is_attach_btf = true, .attach_fn = attach_iter),
+            .is_attach_btf = true),
     SEC_DEF("syscall", SYSCALL, .is_sleepable = true),
     BPF_EAPROG_SEC("xdp_devmap/", BPF_PROG_TYPE_XDP, BPF_XDP_DEVMAP),
     BPF_EAPROG_SEC("xdp_cpumap/", BPF_PROG_TYPE_XDP, BPF_XDP_CPUMAP),

@@ -32,7 +32,7 @@ librex.a: librex.o
 librex.so: librex.o
 	+${LD} ${CXXFLAGS} -shared -o $@ $< ${LDFLAGS}
 
-librex.o: librex.cpp librex.h
+librex.o: librex.cpp librex.h bindings.h
 	+${CXX} ${INC} ${CXXFLAGS} -o $@ -c librex.cpp
 
 clean:
