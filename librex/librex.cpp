@@ -3,7 +3,6 @@
 #include <fcntl.h>
 #include <libelf.h>
 #include <linux/bpf.h>
-#include <linux/types.h>
 #include <linux/unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
@@ -18,6 +17,7 @@
 #include <memory>
 #include <optional>
 #include <stdexcept>
+#include <string>
 #include <system_error>
 #include <unordered_map>
 #include <utility>
@@ -27,6 +27,11 @@
 #include "librex.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
+
+// Yes, this is opposite to the idea of not doing 'using namespace', but it
+// seems to be the only way one can get access to operator""s
+// See https://en.cppreference.com/w/cpp/string/basic_string/operator%22%22s
+using namespace std::literals::string_literals;
 
 namespace { // begin anynomous namespace
 
@@ -80,22 +85,33 @@ struct map_def {
 struct rex_map {
 private:
   map_def def;
-  int map_fd;
-  const std::string name; // for debug msg
+  std::optional<int> map_fd;
+  std::string name;
+  std::unique_ptr<bpf_map> bpf_map_ptr;
 
 public:
   rex_map() = delete;
   rex_map(const Elf_Data *, Elf64_Addr, Elf64_Off, const char *);
+
+  rex_map(const rex_map &) = delete;
+  rex_map(rex_map &&) = delete;
+
   ~rex_map();
+
+  rex_map &operator=(const rex_map &) = delete;
+  rex_map &operator=(rex_map &&) = delete;
 
   int create();
 
-  friend struct rex_obj; // for debug msg
+  // rename bpf_map into bpfmap to avoid name collision
+  bpf_map *bpfmap();
+
+  friend struct rex_obj;
 };
 
 rex_map::rex_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
                  const char *c_name)
-    : map_fd(-1), name(c_name) {
+    : map_fd(), name(c_name) {
   auto def_addr = reinterpret_cast<uint64_t>(data->d_buf) + off - base;
   this->def = *reinterpret_cast<map_def *>(def_addr);
 
@@ -110,27 +126,46 @@ rex_map::rex_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
 }
 
 rex_map::~rex_map() {
-  if (map_fd >= 0)
-    close(map_fd);
+  map_fd.transform([](int fd) { return close(fd); });
 }
 
 int rex_map::create() {
-  const auto &def = this->def;
+  int ret;
 
-  union bpf_attr attr;
-  memset(&attr, 0, sizeof(attr));
+  union bpf_attr attr {
+    .map_type = def.map_type, .key_size = def.key_size,
+    .value_size = def.val_size, .max_entries = def.max_size,
+    .map_flags = def.map_flag,
+  };
 
-  attr.map_type = def.map_type;
-  attr.key_size = def.key_size;
-  attr.value_size = def.val_size;
-  attr.max_entries = def.max_size;
-  attr.map_flags = def.map_flag;
+  memcpy(attr.map_name, name.c_str(),
+         std::min(name.size(), sizeof(attr.map_name) - 1));
 
-  if (name.size() < BPF_OBJ_NAME_LEN)
-    memcpy(attr.map_name, name.c_str(), name.size());
+  ret = bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
+  if (ret >= 0)
+    this->map_fd = ret;
 
-  this->map_fd = static_cast<int>(bpf(BPF_MAP_CREATE, &attr, sizeof(attr)));
-  return this->map_fd;
+  return ret;
+}
+
+// FIXME: Temporary hack to make cc1plus happy
+[[maybe_unused]] bpf_map *rex_map::bpfmap() {
+  // Do not create a bpf_map if the prog has not been loaded
+  if (!map_fd)
+    return nullptr;
+
+  // Return the previously created ptr
+  if (bpf_map_ptr)
+    return bpf_map_ptr.get();
+
+  // Create a new ptr
+  bpf_map_ptr = std::make_unique<bpf_map>();
+  bpf_map_ptr->name = name.data();
+  bpf_map_ptr->fd = map_fd.value();
+  bpf_map_ptr->inner_map_fd = -1;
+  bpf_map_ptr->libbpf_type = LIBBPF_MAP_UNSPEC;
+
+  return bpf_map_ptr.get();
 }
 
 struct rex_prog {
@@ -264,10 +299,8 @@ rex_obj::rex_obj(const char *c_path)
   void *mmap_ret;
   int fd = open(c_path, 0, O_RDONLY);
   Elf *ep = elf_begin(fd, ELF_C_READ_MMAP, NULL);
-  if (!ep) {
-    throw std::invalid_argument(std::string("elf: failed to open file ") +
-                                c_path);
-  }
+  if (!ep)
+    throw std::invalid_argument("elf: failed to open file "s + c_path);
 
   elf = std::unique_ptr<Elf, elf_del>(ep, elf_del());
 
@@ -679,7 +712,7 @@ close_fds:
 
 int rex_obj::find_map_by_name(const char *name) const {
   auto it = name2map.find(name);
-  return it != name2map.end() ? it->second->map_fd : -1;
+  return it != name2map.end() ? it->second->map_fd.value_or(-1) : -1;
 }
 
 int rex_obj::find_prog_by_name(const char *name) const {
