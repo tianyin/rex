@@ -7,8 +7,8 @@ edition = "2021"
 
 [dependencies]
 
-[dependencies.inner_unikernel_rt]
-path = "../../inner_unikernel_rt"
+[dependencies.rex]
+path = "../../rex"
 
 [profile.dev]
 panic = "abort"

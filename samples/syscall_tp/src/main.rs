@@ -2,13 +2,13 @@
 #![no_main]
 #![allow(non_upper_case_globals)]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::linux::bpf::BPF_NOEXIST;
-use inner_unikernel_rt::map::IUArrayMap;
-use inner_unikernel_rt::tracepoint::{tp_ctx, tp_type, tracepoint};
-use inner_unikernel_rt::Result;
-use inner_unikernel_rt::{entry_link, rex_map};
+use rex::linux::bpf::BPF_NOEXIST;
+use rex::map::IUArrayMap;
+use rex::tracepoint::{tp_ctx, tp_type, tracepoint};
+use rex::Result;
+use rex::{entry_link, rex_map};
 
 #[rex_map]
 static enter_open_map: IUArrayMap<u32> = IUArrayMap::new(1, 0);

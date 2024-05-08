@@ -1,14 +1,14 @@
 #![no_std]
 #![no_main]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::bpf_printk;
-use inner_unikernel_rt::linux::bpf::bpf_spin_lock;
-use inner_unikernel_rt::map::IUArrayMap;
-use inner_unikernel_rt::spinlock::iu_spinlock_guard;
-use inner_unikernel_rt::xdp::*;
-use inner_unikernel_rt::{entry_link, rex_map, Result};
+use rex::bpf_printk;
+use rex::linux::bpf::bpf_spin_lock;
+use rex::map::IUArrayMap;
+use rex::spinlock::iu_spinlock_guard;
+use rex::xdp::*;
+use rex::{entry_link, rex_map, Result};
 
 #[repr(C)]
 struct MapEntry {

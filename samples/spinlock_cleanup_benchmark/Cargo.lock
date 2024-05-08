@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "inner_unikernel_rt"
-version = "0.1.0"
-dependencies = [
- "paste",
- "rex-macros",
- "rlibc",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -36,6 +27,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "rex"
+version = "0.1.0"
+dependencies = [
+ "paste",
+ "rex-macros",
+ "rlibc",
+]
+
+[[package]]
 name = "rex-macros"
 version = "0.1.0"
 dependencies = [
@@ -53,7 +53,7 @@ checksum = "fc874b127765f014d792f16763a81245ab80500e2ad921ed4ee9e82481ee08fe"
 name = "spinlock_cleanup_benchmark"
 version = "0.1.0"
 dependencies = [
- "inner_unikernel_rt",
+ "rex",
 ]
 
 [[package]]

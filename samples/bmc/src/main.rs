@@ -3,20 +3,20 @@
 #![allow(non_camel_case_types)]
 #![allow(non_upper_case_globals)]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
 use core::mem::{size_of, swap};
 
-use inner_unikernel_rt::bpf_printk;
-use inner_unikernel_rt::entry_link;
-use inner_unikernel_rt::linux::bpf::bpf_spin_lock;
-use inner_unikernel_rt::map::*;
-use inner_unikernel_rt::rex_map;
-use inner_unikernel_rt::sched_cls::*;
-use inner_unikernel_rt::spinlock::*;
-use inner_unikernel_rt::utils::*;
-use inner_unikernel_rt::xdp::*;
-use inner_unikernel_rt::FieldTransmute;
+use rex::bpf_printk;
+use rex::entry_link;
+use rex::linux::bpf::bpf_spin_lock;
+use rex::map::*;
+use rex::rex_map;
+use rex::sched_cls::*;
+use rex::spinlock::*;
+use rex::utils::*;
+use rex::xdp::*;
+use rex::FieldTransmute;
 
 const BMC_MAX_PACKET_LENGTH: usize = 1500;
 const BMC_CACHE_ENTRY_COUNT: u32 = 3250000;

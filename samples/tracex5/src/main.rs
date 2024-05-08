@@ -1,14 +1,14 @@
 #![no_std]
 #![no_main]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::bpf_printk;
-use inner_unikernel_rt::entry_link;
-use inner_unikernel_rt::kprobe::*;
-use inner_unikernel_rt::linux::seccomp::seccomp_data;
-use inner_unikernel_rt::linux::unistd::*;
-use inner_unikernel_rt::Result;
+use rex::bpf_printk;
+use rex::entry_link;
+use rex::kprobe::*;
+use rex::linux::seccomp::seccomp_data;
+use rex::linux::unistd::*;
+use rex::Result;
 
 pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> Result {
     let mut sd: seccomp_data = seccomp_data {

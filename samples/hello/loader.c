@@ -45,10 +45,12 @@ int main(void)
 			       O_RDONLY);
 
 	for (;;) {
-		char c;
-		if (read(trace_pipe_fd, &c, 1) == 1)
-			putchar(c);
-	}
+        char c;
+		fflush(stdout);
+        if (read(trace_pipe_fd, &c, 1) == 1)
+            putchar(c);
+    }
+
 
 	bpf_link__destroy(link);
 	return 0;

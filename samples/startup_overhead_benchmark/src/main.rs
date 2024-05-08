@@ -1,11 +1,11 @@
 #![no_std]
 #![no_main]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::entry_link;
-use inner_unikernel_rt::kprobe::*;
-use inner_unikernel_rt::Result;
+use rex::entry_link;
+use rex::kprobe::*;
+use rex::Result;
 
 #[inline(always)]
 fn iu_prog1_fn(_obj: &kprobe, _ctx: &mut pt_regs) -> Result {

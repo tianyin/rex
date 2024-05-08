@@ -1,11 +1,11 @@
 #![no_std]
 #![no_main]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
 use core::sync::atomic::{AtomicU64, Ordering};
-use inner_unikernel_rt::kprobe::*;
-use inner_unikernel_rt::{bpf_printk, entry_link, Result};
+use rex::kprobe::*;
+use rex::{bpf_printk, entry_link, Result};
 
 static ATOM: AtomicU64 = AtomicU64::new(42);
 

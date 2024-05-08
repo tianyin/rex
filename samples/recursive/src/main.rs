@@ -2,18 +2,18 @@
 #![no_main]
 #![feature(bench_black_box)]
 
-extern crate inner_unikernel_rt;
+extern crate rex;
 
-use inner_unikernel_rt::bpf_printk;
-use inner_unikernel_rt::entry_link;
-use inner_unikernel_rt::linux::bpf::BPF_MAP_TYPE_ARRAY;
-use inner_unikernel_rt::map::IUMap;
-// use inner_unikernel_rt::tracepoint::*;
+use rex::bpf_printk;
+use rex::entry_link;
+use rex::linux::bpf::BPF_MAP_TYPE_ARRAY;
+use rex::map::IUMap;
+// use rex::tracepoint::*;
 use core::hint::black_box;
-use inner_unikernel_rt::kprobe::*;
-use inner_unikernel_rt::map::IUArrayMap;
-use inner_unikernel_rt::rex_map;
-use inner_unikernel_rt::Result;
+use rex::kprobe::*;
+use rex::map::IUArrayMap;
+use rex::rex_map;
+use rex::Result;
 
 #[rex_map]
 static data_map: IUArrayMap<u32> = IUArrayMap::new(2, 0);

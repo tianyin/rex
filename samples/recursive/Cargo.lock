@@ -3,15 +3,6 @@
 version = 3
 
 [[package]]
-name = "inner_unikernel_rt"
-version = "0.1.0"
-dependencies = [
- "paste",
- "rex-macros",
- "rlibc",
-]
-
-[[package]]
 name = "paste"
 version = "1.0.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -39,7 +30,16 @@ dependencies = [
 name = "recursive"
 version = "0.1.0"
 dependencies = [
- "inner_unikernel_rt",
+ "rex",
+]
+
+[[package]]
+name = "rex"
+version = "0.1.0"
+dependencies = [
+ "paste",
+ "rex-macros",
+ "rlibc",
 ]
 
 [[package]]
