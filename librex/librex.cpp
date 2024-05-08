@@ -109,7 +109,6 @@ public:
   rex_map &operator=(const rex_map &) = delete;
   rex_map &operator=(rex_map &&) = delete;
 
-  // FIXME: Make it return a std::optional
   std::optional<int> create() {
     int ret;
 
@@ -222,7 +221,6 @@ private:
 
   // std::vector requires T to be move-constructible
   std::list<rex_prog> progs;
-
   std::unordered_map<Elf64_Off, rex_map> map_defs;
 
   std::unique_ptr<Elf, elf_del> elf;
@@ -237,6 +235,7 @@ private:
   Elf_Scn *rela_dyn_scn;
   std::vector<rex_rela_dyn> dyn_relas;
   std::vector<rex_dyn_sym> dyn_syms;
+  std::vector<std::string> rela_sym_name;
 
   std::unique_ptr<unsigned char[], file_map_del> file_map;
   std::optional<int> prog_fd;
@@ -500,13 +499,7 @@ int rex_obj::parse_rela_dyn() {
       size_t strtabidx = elf64_getshdr(dynsym_scn)->sh_link;
       Elf64_Sym *sym = reinterpret_cast<Elf64_Sym *>(syms->d_buf) + dynsym_idx;
       rex_dyn_sym dyn_sym = {};
-      // FIXME: mem leak
-      char *name = strdup(elf_strptr(elf.get(), strtabidx, sym->st_name));
-
-      if (!name) {
-        std::cerr << "failed to alloc symbol name" << std::endl;
-        return -1;
-      }
+      char *name = elf_strptr(elf.get(), strtabidx, sym->st_name);
 
       dyn_sym.offset = rela_dyn_data[idx].offset;
       dyn_sym.symbol = reinterpret_cast<__u64>(name);
