@@ -11,6 +11,7 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <list>
 #include <memory>
 #include <optional>
 #include <stdexcept>
@@ -30,7 +31,7 @@
 // See https://en.cppreference.com/w/cpp/string/basic_string/operator%22%22s
 using namespace std::literals::string_literals;
 
-namespace { // begin anynomous namespace
+static int debug = 0;
 
 // FIXME: Temporary fix until kernel migrates from iu to rex
 using rex_rela_dyn = iu_rela_dyn;
@@ -47,11 +48,6 @@ static const bpf_sec_def *find_sec_def(const char *sec_name) {
 
   return nullptr;
 }
-
-struct rex_obj; // forward declaration
-
-static int debug = 0;
-static std::unordered_map<int, std::unique_ptr<rex_obj>> objs;
 
 template <std::integral T>
 static inline T val_from_buf(const unsigned char *buf) {
@@ -87,76 +83,68 @@ private:
 
 public:
   rex_map() = delete;
-  rex_map(const Elf_Data *, Elf64_Addr, Elf64_Off, const char *);
+  rex_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
+          const char *c_name)
+      : map_fd(), name(c_name) {
+    auto def_addr = reinterpret_cast<uint64_t>(data->d_buf) + off - base;
+    this->def = *reinterpret_cast<map_def *>(def_addr);
+
+    if (debug) {
+      std::clog << "sym_name=" << c_name << std::endl;
+      std::clog << "map_type=" << this->def.map_type << std::endl;
+      std::clog << "key_size=" << this->def.key_size << std::endl;
+      std::clog << "val_size=" << this->def.val_size << std::endl;
+      std::clog << "max_size=" << this->def.max_size << std::endl;
+      std::clog << "map_flag=" << this->def.map_flag << std::endl;
+    }
+  }
 
   rex_map(const rex_map &) = delete;
   rex_map(rex_map &&) = delete;
 
-  ~rex_map();
+  ~rex_map() {
+    map_fd.transform([](int fd) { return close(fd); });
+  }
 
   rex_map &operator=(const rex_map &) = delete;
   rex_map &operator=(rex_map &&) = delete;
 
-  int create();
+  // FIXME: Make it return a std::optional
+  std::optional<int> create() {
+    int ret;
+
+    union bpf_attr attr {
+      .map_type = def.map_type, .key_size = def.key_size,
+      .value_size = def.val_size, .max_entries = def.max_size,
+      .map_flags = def.map_flag,
+    };
+
+    memcpy(attr.map_name, name.c_str(),
+           std::min(name.size(), sizeof(attr.map_name) - 1));
+
+    ret = bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
+    if (ret >= 0)
+      this->map_fd = ret;
+
+    return this->map_fd;
+  }
 
   // rename bpf_map into bpfmap to avoid name collision
-  std::optional<bpf_map> bpfmap();
+  std::optional<bpf_map> bpfmap() {
+    // Do not create a bpf_map if the map has not been loaded
+    if (!map_fd)
+      return {};
 
-  friend struct rex_obj;
-};
-
-rex_map::rex_map(const Elf_Data *data, Elf64_Addr base, Elf64_Off off,
-                 const char *c_name)
-    : map_fd(), name(c_name) {
-  auto def_addr = reinterpret_cast<uint64_t>(data->d_buf) + off - base;
-  this->def = *reinterpret_cast<map_def *>(def_addr);
-
-  if (debug) {
-    std::clog << "sym_name=" << c_name << std::endl;
-    std::clog << "map_type=" << this->def.map_type << std::endl;
-    std::clog << "key_size=" << this->def.key_size << std::endl;
-    std::clog << "val_size=" << this->def.val_size << std::endl;
-    std::clog << "max_size=" << this->def.max_size << std::endl;
-    std::clog << "map_flag=" << this->def.map_flag << std::endl;
+    return bpf_map{
+        .name = name.data(),
+        .fd = map_fd.value(),
+        .inner_map_fd = -1,
+        .libbpf_type = LIBBPF_MAP_UNSPEC,
+    };
   }
-}
 
-rex_map::~rex_map() {
-  map_fd.transform([](int fd) { return close(fd); });
-}
-
-// FIXME: Make it return a std::optional
-int rex_map::create() {
-  int ret;
-
-  union bpf_attr attr {
-    .map_type = def.map_type, .key_size = def.key_size,
-    .value_size = def.val_size, .max_entries = def.max_size,
-    .map_flags = def.map_flag,
-  };
-
-  memcpy(attr.map_name, name.c_str(),
-         std::min(name.size(), sizeof(attr.map_name) - 1));
-
-  ret = bpf(BPF_MAP_CREATE, &attr, sizeof(attr));
-  if (ret >= 0)
-    this->map_fd = ret;
-
-  return ret;
-}
-
-std::optional<bpf_map> rex_map::bpfmap() {
-  // Do not create a bpf_map if the map has not been loaded
-  if (!map_fd)
-    return {};
-
-  return bpf_map{
-      .name = name.data(),
-      .fd = map_fd.value(),
-      .inner_map_fd = -1,
-      .libbpf_type = LIBBPF_MAP_UNSPEC,
-  };
-}
+  friend struct ::rex_obj;
+};
 
 struct rex_prog {
 private:
@@ -173,8 +161,10 @@ public:
       : name(nm), scn_name(scn_nm), offset(off), obj(obj) {
     prog_type = find_sec_def(scn_name.c_str())->prog_type;
   }
+
   rex_prog(const rex_prog &) = delete;
   rex_prog(rex_prog &&) = delete;
+
   ~rex_prog() {
     prog_fd.transform([](int fd) { return close(fd); });
   }
@@ -182,9 +172,27 @@ public:
   rex_prog &operator=(const rex_prog &) = delete;
   rex_prog &operator=(rex_prog &&) = delete;
 
-  std::optional<bpf_program> bpf_prog();
+  std::optional<bpf_program> bpf_prog() {
+    // Do not create a bpf_program if the prog has not been loaded
+    if (!prog_fd)
+      return {};
 
-  friend struct rex_obj;
+    // bpf_program::obj will be initliazed by the caller
+    // bpf_program will never outlive "this" as both are managed by rex_obj,
+    // so just redirect pointers
+    return bpf_program{
+        .sec_name = scn_name.data(),
+        .name = name.data(),
+        .instances =
+            {
+                .nr = 1,
+                .fds = &prog_fd.value(),
+            },
+        .type = prog_type,
+    };
+  }
+
+  friend struct ::rex_obj;
 };
 
 struct rex_obj {
@@ -212,9 +220,10 @@ private:
     }
   };
 
+  // std::vector requires T to be move-constructible
+  std::list<rex_prog> progs;
+
   std::unordered_map<Elf64_Off, rex_map> map_defs;
-  std::unordered_map<std::string, const rex_map *> name2map;
-  std::unordered_map<std::string, rex_prog> progs;
 
   std::unique_ptr<Elf, elf_del> elf;
   Elf_Scn *symtab_scn;
@@ -251,38 +260,11 @@ public:
   rex_obj &operator=(const rex_obj &) = delete;
   rex_obj &operator=(rex_obj &&) = delete;
 
-  // Making this a separate function to avoid exceptions in constructor
   int parse_elf();
-
   int fix_maps();
   int load();
-  int find_map_by_name(const char *) const;
-  int find_prog_by_name(const char *) const;
-
   bpf_object *bpf_obj();
 };
-
-} // namespace
-
-std::optional<bpf_program> rex_prog::bpf_prog() {
-  // Do not create a bpf_program if the prog has not been loaded
-  if (!prog_fd)
-    return {};
-
-  // bpf_program::obj will be initliazed by the caller
-  // bpf_program will never outlive "this" as both are managed by rex_obj,
-  // so just redirect pointers
-  return bpf_program{
-      .sec_name = scn_name.data(),
-      .name = name.data(),
-      .instances =
-          {
-              .nr = 1,
-              .fds = &prog_fd.value(),
-          },
-      .type = prog_type,
-  };
-}
 
 rex_obj::rex_obj(const char *c_path)
     : map_defs(), symtab_scn(nullptr), dynsym_scn(nullptr), maps_scn(nullptr),
@@ -467,7 +449,7 @@ int rex_obj::parse_progs() {
       continue;
 
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
-    progs.try_emplace(sym_name, sym_name, scn_name, sym->st_value, *this);
+    progs.emplace_back(sym_name, scn_name, sym->st_value, *this);
   }
   return 0;
 };
@@ -587,7 +569,6 @@ int rex_obj::fix_maps() {
   for (auto &def : map_defs) {
     size_t kptr_file_off =
         def.first + offsetof(map_def, kptr) - maps_shaddr + maps_shoff;
-    int map_fd;
 
     if (debug) {
       std::clog << "map_ptr=0x" << std::hex << def.first << std::dec
@@ -595,18 +576,16 @@ int rex_obj::fix_maps() {
       std::clog << "map_name=\"" << def.second.name << '\"' << std::endl;
     }
 
-    map_fd = def.second.create();
-    if (map_fd < 0) {
+    std::optional<int> map_fd = def.second.create();
+    if (!map_fd) {
       perror("bpf_map_create");
       return -1;
     }
 
-    name2map.insert(std::make_pair(def.second.name, &def.second));
-
     if (debug)
-      std::clog << "map_fd=" << map_fd << std::endl;
+      std::clog << "map_fd=" << map_fd.value() << std::endl;
 
-    val_to_buf<uint64_t>(&this->file_map[kptr_file_off], map_fd);
+    val_to_buf<uint64_t>(&this->file_map[kptr_file_off], map_fd.value());
   }
 
   return 0;
@@ -662,12 +641,12 @@ int rex_obj::load() {
     goto close_fds;
   }
 
-  for (auto &it : progs) {
+  for (auto &prog : progs) {
     int curr_fd;
-    attr.prog_type = it.second.prog_type;
-    strncpy(attr.prog_name, it.second.name.c_str(), sizeof(attr.prog_name) - 1);
+    attr.prog_type = prog.prog_type;
+    strncpy(attr.prog_name, prog.name.c_str(), sizeof(attr.prog_name) - 1);
     attr.base_prog_fd = this->prog_fd.value();
-    attr.prog_offset = it.second.offset;
+    attr.prog_offset = prog.offset;
     attr.license = (__u64) "GPL";
     curr_fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
 
@@ -676,24 +655,22 @@ int rex_obj::load() {
       goto close_fds;
     }
 
-    it.second.prog_fd = curr_fd;
+    prog.prog_fd = curr_fd;
 
     if (debug)
-      std::clog << "Program " << it.first
-                << " loaded, fd = " << it.second.prog_fd.value_or(-1)
-                << std::endl;
+      std::clog << "Program " << prog.name
+                << " loaded, fd = " << prog.prog_fd.value_or(-1) << std::endl;
   }
 
   loaded = true;
   return ret;
 
 close_fds:
-  for (auto &it : progs) {
-    it.second.prog_fd =
-        it.second.prog_fd.and_then([](int fd) -> std::optional<int> {
-          close(fd);
-          return {};
-        });
+  for (auto &prog : progs) {
+    prog.prog_fd = prog.prog_fd.and_then([](int fd) -> std::optional<int> {
+      close(fd);
+      return {};
+    });
   }
   prog_fd = prog_fd.and_then([](int fd) -> std::optional<int> {
     close(fd);
@@ -702,17 +679,7 @@ close_fds:
   return -1;
 }
 
-int rex_obj::find_map_by_name(const char *name) const {
-  auto it = name2map.find(name);
-  return it != name2map.end() ? it->second->map_fd.value_or(-1) : -1;
-}
-
-int rex_obj::find_prog_by_name(const char *name) const {
-  auto it = progs.find(name);
-  return it != progs.end() ? it->second.prog_fd.value_or(-1) : -1;
-}
-
-[[maybe_unused]] bpf_object *rex_obj::bpf_obj() {
+bpf_object *rex_obj::bpf_obj() {
   size_t i;
   // Do not create a bpf_object if the obj has not been loaded
   if (!loaded)
@@ -739,9 +706,9 @@ int rex_obj::find_prog_by_name(const char *name) const {
 
   // Fill in programs
   i = 0;
-  for (auto &it : progs) {
-    if (std::optional<bpf_program> prog = it.second.bpf_prog()) {
-      ptr->programs[i] = std::move(prog.value());
+  for (auto &prog : progs) {
+    if (std::optional<bpf_program> bpf_prog = prog.bpf_prog()) {
+      ptr->programs[i] = std::move(bpf_prog.value());
       ptr->programs[i++].obj = ptr.get();
     } else {
       return nullptr;
@@ -755,44 +722,34 @@ int rex_obj::find_prog_by_name(const char *name) const {
   return bpf_obj_ptr.get();
 }
 
-void rex_set_debug(const int val) { debug = val; }
+void rex_set_debug(int val) { debug = val; }
 
-int rex_obj_load(const char *file_path) {
+static std::vector<std::unique_ptr<rex_obj>> objs;
+
+rex_obj *rex_obj_load(const char *file_path) {
   int ret;
-
   if (elf_version(EV_CURRENT) == EV_NONE) {
     std::cerr << "elf: failed to init libelf" << std::endl;
-    return -1;
+    return nullptr;
   }
 
-  auto obj = std::make_unique<rex_obj>(file_path);
+  try {
+    auto obj = std::make_unique<rex_obj>(file_path);
+    ret = obj->parse_elf();
+    ret = ret ? ret : obj->fix_maps();
+    ret = ret ? ret : obj->load();
 
-  ret = obj->parse_elf();
-  ret = ret ?: obj->fix_maps();
-  ret = ret ?: obj->load();
+    if (ret >= 0) {
+      objs.push_back(std::move(obj));
+      return objs.back().get();
+    } else {
+      return nullptr;
+    }
 
-  if (ret >= 0)
-    objs[ret] = std::move(obj);
-
-  return ret;
-}
-
-int rex_obj_close(int prog_fd) {
-  auto it = objs.find(prog_fd);
-  if (it != objs.end()) {
-    objs.erase(it);
-    return 0;
+  } catch (std::exception &e) {
+    std::cerr << e.what() << std::endl;
+    return nullptr;
   }
-
-  return -1;
 }
 
-int rex_obj_get_map(int prog_fd, const char *map_name) {
-  auto it = objs.find(prog_fd);
-  return it != objs.end() ? it->second->find_map_by_name(map_name) : -1;
-}
-
-int rex_obj_get_prog(int prog_fd, const char *prog_name) {
-  auto it = objs.find(prog_fd);
-  return it != objs.end() ? it->second->find_prog_by_name(prog_name) : -1;
-}
+bpf_object *rex_obj_get_bpf(rex_obj *obj) { return obj->bpf_obj(); }
