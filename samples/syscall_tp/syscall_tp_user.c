@@ -12,7 +12,7 @@
 #include <libbpf.h>
 #include <bpf.h>
 
-#include "libiu.h"
+#include <librex.h>
 
 #define EXE "./target/x86_64-unknown-linux-gnu/release/syscall_tp"
 
@@ -57,13 +57,14 @@ static int test(char *filename, int num_progs)
 	struct bpf_object *objs[num_progs];
 	struct bpf_program *prog;
 
-	iu_set_debug(1);
+	rex_set_debug(1);
 
 	for (i = 0; i < num_progs; i++) {
-		objs[i] = iu_object__open(filename);
+		objs[i] = rex_obj_get_bpf(rex_obj_load(filename));
 		if (!objs[i]) {
-			fprintf(stderr, "opening/loading BPF object file failed\n");
-			exit(1);
+			fprintf(stderr,
+				"opening/loading BPF object file failed\n");
+			return 1;
 		}
 
 		map0_fds[i] = bpf_object__find_map_fd_by_name(objs[i],
@@ -84,7 +85,8 @@ static int test(char *filename, int num_progs)
 			}
 			j++;
 		}
-		printf("prog #%d: map ids %d %d\n", i, map0_fds[i], map1_fds[i]);
+		printf("prog #%d: map ids %d %d\n", i, map0_fds[i],
+		       map1_fds[i]);
 	}
 
 	/* current load_bpf_file has perf_event_open default pid = -1
@@ -110,8 +112,6 @@ cleanup:
 	for (j--; j >= 0; j--)
 		bpf_link__destroy(links[j]);
 
-	for (i--; i >= 0; i--)
-		bpf_object__close(objs[i]);
 	return 0;
 }
 

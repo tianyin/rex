@@ -8,7 +8,7 @@
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 
-#include "libiu.h"
+#include <librex.h>
 #include <libbpf.h>
 
 #define EXE "./target/x86_64-unknown-linux-gnu/release/map_test"
@@ -20,38 +20,36 @@ int main(void)
 	struct bpf_program *prog;
 	struct bpf_link *link = NULL;
 
-	iu_set_debug(1); // enable debug info
+	rex_set_debug(1); // enable debug info
 
-	obj = iu_object__open(EXE);
+	obj = rex_obj_get_bpf(rex_obj_load(EXE));
 	if (!obj) {
 		fprintf(stderr, "Object could not be opened\n");
-		exit(1);
+		return 1;
 	}
 
 	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
 	if (!prog) {
- 		fprintf(stderr, "Program not found\n");
- 		exit(1);
- 	}
+		fprintf(stderr, "Program not found\n");
+		return 1;
+	}
 
 	link = bpf_program__attach(prog);
 	if (libbpf_get_error(link)) {
 		fprintf(stderr, "ERROR: bpf_program__attach failed\n");
 		link = NULL;
-		goto cleanup;
+		return 1;
 	}
 
 	trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe",
-		O_RDONLY);
+			       O_RDONLY);
 
 	for (;;) {
-        char c;
-        if (read(trace_pipe_fd, &c, 1) == 1)
-            putchar(c);
-    }
+		char c;
+		if (read(trace_pipe_fd, &c, 1) == 1)
+			putchar(c);
+	}
 
-cleanup:
 	bpf_link__destroy(link);
-	bpf_object__close(obj);
 	return 0;
 }

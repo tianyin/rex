@@ -8,7 +8,7 @@
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 
-#include "libiu.h"
+#include <librex.h>
 #include <libbpf.h>
 
 #define EXE "./target/x86_64-unknown-linux-gnu/release/ktime"
@@ -20,31 +20,28 @@ int main(void)
 	struct bpf_program *prog;
 	struct bpf_link *link = NULL;
 
-	iu_set_debug(1); // enable debug info
+	rex_set_debug(1); // enable debug info
 
-	obj = iu_object__open(EXE);
+	obj = rex_obj_get_bpf(rex_obj_load(EXE));
 	if (!obj) {
 		fprintf(stderr, "Object could not be opened\n");
-		exit(1);
+		return 1;
 	}
 
 	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
 	if (!prog) {
- 		fprintf(stderr, "Program not found\n");
- 		exit(1);
- 	}
+		fprintf(stderr, "Program not found\n");
+		return 1;
+	}
 
 	link = bpf_program__attach(prog);
 	if (libbpf_get_error(link)) {
 		fprintf(stderr, "ERROR: bpf_program__attach failed\n");
 		link = NULL;
-		goto cleanup;
+		return 1;
 	}
 
-    bpf_link__pin(link, "/sys/fs/bpf/link");
-cleanup:
-	// bpf_link__destroy(link);
-	// bpf_object__close(obj);
-	exit(0);
-	// return 0;
+	bpf_link__pin(link, "/sys/fs/bpf/link");
+	bpf_link__destroy(link);
+	return 0;
 }

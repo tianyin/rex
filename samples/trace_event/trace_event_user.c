@@ -10,7 +10,7 @@
 #include <linux/perf_event.h>
 
 #include "trace_helpers.h"
-#include "libiu.h"
+#include <librex.h>
 #include <libbpf.h>
 #include <bpf.h>
 
@@ -25,16 +25,18 @@ struct bpf_program *prog;
 static bool sys_read_seen, sys_write_seen;
 
 static inline long perf_event_open(struct perf_event_attr *hw_event, pid_t pid,
-							int cpu, int  group_fd, unsigned long flags)
+				   int cpu, int group_fd, unsigned long flags)
 {
-	return syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd, flags);
+	return syscall(__NR_perf_event_open, hw_event, pid, cpu, group_fd,
+		       flags);
 }
 
-static void read_trace_pipe(void) {
+static void read_trace_pipe(void)
+{
 	int trace_pipe_fd;
 
 	trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe",
-		O_RDONLY);
+			       O_RDONLY);
 
 	for (;;) {
 		char c;
@@ -146,8 +148,10 @@ static void print_stacks(void)
 
 static inline int generate_load(void)
 {
-	if (system("dd if=/dev/zero of=/dev/null count=5000k status=none") < 0) {
-		printf("failed to generate some load with dd: %s\n", strerror(errno));
+	if (system("dd if=/dev/zero of=/dev/null count=5000k status=none") <
+	    0) {
+		printf("failed to generate some load with dd: %s\n",
+		       strerror(errno));
 		return -1;
 	}
 
@@ -251,19 +255,17 @@ static void test_bpf_perf_event(void)
 		.sample_freq = SAMPLE_FREQ,
 		.freq = 1,
 		.type = PERF_TYPE_HW_CACHE,
-		.config =
-			PERF_COUNT_HW_CACHE_L1D |
-			(PERF_COUNT_HW_CACHE_OP_READ << 8) |
-			(PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16),
+		.config = PERF_COUNT_HW_CACHE_L1D |
+			  (PERF_COUNT_HW_CACHE_OP_READ << 8) |
+			  (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16),
 	};
 	struct perf_event_attr attr_hw_cache_branch_miss = {
 		.sample_freq = SAMPLE_FREQ,
 		.freq = 1,
 		.type = PERF_TYPE_HW_CACHE,
-		.config =
-			PERF_COUNT_HW_CACHE_BPU |
-			(PERF_COUNT_HW_CACHE_OP_READ << 8) |
-			(PERF_COUNT_HW_CACHE_RESULT_MISS << 16),
+		.config = PERF_COUNT_HW_CACHE_BPU |
+			  (PERF_COUNT_HW_CACHE_OP_READ << 8) |
+			  (PERF_COUNT_HW_CACHE_RESULT_MISS << 16),
 	};
 	struct perf_event_attr attr_type_raw = {
 		.sample_freq = SAMPLE_FREQ,
@@ -302,7 +304,7 @@ int main(int argc, char **argv)
 	char filename[256];
 	int error = 1;
 
-	iu_set_debug(1); // enable debug info
+	rex_set_debug(1); // enable debug info
 
 	snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
 
@@ -314,7 +316,7 @@ int main(int argc, char **argv)
 		goto cleanup;
 	}
 
-	obj = iu_object__open(EXE);
+	obj = rex_obj_get_bpf(rex_obj_load(EXE));
 	if (libbpf_get_error(obj)) {
 		printf("opening BPF object file failed\n");
 		obj = NULL;
@@ -347,6 +349,5 @@ int main(int argc, char **argv)
 	error = 0;
 
 cleanup:
-	bpf_object__close(obj);
-	err_exit(error);
+	return error;
 }

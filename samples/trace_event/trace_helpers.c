@@ -30,7 +30,7 @@ int load_kallsyms(void)
 			break;
 		if (!addr)
 			continue;
-		syms[i].addr = (long) addr;
+		syms[i].addr = (long)addr;
 		syms[i].name = strdup(func);
 		i++;
 	}
@@ -61,8 +61,7 @@ struct ksym *ksym_search(long key)
 			return &syms[mid];
 	}
 
-	if (start >= 1 && syms[start - 1].addr < key &&
-	    key < syms[start].addr)
+	if (start >= 1 && syms[start - 1].addr < key && key < syms[start].addr)
 		/* valid ksym */
 		return &syms[start - 1];
 
