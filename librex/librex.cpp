@@ -1,9 +1,6 @@
-#define _DEFAULT_SOURCE
-
 #include <fcntl.h>
 #include <libelf.h>
 #include <linux/bpf.h>
-#include <linux/unistd.h>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <unistd.h>
@@ -87,7 +84,6 @@ private:
   map_def def;
   std::optional<int> map_fd;
   std::string name;
-  std::unique_ptr<bpf_map> bpf_map_ptr;
 
 public:
   rex_map() = delete;
@@ -104,7 +100,7 @@ public:
   int create();
 
   // rename bpf_map into bpfmap to avoid name collision
-  bpf_map *bpfmap();
+  std::optional<bpf_map> bpfmap();
 
   friend struct rex_obj;
 };
@@ -129,6 +125,7 @@ rex_map::~rex_map() {
   map_fd.transform([](int fd) { return close(fd); });
 }
 
+// FIXME: Make it return a std::optional
 int rex_map::create() {
   int ret;
 
@@ -148,24 +145,17 @@ int rex_map::create() {
   return ret;
 }
 
-// FIXME: Temporary hack to make cc1plus happy
-[[maybe_unused]] bpf_map *rex_map::bpfmap() {
-  // Do not create a bpf_map if the prog has not been loaded
+std::optional<bpf_map> rex_map::bpfmap() {
+  // Do not create a bpf_map if the map has not been loaded
   if (!map_fd)
-    return nullptr;
+    return {};
 
-  // Return the previously created ptr
-  if (bpf_map_ptr)
-    return bpf_map_ptr.get();
-
-  // Create a new ptr
-  bpf_map_ptr = std::make_unique<bpf_map>();
-  bpf_map_ptr->name = name.data();
-  bpf_map_ptr->fd = map_fd.value();
-  bpf_map_ptr->inner_map_fd = -1;
-  bpf_map_ptr->libbpf_type = LIBBPF_MAP_UNSPEC;
-
-  return bpf_map_ptr.get();
+  return bpf_map{
+      .name = name.data(),
+      .fd = map_fd.value(),
+      .inner_map_fd = -1,
+      .libbpf_type = LIBBPF_MAP_UNSPEC,
+  };
 }
 
 struct rex_prog {
@@ -175,7 +165,6 @@ private:
   enum bpf_prog_type prog_type;
   Elf64_Off offset;
   std::optional<int> prog_fd;
-  std::unique_ptr<bpf_program> bpf_prog_ptr;
   rex_obj &obj;
 
 public:
@@ -193,7 +182,7 @@ public:
   rex_prog &operator=(const rex_prog &) = delete;
   rex_prog &operator=(rex_prog &&) = delete;
 
-  bpf_program *bpf_prog();
+  std::optional<bpf_program> bpf_prog();
 
   friend struct rex_obj;
 };
@@ -210,8 +199,16 @@ private:
     file_map_del() = default;
     explicit file_map_del(size_t sz) : size(sz) {}
 
-    [[gnu::always_inline]] void operator()(unsigned char *ep) const {
-      munmap(ep, size);
+    [[gnu::always_inline]] void operator()(unsigned char *addr) const {
+      munmap(addr, size);
+    }
+  };
+
+  struct bpf_obj_del {
+    [[gnu::always_inline]] void operator()(bpf_object *bp) const {
+      delete[] bp->programs;
+      delete[] bp->maps;
+      delete bp;
     }
   };
 
@@ -236,7 +233,7 @@ private:
   std::optional<int> prog_fd;
   bool loaded;
   std::string basename;
-  std::unique_ptr<bpf_object> bpf_obj_ptr;
+  std::unique_ptr<bpf_object, bpf_obj_del> bpf_obj_ptr;
 
   int parse_scns();
   int parse_maps();
@@ -267,29 +264,24 @@ public:
 
 } // namespace
 
-// FIXME: Temporary hack to make cc1plus happy
-[[maybe_unused]] bpf_program *rex_prog::bpf_prog() {
+std::optional<bpf_program> rex_prog::bpf_prog() {
   // Do not create a bpf_program if the prog has not been loaded
   if (!prog_fd)
-    return nullptr;
+    return {};
 
-  // Return the previously created ptr
-  if (bpf_prog_ptr)
-    return bpf_prog_ptr.get();
-
-  // Create a new ptr
-  bpf_prog_ptr = std::make_unique<bpf_program>();
-
-  // bpf_prog_ptr will never outlive "this", so just redirect pointers
-  bpf_prog_ptr->sec_name = scn_name.data();
-  bpf_prog_ptr->name = name.data();
-  bpf_prog_ptr->obj = obj.bpf_obj();
-  bpf_prog_ptr->type = prog_type;
-  bpf_prog_ptr->instances.nr = 1;
-  // noexcept since prog_fd is checked
-  bpf_prog_ptr->instances.fds = &prog_fd.value();
-
-  return bpf_prog_ptr.get();
+  // bpf_program::obj will be initliazed by the caller
+  // bpf_program will never outlive "this" as both are managed by rex_obj,
+  // so just redirect pointers
+  return bpf_program{
+      .sec_name = scn_name.data(),
+      .name = name.data(),
+      .instances =
+          {
+              .nr = 1,
+              .fds = &prog_fd.value(),
+          },
+      .type = prog_type,
+  };
 }
 
 rex_obj::rex_obj(const char *c_path)
@@ -720,7 +712,8 @@ int rex_obj::find_prog_by_name(const char *name) const {
   return it != progs.end() ? it->second.prog_fd.value_or(-1) : -1;
 }
 
-bpf_object *rex_obj::bpf_obj() {
+[[maybe_unused]] bpf_object *rex_obj::bpf_obj() {
+  size_t i;
   // Do not create a bpf_object if the obj has not been loaded
   if (!loaded)
     return nullptr;
@@ -730,9 +723,34 @@ bpf_object *rex_obj::bpf_obj() {
     return bpf_obj_ptr.get();
 
   // Create a new ptr
-  bpf_obj_ptr = std::make_unique<bpf_object>();
+  decltype(bpf_obj_ptr) ptr(new bpf_object, bpf_obj_del());
+  ptr->maps = new bpf_map[map_defs.size()];
+  ptr->programs = new bpf_program[progs.size()];
 
-  // FIXME: Initialize the ptr
+  // Fill in maps
+  i = 0;
+  for (auto &it : map_defs) {
+    if (std::optional<bpf_map> map = it.second.bpfmap())
+      ptr->maps[i++] = std::move(map.value());
+    else
+      return nullptr;
+  }
+  ptr->nr_maps = i;
+
+  // Fill in programs
+  i = 0;
+  for (auto &it : progs) {
+    if (std::optional<bpf_program> prog = it.second.bpf_prog()) {
+      ptr->programs[i] = std::move(prog.value());
+      ptr->programs[i++].obj = ptr.get();
+    } else {
+      return nullptr;
+    }
+  }
+  ptr->nr_programs = i;
+
+  // Now transfer the ownership
+  bpf_obj_ptr = std::move(ptr);
 
   return bpf_obj_ptr.get();
 }
