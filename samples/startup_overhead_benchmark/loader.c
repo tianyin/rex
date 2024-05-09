@@ -8,10 +8,11 @@
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 
-#include "libiu.h"
+#include <librex.h>
 #include <libbpf.h>
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/startup_overhead_benchmark"
+#define EXE                                                                    \
+	"./target/x86_64-unknown-linux-gnu/release/startup_overhead_benchmark"
 
 int main(void)
 {
@@ -20,9 +21,9 @@ int main(void)
 	struct bpf_program *prog;
 	struct bpf_link *link = NULL;
 
-	iu_set_debug(1); // enable debug info
+	rex_set_debug(1); // enable debug info
 
-	obj = iu_object__open(EXE);
+	obj = rex_obj_get_bpf(rex_obj_load(EXE));
 	if (!obj) {
 		fprintf(stderr, "Object could not be opened\n");
 		return 1;
@@ -30,9 +31,9 @@ int main(void)
 
 	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
 	if (!prog) {
- 		fprintf(stderr, "_start not found\n");
- 		return 1;
- 	}
+		fprintf(stderr, "_start not found\n");
+		return 1;
+	}
 
 	link = bpf_program__attach(prog);
 	if (libbpf_get_error(link)) {
@@ -42,6 +43,6 @@ int main(void)
 	}
 
 	bpf_link__pin(link, "/sys/fs/bpf/kprobe_link");
-
+	bpf_link__destroy(link);
 	return 0;
 }

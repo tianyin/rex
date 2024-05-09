@@ -8,7 +8,7 @@
 #include <linux/perf_event.h>
 #include <linux/unistd.h>
 
-#include "libiu.h"
+#include <librex.h>
 #include <bpf.h>
 #include <libbpf.h>
 
@@ -21,48 +21,28 @@ int main(void)
 	struct bpf_program *prog;
 	struct bpf_link *link = NULL;
 
-	iu_set_debug(1); // enable debug info
+	rex_set_debug(1); // enable debug info
 
-	obj = iu_object__open(EXE);
+	obj = rex_obj_get_bpf(rex_obj_load(EXE));
 	if (!obj) {
 		fprintf(stderr, "Object could not be opened\n");
-		exit(1);
+		return 1;
 	}
 
 	prog = bpf_object__find_program_by_name(obj, "iu_recursive");
 	if (!prog) {
- 		fprintf(stderr, "_start not found\n");
- 		exit(1);
- 	}
-
-	// Populate map with starting conditions
-	// int data_map_fd = bpf_object__find_map_fd_by_name(obj, "data_map");
-	// int pid_key = 0;
-	// int n_key = 1;
-	// int pid = getpid();
-	// printf("PID: %d\n", pid);
-	// int n_init = 10;
-	// bpf_map_update_elem(data_map_fd, &pid_key, &pid, BPF_ANY);
-	// bpf_map_update_elem(data_map_fd, &n_key, &n_init, BPF_ANY);
+		fprintf(stderr, "_start not found\n");
+		return 1;
+	}
 
 	link = bpf_program__attach(prog);
 	if (libbpf_get_error(link)) {
 		fprintf(stderr, "ERROR: bpf_program__attach failed\n");
 		link = NULL;
-		return 0;
+		return 1;
 	}
+
 	bpf_link__pin(link, "/sys/fs/bpf/recursive_link");
-
-	// trace_pipe_fd = openat(AT_FDCWD, "/sys/kernel/debug/tracing/trace_pipe",
-	// 	O_RDONLY);
-
-	// for (;;) {
-    //     char c;
-    //     if (read(trace_pipe_fd, &c, 1) == 1)
-    //         putchar(c);
-    // }
-
-	fprintf(stderr, "Triggered a write syscall\n");
-
+	bpf_link__destroy(link);
 	return 0;
 }
