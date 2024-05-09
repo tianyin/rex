@@ -1,3 +1,8 @@
+#!/bin/bash
+
+''':' ; exec "$(command -v python)" "$0" "$@"
+'''
+
 import os
 import time
 import argparse
