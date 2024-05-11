@@ -181,6 +181,7 @@ public:
     // so just redirect pointers
     return bpf_program{
         .sec_name = scn_name.data(),
+        .sec_idx = (size_t)-1,
         .name = name.data(),
         .instances =
             {
@@ -702,7 +703,8 @@ bpf_object *rex_obj::bpf_obj() {
   for (auto &prog : progs) {
     if (std::optional<bpf_program> bpf_prog = prog.bpf_prog()) {
       ptr->programs[i] = std::move(bpf_prog.value());
-      ptr->programs[i++].obj = ptr.get();
+      ptr->programs[i].obj = ptr.get();
+      i++;
     } else {
       return nullptr;
     }
