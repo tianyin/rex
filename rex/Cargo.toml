@@ -1,9 +1,12 @@
 [package]
 name = "rex"
 version = "0.1.0"
-edition = "2021"
 build = "build.rs"
 autotests = false
+repository.workspace = true
+edition.workspace = true
+edition.author = true
+
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
@@ -12,17 +15,9 @@ test = false
 doctest = false
 
 [dependencies]
-paste = "1.0.14"
-rlibc = "1.0.0"
-rex-macros = { path = "../rex-macros" }
-
-[profile.dev]
-debug = 0
-panic = "abort"
-
-[profile.release]
-debug = 0
-panic = "abort"
+paste = { workspace = true }
+rlibc = { workspace = true }
+rex-macros = { workspace = true }
 
 [inner_unikernel]
 uheaders = [
