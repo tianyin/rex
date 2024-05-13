@@ -83,7 +83,7 @@ def main():
         end_time = time.time()
 
     elapsed = end_time - start_time
-    print("All builds completed successfully in %.3fs." % elapsed)
+    print("All builds completed in %.3fs." % elapsed)
     os.chdir(original_dir)
 
 if __name__ == "__main__":
