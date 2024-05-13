@@ -7,7 +7,7 @@ use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
 use crate::utils::{to_result, Result};
-use core::mem::MaybeUninit;
+use core::mem::{MaybeUninit, self};
 // use crate::timekeeping::*;
 
 use core::intrinsics::unlikely;
@@ -316,36 +316,27 @@ pub(crate) fn bpf_ringbuf_reserve(
     map: &'static RexRingBuf,
     size: u64,
     flags: u64,
-) -> Option<&mut [u8]> {
+) -> *mut T {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
-        return None;
+        return core::ptr::null_mut();
     }
 
-    let data = unsafe { stub::bpf_ringbuf_reserve(map_kptr, size, flags) };
+    let data = unsafe { stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, flags) };
 
-    if data.is_null() {
-        None
-    } else {
-        unsafe {
-            Some(core::slice::from_raw_parts_mut(
-                data as *mut u8,
-                size as usize,
-            ))
-        }
-    }
+    data as *mut T
 }
 
-pub(crate) fn bpf_ringbuf_submit(data: &mut [u8], flags: u64) {
-    unsafe { stub::bpf_ringbuf_submit(data.as_mut_ptr() as *mut (), flags) }
+pub(crate) fn bpf_ringbuf_submit<T>(data: &mut T, flags: u64) {
+    unsafe { stub::bpf_ringbuf_submit(data as *mut T as *mut (), flags) }
 }
 
-pub(crate) fn bpf_ringbuf_discard(data: &mut [u8], flags: u64) {
-    unsafe { stub::bpf_ringbuf_discard(data.as_mut_ptr() as *mut (), flags) }
+pub(crate) fn bpf_ringbuf_discard<T>(data: &mut T, flags: u64) {
+    unsafe { stub::bpf_ringbuf_discard(data as *mut T as *mut (), flags) }
 }
 
-pub(crate) fn bpf_ringbuf_query<const MT: bpf_map_type>(
-    map: &'static IUMapHandle<MT, (), ()>,
+pub(crate) fn bpf_ringbuf_query(
+    map: &'static IURingBuf,
     flags: u64,
 ) -> Option<u64> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
@@ -486,17 +477,17 @@ macro_rules! base_helper_defs {
         }
 
         #[inline(always)]
-        pub fn bpf_ringbuf_reserve<const MT: bpf_map_type>(
+        pub fn bpf_ringbuf_reserve<T>(
             &self,
             map: &'static RexRingBuf,
             size: u64,
             flags: u64,
-        ) -> Option<&mut [u8]> {
-            crate::base_helper::bpf_ringbuf_reserve(map, size, flags)
+        ) -> *mut T {
+            crate::base_helper::bpf_ringbuf_reserve(map, flags)
         }
 
         #[inline(always)]
-        pub fn bpf_ringbuf_submit(&self, data: &mut [u8], flags: u64) {
+        pub fn bpf_ringbuf_submit<T>(&self, data: &mut T, flags: u64) {
             crate::base_helper::bpf_ringbuf_submit(data, flags)
         }
     };

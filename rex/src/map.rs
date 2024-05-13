@@ -68,8 +68,13 @@ pub struct IUHashMap<K, V> {
 
 #[repr(C)]
 pub struct IURingBuf {
-    map: IUMapHandle<BPF_MAP_TYPE_RINGBUF, (), ()>,
+    map_type: u32,
+    max_size: u32,
+    map_flag: u32,
+    pub(crate) kptr: *mut (),
 }
+
+unsafe impl Sync for IURingBuf {}
 
 #[repr(C)]
 pub struct IUStack<V> {
@@ -131,37 +136,39 @@ impl<'a, V> IUArray<V> {
 
 impl IURingBuf {
     pub const fn new(ms: u32, mf: u32) -> IURingBuf {
-        IURingBuf {
-            map: IUMapHandle::new(ms, mf),
+        IURingBuf { map_type: BPF_MAP_TYPE_RINGBUF, max_size: ms, map_flag: mf, kptr: ptr::null_mut() }
+    }
+
+    pub fn reserve<T>(
+        &'static self,
+        submit_by_default: bool,
+        value: T
+    ) -> Option<IURingBufEntry<T>> {
+        let data: *mut T = bpf_ringbuf_reserve(&self, 0);
+        if data.is_null() {
+            None
+        } else {
+            unsafe { data.write(value); };
+            Some(IURingBufEntry { data: unsafe {
+                 { &mut *data }
+            }, submit_by_default, has_used: false })
         }
     }
 
-    pub fn reserve(
-        &'static self,
-        size: u64,
-        submit_by_default: bool,
-    ) -> Option<IURingBufEntry> {
-        bpf_ringbuf_reserve(&self.map, size, 0).map(|data| IURingBufEntry {
-            data,
-            submit_by_default,
-            has_used: false,
-        })
-    }
-
     pub fn available_bytes(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self.map, BPF_RB_AVAIL_DATA as u64)
+        bpf_ringbuf_query(&self, BPF_RB_AVAIL_DATA as u64)
     }
 
     pub fn size(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self.map, BPF_RB_RING_SIZE as u64)
+        bpf_ringbuf_query(&self, BPF_RB_RING_SIZE as u64)
     }
 
     pub fn consumer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self.map, BPF_RB_CONS_POS as u64)
+        bpf_ringbuf_query(&self, BPF_RB_CONS_POS as u64)
     }
 
     pub fn producer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self.map, BPF_RB_PROD_POS as u64)
+        bpf_ringbuf_query(&self, BPF_RB_PROD_POS as u64)
     }
 }
 
@@ -213,13 +220,13 @@ impl<V> IUQueue<V> {
     }
 }
 
-pub struct IURingBufEntry<'a> {
-    data: &'a mut [u8],
+pub struct IURingBufEntry<'a, T> {
+    data: &'a mut T,
     submit_by_default: bool,
     has_used: bool,
 }
 
-impl<'a> IURingBufEntry<'a> {
+impl<'a, T> IURingBufEntry<'a, T> {
     pub fn submit(mut self) {
         self.has_used = true;
         bpf_ringbuf_submit(self.data, 0)
@@ -229,9 +236,13 @@ impl<'a> IURingBufEntry<'a> {
         self.has_used = true;
         bpf_ringbuf_discard(self.data, 0)
     }
+
+    pub fn write(&mut self, value: T) {
+        *self.data = value
+    }
 }
 
-impl<'a> core::ops::Drop for IURingBufEntry<'a> {
+impl<'a, T> core::ops::Drop for IURingBufEntry<'a, T> {
     fn drop(&mut self) {
         if !self.has_used {
             if self.submit_by_default {

@@ -19,6 +19,9 @@ static STACK: IUStack<i64> = IUStack::new(256, 0);
 #[rex_map]
 static QUEUE: IUQueue<i64> = IUQueue::new(256, 0);
 
+// #[rex_map]
+// static RINGBUF: IURingBuf = IURingBuf::new(4096, 0);
+
 fn map_test_hash(obj: &tracepoint) -> Result {
     let key: u32 = 0;
 
@@ -157,6 +160,34 @@ fn map_test_queue(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
+/*
+fn map_test_ringbuf(obj: &tracepoint) -> Result {
+    bpf_printk!(obj, "Map Testing Ring Buffer Start\n");
+    let pid = if let Some(task) = obj.bpf_get_current_task() {
+        task.get_pid()
+    } else {
+        -1
+    };
+    bpf_printk!(obj, "Rust program triggered from PID %llu\n", pid as u64);
+
+    bpf_printk!(obj, "Available bytes in ringbuf: %llu\n", RINGBUF.available_bytes().unwrap());
+
+    let entry = match RINGBUF.reserve::<i64>(true, pid as i64) {
+        None => {
+            bpf_printk!(obj, "Unable to reserve ringbuf.\n");
+            return Err(0);
+        }
+        Some(entry) => entry,
+    };
+
+    entry.submit();
+
+    bpf_printk!(obj, "Available bytes in ringbuf: %llu\n", RINGBUF.available_bytes().unwrap());
+
+    Ok(0)
+}
+*/
+
 #[inline(always)]
 fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     map_test_hash(obj).map_err(|e| {
@@ -171,6 +202,10 @@ fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
         bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
         e
     })?;
+    // map_test_ringbuf(obj).map_err(|e| {
+    //     bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
+    //     e
+    // })?;
     map_test_queue(obj).map_err(|e| {
         bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
         e
