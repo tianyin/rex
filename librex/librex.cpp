@@ -9,6 +9,7 @@
 #include <concepts>
 #include <cstdint>
 #include <cstring>
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <list>
@@ -590,14 +591,15 @@ int rex_obj::load() {
   auto arr = std::make_unique<uint64_t[]>(map_defs.size());
   union bpf_attr attr = {};
   int idx = 0, ret = 0;
+  std::filesystem::path tmp_file = "/tmp/rex-" + std::to_string(gettid());
 
   // TODO: Will have race condition if multiple objs loaded at same time
-  std::ofstream output("rust.out", std::ios::out | std::ios::binary);
+  std::ofstream output(tmp_file, std::ios::out | std::ios::binary);
 
   output.write((char *)this->file_map.get(), this->file_map.get_deleter().size);
   output.close();
 
-  fd = open("rust.out", O_RDONLY);
+  fd = open(tmp_file.c_str(), O_RDONLY);
 
   for (auto &def : map_defs)
     arr[idx++] = def.first + offsetof(map_def, kptr);
@@ -630,7 +632,8 @@ int rex_obj::load() {
   if (debug)
     std::clog << "Base program loaded, fd = " << ret << std::endl;
 
-  if (remove("rust.out") < 0) {
+  close(fd);
+  if (!std::filesystem::remove(tmp_file)) {
     perror("remove");
     goto close_fds;
   }
