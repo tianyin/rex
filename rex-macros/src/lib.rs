@@ -1,4 +1,8 @@
+mod xdp;
+
 use proc_macro::TokenStream;
+use proc_macro_error::{abort, proc_macro_error};
+
 use quote::quote;
 use syn::{
     parse_macro_input, parse_quote, Data, DeriveInput, Fields, ItemStatic,
@@ -6,6 +10,8 @@ use syn::{
 };
 
 use std::borrow::Cow;
+
+use xdp::Xdp;
 
 fn type_checking(type_path: &TypePath) -> bool {
     let type_name = type_path.path.segments.last().unwrap().ident.to_string();
@@ -23,6 +29,18 @@ fn type_checking(type_path: &TypePath) -> bool {
     }
 
     true
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn rex_xdp(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    match Xdp::parse(attrs.into(), item.into()) {
+        Ok(prog) => prog
+            .expand()
+            .unwrap_or_else(|err| abort!(err.span(), "{}", err))
+            .into(),
+        Err(err) => abort!(err.span(), "{}", err),
+    }
 }
 
 #[proc_macro_attribute]
@@ -71,18 +89,14 @@ pub fn ensure_numberic(input: TokenStream) -> TokenStream {
     let ast: DeriveInput = parse_macro_input!(input as DeriveInput);
     let struct_name = ast.ident;
 
-    match ast.data {
-        Data::Struct(s) => match s.fields {
-            Fields::Named(fields) => {
-                for field in fields.named {
-                    if let Err(err) = field_type_check(field.ty) {
-                        return err;
-                    }
+    if let Data::Struct(s) = ast.data {
+        if let Fields::Named(fields) = s.fields {
+            for field in fields.named {
+                if let Err(err) = field_type_check(field.ty) {
+                    return err;
                 }
             }
-            _ => (),
-        },
-        _ => (),
+        }
     }
 
     let ast: DeriveInput = parse_macro_input!(input_copy as DeriveInput);
