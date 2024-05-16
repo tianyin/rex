@@ -1,3 +1,4 @@
+mod tc;
 mod xdp;
 
 use proc_macro::TokenStream;
@@ -11,6 +12,7 @@ use syn::{
 
 use std::borrow::Cow;
 
+use tc::SchedCls;
 use xdp::Xdp;
 
 fn type_checking(type_path: &TypePath) -> bool {
@@ -35,6 +37,18 @@ fn type_checking(type_path: &TypePath) -> bool {
 #[proc_macro_attribute]
 pub fn rex_xdp(attrs: TokenStream, item: TokenStream) -> TokenStream {
     match Xdp::parse(attrs.into(), item.into()) {
+        Ok(prog) => prog
+            .expand()
+            .unwrap_or_else(|err| abort!(err.span(), "{}", err))
+            .into(),
+        Err(err) => abort!(err.span(), "{}", err),
+    }
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn rex_tc(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    match SchedCls::parse(attrs.into(), item.into()) {
         Ok(prog) => prog
             .expand()
             .unwrap_or_else(|err| abort!(err.span(), "{}", err))
