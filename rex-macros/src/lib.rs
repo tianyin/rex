@@ -1,3 +1,4 @@
+mod kprobe;
 mod tc;
 mod xdp;
 
@@ -12,6 +13,7 @@ use syn::{
 
 use std::borrow::Cow;
 
+use kprobe::KProbe;
 use tc::SchedCls;
 use xdp::Xdp;
 
@@ -49,6 +51,18 @@ pub fn rex_xdp(attrs: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn rex_tc(attrs: TokenStream, item: TokenStream) -> TokenStream {
     match SchedCls::parse(attrs.into(), item.into()) {
+        Ok(prog) => prog
+            .expand()
+            .unwrap_or_else(|err| abort!(err.span(), "{}", err))
+            .into(),
+        Err(err) => abort!(err.span(), "{}", err),
+    }
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn rex_kprobe(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    match KProbe::parse(attrs.into(), item.into()) {
         Ok(prog) => prog
             .expand()
             .unwrap_or_else(|err| abort!(err.span(), "{}", err))

@@ -31,8 +31,8 @@ impl SchedCls {
             #[inline(always)]
             #item
 
-            #[link_section = "inner_unikernel/tc"]
             #[used]
+            #[link_section = "inner_unikernel/tc"]
             static #prog_ident: sched_cls =
                 sched_cls::new(#fn_name, #function_name,
                 BPF_PROG_TYPE_SCHED_CLS as u64);
