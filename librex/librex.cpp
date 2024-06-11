@@ -133,7 +133,7 @@ public:
   std::optional<bpf_map> bpfmap() {
     // Do not create a bpf_map if the map has not been loaded
     if (!map_fd)
-      return {};
+      return std::nullopt;
 
     return bpf_map{
         .name = name.data(),
@@ -175,7 +175,7 @@ public:
   std::optional<bpf_program> bpf_prog() {
     // Do not create a bpf_program if the prog has not been loaded
     if (!prog_fd)
-      return {};
+      return std::nullopt;
 
     // bpf_program::obj will be initliazed by the caller
     // bpf_program will never outlive "this" as both are managed by rex_obj,
@@ -561,17 +561,16 @@ int rex_obj::fix_maps() {
               << elf64_getshdr(maps_scn)->sh_offset << std::dec << std::endl;
   }
 
-  for (auto &def : map_defs) {
+  for (auto &[m_off, m_def] : map_defs) {
     size_t kptr_file_off =
-        def.first + offsetof(map_def, kptr) - maps_shaddr + maps_shoff;
+        m_off + offsetof(map_def, kptr) - maps_shaddr + maps_shoff;
 
     if (debug) {
-      std::clog << "map_ptr=0x" << std::hex << def.first << std::dec
-                << std::endl;
-      std::clog << "map_name=\"" << def.second.name << '\"' << std::endl;
+      std::clog << "map_ptr=0x" << std::hex << m_off << std::dec << std::endl;
+      std::clog << "map_name=\"" << m_def.name << '\"' << std::endl;
     }
 
-    std::optional<int> map_fd = def.second.create();
+    std::optional<int> map_fd = m_def.create();
     if (!map_fd) {
       perror("bpf_map_create");
       return -1;
@@ -666,12 +665,12 @@ close_fds:
   for (auto &prog : progs) {
     prog.prog_fd = prog.prog_fd.and_then([](int fd) -> std::optional<int> {
       close(fd);
-      return {};
+      return std::nullopt;
     });
   }
   prog_fd = prog_fd.and_then([](int fd) -> std::optional<int> {
     close(fd);
-    return {};
+    return std::nullopt;
   });
   return -1;
 }
@@ -693,8 +692,8 @@ bpf_object *rex_obj::bpf_obj() {
 
   // Fill in maps
   i = 0;
-  for (auto &it : map_defs) {
-    if (std::optional<bpf_map> map = it.second.bpfmap())
+  for (auto &[_, m_def] : map_defs) {
+    if (std::optional<bpf_map> map = m_def.bpfmap())
       ptr->maps[i++] = std::move(map.value());
     else
       return nullptr;
@@ -750,4 +749,11 @@ rex_obj *rex_obj_load(const char *file_path) {
   }
 }
 
-bpf_object *rex_obj_get_bpf(rex_obj *obj) { return obj->bpf_obj(); }
+bpf_object *rex_obj_get_bpf(rex_obj *obj) {
+  try {
+    return obj->bpf_obj();
+  } catch (std::exception &e) {
+    std::cerr << e.what() << std::endl;
+    return nullptr;
+  }
+}
