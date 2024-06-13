@@ -56,10 +56,10 @@ git submodule update --init --recursive --progress
 #+END_SRC
 
 *** Additional step for Nix
-it will launch a Nix shell with all necessary dependencies installed.
+It will launch a Nix shell with all necessary dependencies installed.
 All subsequent steps should be carried out within this shell.
 #+BEGIN_SRC bash
-nix develop
+nix develop --extra-experimental-features nix-command --extra-experimental-features flakes
 #+END_SRC
 
 The Linux directory now hosts the kernel repo, checked out at the pre-set
@@ -76,7 +76,7 @@ toolchain (i.e. ~clang~, ~llvm-ar~, ~lld~, etc). If desired, the GNU toolchain
 (i.e. ~gcc~, ~ld.bfd~) can be used by removing the ~LLVM=1~ environment
 variable setup.
 
-Since ~libiu~ loader library depends on the ~libbpf~ shipped with the kernel,
+Since ~librex~ loader library depends on the ~libbpf~ shipped with the kernel,
 ~libbpf~ needs to be built first:
 #+BEGIN_SRC bash
 cd linux/tools/lib/bpf
@@ -96,7 +96,6 @@ within
 Bootstrap Rust:
 #+BEGIN_SRC bash
 cd rust
-./x.py build --config=inner-unikernels-config.toml
 ./x.py install --config=inner-unikernels-config.toml
 cd -
 #+END_SRC
@@ -107,9 +106,9 @@ With the linux and Rust setup, add them to the environment:
 source env.sh
 #+END_SRC
 
-Finally build libiu:
+Finally build librex:
 #+BEGIN_SRC bash
-cd libiu
+cd librex
 make -j`nproc`
 cd -
 #+END_SRC
@@ -148,7 +147,7 @@ at the end of
 Then boot the VM:
 #+BEGIN_SRC bash
 cd linux
-../q-script/yifei-q # use ../q-script/nix-q if you are using Nix
+../q-script/yifei-q # use ../q-script/nix-q instead if you are using Nix
 #+END_SRC
 
 To run the VM, you may also need to add your user to the ~KVM~ group, using:
@@ -160,7 +159,7 @@ If that fails, contact your administrator.
 Inside the VM:
 #+BEGIN_SRC bash
 cd ..
-export LD_LIBRARY_PATH=`realpath ./libiu`:`realpath linux/tools/lib/bpf`:$LD_LIBRARY_PATH
+export LD_LIBRARY_PATH=`realpath ./librex`:`realpath linux/tools/lib/bpf`:$LD_LIBRARY_PATH
 cd samples/hello
 ./loader & 
 ./event_trigger
@@ -208,7 +207,7 @@ make headers-install
 make vmlinux
 # build bpf
 make bpftool
-# build libiu
+# build librex
 make iu
 #+END_SRC
 
