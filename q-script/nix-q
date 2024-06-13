@@ -194,8 +194,8 @@ guest() {
 	local iface=$(ls $dev/net)
 	say dhcp on iface $iface
 	ip link set dev $iface up
-	busybox udhcpc -i $iface -p /run/udhcpc \
-		-s /usr/share/udhcpc/default.script -q -t 1 -n -f
+	# busybox udhcpc -i $iface -p /run/udhcpc \
+	# 	-s /usr/share/udhcpc/default.script -q -t 1 -n -f
 
 	say setup cgroups
 	sysctl -q kernel.allow_bpf_attach_netcg=0 &>/dev/null
