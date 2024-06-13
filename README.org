@@ -15,7 +15,7 @@ reduced escape hatches, and ultimately improve the safety of kernel extensions.
 The basic ideas are documented in [[docs/rust-kernel-ext.pdf][a workshop paper]].
 
 *** Relevant github repos:
-- Linux Kernel: [[https://github.com/rosalab/linux/tree/inner_unikernels]]
+- Linux Kernel: [[https://github.com/rosalab/linux/tree/rex-kernel]]
 - Rust Toolchain: [[https://github.com/xlab-uiuc/rust]]
 - LLVM CodeGen for Rust: [[https://github.com/xlab-uiuc/llvm-rust]]
 - Paper Repo: [[https://github.com/rosalab/inner-unikernels-paper]]
@@ -27,8 +27,12 @@ for new students.
 
 
 * SETUP (version 20230214)
+** Nix flake 
+You could ignore the following dependencies if you are using Nix which is a 
+package manager
 
 ** Dependencies:
+
 The following tools/libraries are required. Older versions are not guaranteed
 to (or guaranteed not to) work. This list does not include standard kernel
 build dependencies.
@@ -44,8 +48,8 @@ build dependencies.
 
 Clone this repo and its submodules:
 #+BEGIN_SRC bash
-git clone https://github.com/djwillia/inner_unikernels.git
-cd inner_unikernels
+git clone https://github.com/rosalab/rex-kernel.git
+cd rex-kernel
 git submodule update --init --recursive --progress
 #+END_SRC
 
@@ -78,7 +82,7 @@ gcc --version
 If you don't, update gcc.
 Alternatively, remove the mold linker by commenting out the line ~use-linker = `mold`~ 
 within 
-~inner_unikernels/rust/inner-unikernels-config.toml~.
+~rex-kernel/rust/inner-unikernels-config.toml~.
 
 Bootstrap Rust:
 #+BEGIN_SRC bash
@@ -171,8 +175,8 @@ In this setup, we will have ~runtime~ docker as the all-in-one environment for c
 
 Clone this repo and its submodules:
 #+BEGIN_SRC bash
-git clone --recursive https://github.com/djwillia/inner_unikernels.git
-cd inner_unikernels
+git clone --recursive https://github.com/rosalab/rex-kernel.git
+cd rex-kernel
 #+END_SRC
 
 ** Build Docker
@@ -214,7 +218,7 @@ SSH_PORT=52222 make qemu-ssh
 # alternatively, use standard ssh to connect to vm
 ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -t root@127.0.0.1 -p 52222
 # run sample hello
-cd ../inner_unikernels/samples/hello
+cd ../samples/hello
 ./loader &
 ./event-trigger
 #+END_SRC
@@ -245,11 +249,11 @@ Continuing.
 If you haven't update your remote url, you need to update it:
 #+BEGIN_SRC bash
 # Assuming the remote is called "origin"
-git remote set-url origin git@github.com:rosalab/inner_unikernels.git
+git remote set-url origin git@github.com:rosalab/rex-kernel.git
 #+END_SRC
 
 To update the Linux submodule link in case you are not on `main`, you need to
-backport commit [[https://github.com/rosalab/inner_unikernels/commit/69680052549ba993049c05bcb6e3573b3bc23dc3.patch][69680052549b]]
+backport commit [[https://github.com/rosalab/rex-kernel/commit/69680052549ba993049c05bcb6e3573b3bc23dc3.patch][69680052549b]]
 
 No matter you are on `main` or not, you need to sync submodules again:
 #+BEGIN_SRC bash
