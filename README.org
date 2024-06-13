@@ -28,8 +28,10 @@ for new students.
 
 * SETUP (version 20230214)
 ** Nix flake 
-You could ignore the following dependencies if you are using Nix which is a 
-package manager
+Using Nix, a package manager, could allow you to bypass these dependency requirements.
+
+Check out the [[https://nixos.org/download/]] for installation instructions, 
+the single-user installation should be enough.
 
 ** Dependencies:
 
@@ -51,6 +53,13 @@ Clone this repo and its submodules:
 git clone https://github.com/rosalab/rex-kernel.git
 cd rex-kernel
 git submodule update --init --recursive --progress
+#+END_SRC
+
+*** Additional step for Nix
+it will launch a Nix shell with all necessary dependencies installed.
+All subsequent steps should be carried out within this shell.
+#+BEGIN_SRC bash
+nix develop
 #+END_SRC
 
 The Linux directory now hosts the kernel repo, checked out at the pre-set
@@ -139,7 +148,7 @@ at the end of
 Then boot the VM:
 #+BEGIN_SRC bash
 cd linux
-../q-script/yifei-q
+../q-script/yifei-q # use ../q-script/nix-q if you are using Nix
 #+END_SRC
 
 To run the VM, you may also need to add your user to the ~KVM~ group, using:
