@@ -72,7 +72,7 @@ impl<'a> CleanupEntries<'a> {
         let entries: &mut [CleanupEntry];
         unsafe {
             let entries_ptr: *mut CleanupEntry = this_cpu_ptr_mut(
-                &stub::iu_cleanup_entries as *const *mut () as u64,
+                &stub::rex_cleanup_entries as *const *mut () as u64,
             );
             entries =
                 core::slice::from_raw_parts_mut(entries_ptr, ENTRIES_SIZE);
@@ -142,7 +142,7 @@ unsafe fn __iu_check_stack() {
             "ja 1f",
             "call __iu_handle_stack_overflow",
             "1:",
-            in("r10") &stub::iu_stack_ptr as *const u64 as u64,
+            in("r10") &stub::rex_stack_ptr as *const u64 as u64,
         );
     }
 }
@@ -183,5 +183,5 @@ fn panic(info: &PanicInfo) -> ! {
         msg[..s.len()].copy_from_slice(s.as_bytes());
     }
 
-    unsafe { stub::iu_landingpad(msg.as_ptr()) }
+    unsafe { stub::rex_landingpad(msg.as_ptr()) }
 }

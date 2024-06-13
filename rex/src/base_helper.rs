@@ -22,7 +22,7 @@ pub(crate) fn bpf_trace_printk(
     arg3: u64,
 ) -> Result {
     unsafe {
-        to_result!(stub::bpf_trace_printk_iu(
+        to_result!(stub::bpf_trace_printk_rex(
             fmt.as_ptr(),
             fmt.len() as u32,
             arg1,

@@ -34,10 +34,6 @@ using namespace std::literals::string_literals;
 
 static int debug = 0;
 
-// FIXME: Temporary fix until kernel migrates from iu to rex
-using rex_rela_dyn = iu_rela_dyn;
-using rex_dyn_sym = iu_dyn_sym;
-
 static const bpf_sec_def *find_sec_def(const char *sec_name) {
   int i, n = ARRAY_SIZE(section_defs);
 
@@ -603,7 +599,7 @@ int rex_obj::load() {
   for (auto &def : map_defs)
     arr[idx++] = def.first + offsetof(map_def, kptr);
 
-  attr.prog_type = BPF_PROG_TYPE_IU_BASE;
+  attr.prog_type = BPF_PROG_TYPE_REX_BASE;
   // progname was zero-initialized so we don't copy the null terminator
   memcpy(attr.prog_name, basename.c_str(),
          std::min(basename.size(), sizeof(attr.prog_name) - 1));
@@ -619,7 +615,7 @@ int rex_obj::load() {
   attr.dyn_syms = reinterpret_cast<__u64>(dyn_syms.data());
   attr.nr_dyn_syms = dyn_syms.size();
 
-  ret = bpf(BPF_PROG_LOAD_IU_BASE, &attr, sizeof(attr));
+  ret = bpf(BPF_PROG_LOAD_REX_BASE, &attr, sizeof(attr));
 
   if (ret < 0) {
     perror("bpf_prog_load_rex_base");
@@ -644,7 +640,7 @@ int rex_obj::load() {
     attr.base_prog_fd = this->prog_fd.value();
     attr.prog_offset = prog.offset;
     attr.license = (__u64) "GPL";
-    curr_fd = bpf(BPF_PROG_LOAD_IU, &attr, sizeof(attr));
+    curr_fd = bpf(BPF_PROG_LOAD_REX, &attr, sizeof(attr));
 
     if (curr_fd < 0) {
       perror("bpf_prog_load_rex");

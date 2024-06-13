@@ -11,7 +11,7 @@ extern "C" {
     /// `long bpf_trace_printk(const char *fmt, u32 fmt_size, ...)`
     ///
     /// Helpers takes at most 5 args so this function takes at most 3 fmt args
-    pub(crate) fn bpf_trace_printk_iu(
+    pub(crate) fn bpf_trace_printk_rex(
         fmt: *const u8,
         fmt_size: u32,
         arg1: u64,
@@ -102,7 +102,7 @@ extern "C" {
     /// `__nocfi noinline void notrace __noreturn iu_landingpad(char *msg)`
     ///
     /// The in-kernel panic landingpad for panic recovery
-    pub(crate) fn iu_landingpad(msg: *const u8) -> !;
+    pub(crate) fn rex_landingpad(msg: *const u8) -> !;
 
     /// `long bpf_spin_lock(struct bpf_spin_lock *lock)`
     pub(crate) fn bpf_spin_lock(lock: *mut bpf_spin_lock) -> i64;
@@ -192,12 +192,12 @@ extern "C" {
     ///
     /// Pointee type omitted since this per-cpu variable will never be directly
     /// dereferenced, it is always used for per-cpu address calculation
-    pub(crate) static iu_cleanup_entries: *mut ();
+    pub(crate) static rex_cleanup_entries: *mut ();
 
     /// `DEFINE_PER_CPU(void *, iu_stack_ptr);`
     ///
     /// Top of the per-cpu stack for iu programs
-    pub(crate) static iu_stack_ptr: u64;
+    pub(crate) static rex_stack_ptr: u64;
 
     /// `DEFINE_PER_CPU(struct task_struct *, current_task)
     /// ____cacheline_aligned = &init_task;`

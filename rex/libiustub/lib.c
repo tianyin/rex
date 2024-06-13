@@ -3,7 +3,7 @@
   int func() { return 0; }
 
 KSYM_FUNC(bpf_get_current_pid_tgid)
-KSYM_FUNC(bpf_trace_printk_iu)
+KSYM_FUNC(bpf_trace_printk_rex)
 KSYM_FUNC(bpf_map_lookup_elem)
 KSYM_FUNC(bpf_map_update_elem)
 KSYM_FUNC(bpf_map_delete_elem)
@@ -16,7 +16,7 @@ KSYM_FUNC(ktime_get_boot_fast_ns)
 KSYM_FUNC(get_random_u32)
 KSYM_FUNC(bpf_snprintf)
 KSYM_FUNC(vprintk)
-KSYM_FUNC(iu_landingpad)
+KSYM_FUNC(rex_landingpad)
 KSYM_FUNC(bpf_spin_lock)
 KSYM_FUNC(bpf_spin_unlock)
 KSYM_FUNC(just_return_func)
@@ -36,6 +36,6 @@ int cpu_number;
 unsigned long jiffies;
 int numa_node;
 unsigned long *__per_cpu_offset;
-void *iu_cleanup_entries;
-unsigned long iu_stack_ptr;
+void *rex_cleanup_entries;
+unsigned long rex_stack_ptr;
 void *current_task;
