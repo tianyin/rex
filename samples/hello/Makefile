@@ -11,7 +11,7 @@ CC = gcc
 
 CFLAGS += -O2 -march=native -pipe -std=gnu11
 CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
-LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
+LDFLAGS += -fuse-ld=mold -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
 
 LOADER_INC += -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBREX_DIR}
 LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBREX_DIR} -lbpf -lrex -Wl,-rpath=${LIBBPF_DIR} -Wl,-rpath=${LIBREX_DIR}

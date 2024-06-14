@@ -2,11 +2,7 @@ import os
 import re
 import subprocess
 import sys
-
-if sys.version_info >= (3, 11):
-    import tomllib
-else:
-    import tomli as tomllib
+import tomllib
 
 # https://github.com/rust-lang/rust-bindgen
 bindgen_cmd = 'bindgen --use-core --no-doc-comments --rust-target=1.64 '\

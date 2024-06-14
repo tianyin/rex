@@ -21,7 +21,7 @@ else # GCC FAT LTO
 CXXFLAGS += -flto=jobserver -ffat-lto-objects -fuse-linker-plugin
 endif
 
-LDFLAGS += -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
+LDFLAGS += -fuse-ld=mold -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
 LDFLAGS += -L${LINUX}/tools/lib/bpf -lbpf -lelf
 
 all: librex.a librex.so
