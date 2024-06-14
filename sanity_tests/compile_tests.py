@@ -26,7 +26,7 @@ os.environ["RUST_BACKTRACE"] = "1"
 def run_make(directory):
     try:
         args = parse_arguments()
-        if args.clean_build:
+        if not args.no_clean_build:
             command = "make clean; make"
         else:
             command = "make"
@@ -45,7 +45,7 @@ def parse_arguments():
         description="Run make commands in specified directories."
     )
     parser.add_argument(
-        "--clean-build", action="store_true", help="Perform rust clean build."
+        "--no-clean-build", action="store_true", help="Perform rust clean build."
     )
     return parser.parse_args()
 
