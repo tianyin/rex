@@ -40,6 +40,7 @@
             diffutils
             xz.dev
             llvm
+            lld
             clang
             zlib.dev
             openssl.dev
@@ -55,6 +56,7 @@
             rust-bindgen
 
             python3
+            pahole
 
           ];
 
