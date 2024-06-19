@@ -7,7 +7,7 @@ use crate::bindings::uapi::linux::bpf::{
 };
 use crate::linux::errno::EINVAL;
 use crate::map::*;
-use crate::prog_type::iu_prog;
+use crate::prog_type::rex_prog;
 use crate::stub;
 use crate::task_struct::TaskStruct;
 use crate::utils::{to_result, Result};
@@ -115,7 +115,7 @@ impl<'a> perf_event<'a> {
     }
 }
 
-impl iu_prog for perf_event<'_> {
+impl rex_prog for perf_event<'_> {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         ((self.prog)(self, &newctx)).unwrap_or_else(|_| 0) as u32

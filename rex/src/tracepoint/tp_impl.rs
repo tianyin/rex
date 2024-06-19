@@ -2,7 +2,7 @@ use crate::bindings::uapi::linux::bpf::{
     bpf_map_type, BPF_PROG_TYPE_TRACEPOINT,
 };
 use crate::map::*;
-use crate::prog_type::iu_prog;
+use crate::prog_type::rex_prog;
 use crate::task_struct::TaskStruct;
 use crate::Result;
 
@@ -69,7 +69,7 @@ impl<'a> tracepoint<'a> {
     }
 }
 
-impl iu_prog for tracepoint<'_> {
+impl rex_prog for tracepoint<'_> {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
 

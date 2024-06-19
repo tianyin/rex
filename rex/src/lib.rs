@@ -41,7 +41,7 @@ mod stub;
 extern crate paste;
 extern crate rlibc;
 
-use crate::prog_type::iu_prog;
+use crate::prog_type::rex_prog;
 use core::panic::PanicInfo;
 pub use rex_macros::*;
 
