@@ -24,48 +24,68 @@
         inherit system;
         # overlays = overlays;
       };
+      fhs = pkgs.buildFHSUserEnv {
+        name = "simple-rust-env";
+        targetPkgs = pkgs: (with pkgs; [
+          gcc
+          diffutils
+          xz.dev
+          llvm
+          llvmPackages.bintools
+          zlib.dev
+          openssl.dev
+          flex
+          bison
+          busybox
+          qemu
+          mold
+          pkg-config
+          elfutils.dev
+          ncurses.dev
+          rust-bindgen
+
+          python3
+          pahole
+        ]);
+        runScript = "./scripts/start.sh";
+      };
     in
     {
-      devShells."${system}".default =
+      devShells."${system}" = {
+        default = fhs.env;
+        rex =
+          pkgs.mkShell {
+            packages = with pkgs; [
+              gcc
+              diffutils
+              xz.dev
+              llvm
+              lld
+              clang
+              zlib.dev
+              openssl.dev
+              flex
+              bison
+              busybox
+              qemu
+              mold
+              pkg-config
+              elfutils.dev
+              libelf
+              ncurses.dev
+              rust-bindgen
 
-        let
-          pkgs = import nixpkgs {
-            inherit system;
+              python3
+              pahole
+            ];
+
+            shellHook = ''
+              export PS1="\u@\h \W\$ "
+              alias ll='ls -la'
+              source ./env.sh
+            '';
           };
-        in
-        pkgs.mkShell {
-
-          packages = with pkgs; [
-            gcc
-            diffutils
-            xz.dev
-            llvm
-            lld
-            clang
-            zlib.dev
-            openssl.dev
-            flex
-            bison
-            busybox
-            qemu
-            mold
-            pkg-config
-            elfutils.dev
-            libelf
-            ncurses.dev
-            rust-bindgen
-
-            python3
-            pahole
-
-          ];
-
-          shellHook = ''
-            export PS1="\u@\h \W\$ "
-            alias ll='ls -la'
-            source ./env.sh
-          '';
-        };
+      };
     };
 }
 
