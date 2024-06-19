@@ -5,7 +5,7 @@ extern crate rex;
 
 use rex::linux::bpf::bpf_spin_lock;
 use rex::map::IUArrayMap;
-use rex::spinlock::iu_spinlock_guard;
+use rex::spinlock::rex_spinlock_guard;
 use rex::tracepoint::*;
 use rex::{entry_link, rex_map, Result};
 
@@ -20,8 +20,8 @@ static MAP_ARRAY: IUArrayMap<MapEntry> = IUArrayMap::new(256, 0);
 
 fn test1(obj: &tracepoint) {
     if let Some(entry) = obj.bpf_map_lookup_elem(&MAP_ARRAY, &0) {
-        // entry.lock locked in iu_spinlock_guard::new
-        let _guard = iu_spinlock_guard::new(&mut entry.lock);
+        // entry.lock locked in rex_spinlock_guard::new
+        let _guard = rex_spinlock_guard::new(&mut entry.lock);
         entry.data = 1;
         // entry.lock is automatically released when _guard goes out of scope
     }
@@ -29,8 +29,8 @@ fn test1(obj: &tracepoint) {
 
 fn test2(obj: &tracepoint) {
     if let Some(entry) = obj.bpf_map_lookup_elem(&MAP_ARRAY, &0) {
-        // entry.lock locked in iu_spinlock_guard::new
-        let _guard = iu_spinlock_guard::new(&mut entry.lock);
+        // entry.lock locked in rex_spinlock_guard::new
+        let _guard = rex_spinlock_guard::new(&mut entry.lock);
         entry.data = 1;
         panic!("test\n");
         // entry.lock is automatically released by cleanup mechanism
