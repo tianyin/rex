@@ -5,18 +5,18 @@
 extern crate rex;
 
 use rex::linux::bpf::BPF_NOEXIST;
-use rex::map::IUArrayMap;
+use rex::map::RexArrayMap;
 use rex::tracepoint::{tp_ctx, tp_type, tracepoint};
 use rex::Result;
 use rex::{entry_link, rex_map};
 
 #[rex_map]
-static enter_open_map: IUArrayMap<u32> = IUArrayMap::new(1, 0);
+static enter_open_map: RexArrayMap<u32> = RexArrayMap::new(1, 0);
 
 #[rex_map]
-static exit_open_map: IUArrayMap<u32> = IUArrayMap::new(1, 0);
+static exit_open_map: RexArrayMap<u32> = RexArrayMap::new(1, 0);
 
-type SyscallTpMap = IUArrayMap<u32>;
+type SyscallTpMap = RexArrayMap<u32>;
 
 fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
     match obj.bpf_map_lookup_elem(map, &0) {

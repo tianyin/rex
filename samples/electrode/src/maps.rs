@@ -31,28 +31,28 @@ pub(crate) struct paxos_batch {
 }
 
 #[rex_map]
-pub(crate) static MAP_CONFIGURE: IUArrayMap<PaxosConfigure> =
-    IUArrayMap::new(FAST_REPLICA_MAX, 0);
+pub(crate) static MAP_CONFIGURE: RexArrayMap<PaxosConfigure> =
+    RexArrayMap::new(FAST_REPLICA_MAX, 0);
 
 #[rex_map]
-pub(crate) static map_ctr_state: IUArrayMap<paxos_ctr_state> =
-    IUArrayMap::new(1, 0);
+pub(crate) static map_ctr_state: RexArrayMap<paxos_ctr_state> =
+    RexArrayMap::new(1, 0);
 
 #[rex_map]
-pub(crate) static map_msg_last_op: IUArrayMap<u64> = IUArrayMap::new(1, 0);
+pub(crate) static map_msg_last_op: RexArrayMap<u64> = RexArrayMap::new(1, 0);
 
 #[rex_map]
-pub(crate) static map_quorum: IUArrayMap<paxos_quorum> =
-    IUArrayMap::new(QUORUM_BITSET_ENTRY, 0);
+pub(crate) static map_quorum: RexArrayMap<paxos_quorum> =
+    RexArrayMap::new(QUORUM_BITSET_ENTRY, 0);
 
 #[rex_map]
-pub(crate) static batch_context: IUArrayMap<paxos_batch> =
-    IUArrayMap::new(1, 0);
+pub(crate) static batch_context: RexArrayMap<paxos_batch> =
+    RexArrayMap::new(1, 0);
 
 #[rex_map]
-pub(crate) static map_prepare_buffer: IURingBuf = IURingBuf::new(1 << 20, 0);
+pub(crate) static map_prepare_buffer: RexRingBuf = RexRingBuf::new(1 << 20, 0);
 #[rex_map]
-pub(crate) static map_request_buffer: IURingBuf = IURingBuf::new(1 << 20, 0);
+pub(crate) static map_request_buffer: RexRingBuf = RexRingBuf::new(1 << 20, 0);
 
 #[derive(FieldTransmute)]
 #[repr(C, packed)]

@@ -5,7 +5,7 @@ extern crate rex;
 
 use rex::bpf_printk;
 use rex::linux::bpf::bpf_spin_lock;
-use rex::map::IUArrayMap;
+use rex::map::RexArrayMap;
 use rex::spinlock::rex_spinlock_guard;
 use rex::xdp::*;
 use rex::{entry_link, rex_map, Result};
@@ -17,7 +17,7 @@ struct MapEntry {
 }
 
 #[rex_map]
-static MAP_ARRAY: IUArrayMap<MapEntry> = IUArrayMap::new(256, 0);
+static MAP_ARRAY: RexArrayMap<MapEntry> = RexArrayMap::new(256, 0);
 
 #[inline(always)]
 fn iu_prog1_fn(obj: &xdp, _: &mut xdp_md) -> Result {

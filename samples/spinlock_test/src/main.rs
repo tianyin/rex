@@ -4,7 +4,7 @@
 extern crate rex;
 
 use rex::linux::bpf::bpf_spin_lock;
-use rex::map::IUArrayMap;
+use rex::map::RexArrayMap;
 use rex::spinlock::rex_spinlock_guard;
 use rex::tracepoint::*;
 use rex::{entry_link, rex_map, Result};
@@ -16,7 +16,7 @@ struct MapEntry {
 }
 
 #[rex_map]
-static MAP_ARRAY: IUArrayMap<MapEntry> = IUArrayMap::new(256, 0);
+static MAP_ARRAY: RexArrayMap<MapEntry> = RexArrayMap::new(256, 0);
 
 fn test1(obj: &tracepoint) {
     if let Some(entry) = obj.bpf_map_lookup_elem(&MAP_ARRAY, &0) {

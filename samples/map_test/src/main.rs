@@ -9,10 +9,10 @@ use rex::tracepoint::*;
 use rex::{bpf_printk, entry_link, rex_map, Result};
 
 #[rex_map]
-static MAP_HASH: IUHashMap<u32, i64> = IUHashMap::new(1024, 0);
+static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
 
 #[rex_map]
-static MAP_ARRAY: IUArrayMap<u64> = IUArrayMap::new(256, 0);
+static MAP_ARRAY: RexArrayMap<u64> = RexArrayMap::new(256, 0);
 
 fn map_test1(obj: &tracepoint) -> Result {
     let key: u32 = 0;

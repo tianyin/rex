@@ -96,15 +96,15 @@ struct parsing_context {
 }
 
 #[rex_map]
-static map_kcache: IUArrayMap<bmc_cache_entry> =
-    IUArrayMap::new(BMC_CACHE_ENTRY_COUNT, 0);
+static map_kcache: RexArrayMap<bmc_cache_entry> =
+    RexArrayMap::new(BMC_CACHE_ENTRY_COUNT, 0);
 
 #[rex_map]
-static map_keys: IUPerCPUArrayMap<memcached_key> =
-    IUPerCPUArrayMap::new(BMC_MAX_KEY_IN_PACKET, 0);
+static map_keys: RexPerCPUArrayMap<memcached_key> =
+    RexPerCPUArrayMap::new(BMC_MAX_KEY_IN_PACKET, 0);
 
 #[rex_map]
-static map_stats: IUPerCPUArrayMap<bmc_stats> = IUPerCPUArrayMap::new(1, 0);
+static map_stats: RexPerCPUArrayMap<bmc_stats> = RexPerCPUArrayMap::new(1, 0);
 
 // payload after header and 'get '
 #[inline(always)]
