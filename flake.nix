@@ -27,12 +27,15 @@
       fhs = pkgs.buildFHSUserEnv {
         name = "simple-rust-env";
         targetPkgs = pkgs: (with pkgs; [
-          curl
 
+
+          # build deps
           gcc
+          curl
           diffutils
           xz.dev
           llvm_18
+          (hiPrio clang_18)
           lld_18
           (hiPrio clang-tools.override {
             llvmPackages = llvmPackages_18;
@@ -44,16 +47,20 @@
           busybox
           qemu
           mold
+          perl
           pkg-config
           elfutils.dev
           ncurses.dev
           rust-bindgen
+          pahole
 
+          # python3 scripts
           (pkgs.python3.withPackages (python-pkgs: [
             # select Python packages here
             python-pkgs.tqdm
           ]))
-          pahole
+
+          openssh # q-script ssh support
         ]);
         runScript = "./scripts/start.sh";
       };
