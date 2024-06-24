@@ -5,4 +5,4 @@
 [submodule "rust"]
 	path = rust
 	url = git@github.com:xlab-uiuc/rust.git
-	branch = inner-unikernel-dev
+	branch = rex-rust
