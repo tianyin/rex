@@ -14,9 +14,9 @@ import subprocess
 exclusion_list = ["cpustat", "memcached_benchmark"]
 
 script_path = Path(__file__).resolve()
-repo_path = script_path.parent.parent
+repo_path = script_path.parent.parent.parent
 samples_path = repo_path.joinpath("samples")
-q_script = repo_path.joinpath("q-script/sanity-test-q")
+q_script = repo_path.joinpath("./scripts/q-script/sanity-test-q")
 
 # Set Path env
 kernel_path = repo_path.joinpath("./linux")

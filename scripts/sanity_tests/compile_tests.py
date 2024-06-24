@@ -11,7 +11,7 @@ from tqdm import tqdm
 exclusion_list = ["cpustat", "memcached_benchmark"]
 
 script_path = Path(__file__).resolve()
-repo_path = script_path.parent.parent
+repo_path = script_path.parent.parent.parent
 samples_path = repo_path.joinpath("samples")
 
 # Set Path env
