@@ -30,8 +30,11 @@
           gcc
           diffutils
           xz.dev
-          llvm
-          llvmPackages.bintools
+          llvm_18
+          lld_18
+          (hiPrio clang-tools.override {
+            llvmPackages = llvmPackages_18;
+          })
           zlib.dev
           openssl.dev
           flex
@@ -53,38 +56,6 @@
     {
       devShells."${system}" = {
         default = fhs.env;
-        rex =
-          pkgs.mkShell {
-            packages = with pkgs; [
-              gcc
-              diffutils
-              xz.dev
-              llvm
-              lld
-              clang
-              zlib.dev
-              openssl.dev
-              flex
-              bison
-              busybox
-              qemu
-              mold
-              pkg-config
-              elfutils.dev
-              libelf
-              ncurses.dev
-              rust-bindgen
-
-              python3
-              pahole
-            ];
-
-            shellHook = ''
-              export PS1="\u@\h \W\$ "
-              alias ll='ls -la'
-              source ./env.sh
-            '';
-          };
       };
     };
 }
