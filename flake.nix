@@ -47,7 +47,10 @@
           ncurses.dev
           rust-bindgen
 
-          python3
+          (pkgs.python3.withPackages (python-pkgs: [
+            # select Python packages here
+            python-pkgs.tqdm
+          ]))
           pahole
         ]);
         runScript = "./scripts/start.sh";
