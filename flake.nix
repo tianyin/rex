@@ -27,6 +27,8 @@
       fhs = pkgs.buildFHSUserEnv {
         name = "simple-rust-env";
         targetPkgs = pkgs: (with pkgs; [
+          curl
+
           gcc
           diffutils
           xz.dev
