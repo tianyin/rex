@@ -1,4 +1,4 @@
-* Inner Unikernels
+* Rex (Rex eBPF eXtension)
 The emergence of verified eBPF bytecode is ushering in a new era of safe kernel
 extensions. In this paper, we argue that eBPF’s verifier—the source of its
 safety guarantees—has become a liability. In addition to the well-known bugs
