@@ -1,7 +1,7 @@
 [submodule "linux"]
 	path = linux
 	url = git@github.com:rosalab/linux.git
-	branch = inner_unikernels
+	branch = rex-linux
 [submodule "rust"]
 	path = rust
 	url = git@github.com:xlab-uiuc/rust.git
