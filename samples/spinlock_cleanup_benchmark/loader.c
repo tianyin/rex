@@ -37,7 +37,7 @@ int main(int argc, char **argv)
 		return 1;
 	}
 
-	prog = bpf_object__find_program_by_name(obj, "iu_prog1");
+	prog = bpf_object__find_program_by_name(obj, "rex_prog1");
 	if (!prog) {
 		printf("finding a prog in obj file failed\n");
 		return 1;

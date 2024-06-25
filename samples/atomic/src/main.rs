@@ -10,7 +10,7 @@ use rex::{bpf_printk, entry_link, Result};
 static ATOM: AtomicU64 = AtomicU64::new(42);
 
 #[inline(always)]
-fn iu_prog1_fn(obj: &kprobe, _ctx: &mut pt_regs) -> Result {
+fn rex_prog1_fn(obj: &kprobe, _ctx: &mut pt_regs) -> Result {
     let random = obj.bpf_get_prandom_u32() as u64;
     ATOM.store(random, Ordering::Relaxed);
 
@@ -23,4 +23,4 @@ fn iu_prog1_fn(obj: &kprobe, _ctx: &mut pt_regs) -> Result {
     Ok(0)
 }
 #[entry_link(inner_unikernel/kprobe/kprobe_target_func)]
-static PROG: kprobe = kprobe::new(iu_prog1_fn, "iu_prog1");
+static PROG: kprobe = kprobe::new(rex_prog1_fn, "rex_prog1");

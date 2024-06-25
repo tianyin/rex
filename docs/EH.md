@@ -28,8 +28,8 @@ landingpads, and another time for executing landingpads code.
 However, the Itanium EH ABI is not suitable in our case for the following
 reasons:
 - It adds too much complexity, as the userspace unwind libraries are not
-  direcly usable.
-- It usually requries dynamic allocation for certain exception contexts,
+  directly usable.
+- It usually requires dynamic allocation for certain exception contexts,
   which may not be available to kernel extensions (e.g. kprobe executes in
   interrupt contexts and is therefore not sleepable).
 - It allows failures during the unwinding which cannot be tolerated in

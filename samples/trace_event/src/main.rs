@@ -34,7 +34,7 @@ pub const USER_STACKID_FLAGS: u64 =
     (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
 #[inline(always)]
-fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
+fn rex_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     let cpu: u32 = obj.bpf_get_smp_processor_id();
     let mut value_buf: bpf_perf_event_value = bpf_perf_event_value {
         counter: 0,
@@ -116,4 +116,4 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
 }
 
 #[entry_link(inner_unikernel/perf_event)]
-static PROG: perf_event = perf_event::new(iu_prog1_fn, "iu_prog1");
+static PROG: perf_event = perf_event::new(rex_prog1_fn, "rex_prog1");

@@ -38,7 +38,7 @@ fn test2(obj: &tracepoint) {
 }
 
 #[inline(always)]
-fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+fn rex_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     test1(obj);
     test2(obj);
     Ok(0)
@@ -46,4 +46,4 @@ fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
 
 #[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_dup)]
 static PROG: tracepoint =
-    tracepoint::new(iu_prog1_fn, "iu_prog1", tp_type::Void);
+    tracepoint::new(rex_prog1_fn, "rex_prog1", tp_type::Void);

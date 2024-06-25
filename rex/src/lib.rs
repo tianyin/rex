@@ -48,7 +48,7 @@ pub use rex_macros::*;
 use paste::paste;
 
 #[cfg(not(CONFIG_KALLSYMS_ALL = "y"))]
-compile_error!("CONFIG_KALLSYMS_ALL is required for inner-unikernels");
+compile_error!("CONFIG_KALLSYMS_ALL is required for rex");
 
 macro_rules! define_prog_entry {
     ($prog_ty:ident) => {

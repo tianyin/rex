@@ -63,7 +63,7 @@ pub fn func_sys_mmap(obj: &kprobe, _: &pt_regs) -> Result {
 
 #[allow(non_upper_case_globals)]
 #[inline(always)]
-fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
+fn rex_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     match ctx.rdi() as u32 {
         __NR_read => func_sys_read(obj, ctx),
         __NR_write => func_sys_write(obj, ctx),
@@ -81,4 +81,4 @@ fn iu_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
 }
 
 #[entry_link(inner_unikernel/kprobe/__seccomp_filter)]
-static PROG: kprobe = kprobe::new(iu_prog1_fn, "iu_prog1");
+static PROG: kprobe = kprobe::new(rex_prog1_fn, "rex_prog1");

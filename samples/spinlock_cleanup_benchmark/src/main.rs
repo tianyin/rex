@@ -20,7 +20,7 @@ struct MapEntry {
 static MAP_ARRAY: RexArrayMap<MapEntry> = RexArrayMap::new(256, 0);
 
 #[inline(always)]
-fn iu_prog1_fn(obj: &xdp, _: &mut xdp_md) -> Result {
+fn rex_prog1_fn(obj: &xdp, _: &mut xdp_md) -> Result {
     if let Some(entry) = obj.bpf_map_lookup_elem(&MAP_ARRAY, &0) {
         let start = obj.bpf_ktime_get_ns();
         {
@@ -40,4 +40,5 @@ fn iu_prog1_fn(obj: &xdp, _: &mut xdp_md) -> Result {
 }
 
 #[entry_link(inner_unikernel/xdp)]
-static PROG1: xdp = xdp::new(iu_prog1_fn, "iu_prog1", BPF_PROG_TYPE_XDP as u64);
+static PROG1: xdp =
+    xdp::new(rex_prog1_fn, "rex_prog1", BPF_PROG_TYPE_XDP as u64);

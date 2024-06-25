@@ -8,9 +8,9 @@ use rex::kprobe::*;
 use rex::Result;
 
 #[inline(always)]
-fn iu_prog1_fn(_obj: &kprobe, _ctx: &mut pt_regs) -> Result {
+fn rex_prog1_fn(_obj: &kprobe, _ctx: &mut pt_regs) -> Result {
     Ok(0)
 }
 
 #[entry_link(inner_unikernel/kprobe/kprobe_target_func)]
-static PROG: kprobe = kprobe::new(iu_prog1_fn, "iu_prog1");
+static PROG: kprobe = kprobe::new(rex_prog1_fn, "rex_prog1");
