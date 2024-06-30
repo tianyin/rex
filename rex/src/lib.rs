@@ -6,7 +6,13 @@
     negative_impls,
     panic_info_message
 )]
-#![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, unused)]
+#![allow(
+    non_camel_case_types,
+    non_snake_case,
+    non_upper_case_globals,
+    unused,
+    internal_features
+)]
 
 pub mod kprobe;
 pub mod map;
