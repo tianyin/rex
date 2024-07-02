@@ -7,16 +7,16 @@ extern crate rex;
 use rex::bpf_printk;
 use rex::entry_link;
 use rex::linux::bpf::BPF_MAP_TYPE_ARRAY;
-use rex::map::IUMap;
+use rex::map::RexMap;
 // use rex::tracepoint::*;
 use core::hint::black_box;
 use rex::kprobe::*;
-use rex::map::IUArrayMap;
+use rex::map::RexArrayMap;
 use rex::rex_map;
 use rex::Result;
 
 #[rex_map]
-static data_map: IUArrayMap<u32> = IUArrayMap::new(2, 0);
+static data_map: RexArrayMap<u32> = RexArrayMap::new(2, 0);
 
 #[inline(always)]
 fn iu_recursive(obj: &kprobe, ctx: &mut pt_regs) -> Result {

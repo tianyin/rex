@@ -1,6 +1,6 @@
 use crate::bindings::uapi::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_KPROBE};
 use crate::map::*;
-use crate::prog_type::iu_prog;
+use crate::prog_type::rex_prog;
 use crate::stub;
 use crate::task_struct::TaskStruct;
 use crate::Result;
@@ -59,7 +59,7 @@ impl<'a> kprobe<'a> {
     }
 }
 
-impl iu_prog for kprobe<'_> {
+impl rex_prog for kprobe<'_> {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
         ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32

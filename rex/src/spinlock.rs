@@ -8,12 +8,12 @@ use crate::stub;
 /// Ref: <https://doc.rust-lang.org/src/std/sync/mutex.rs.html#206-209>
 #[must_use = "if unused the spinlock will immediately unlock"]
 #[clippy::has_significant_drop]
-pub struct iu_spinlock_guard<'a> {
+pub struct rex_spinlock_guard<'a> {
     lock: &'a mut bpf_spin_lock,
     cleanup_idx: usize,
 }
 
-impl<'a> iu_spinlock_guard<'a> {
+impl<'a> rex_spinlock_guard<'a> {
     /// Constructor function that locks the spinlock
     pub fn new(lock: &'a mut bpf_spin_lock) -> Self {
         // Put it before lock so if it panics we will not be holding the lock
@@ -37,7 +37,7 @@ impl<'a> iu_spinlock_guard<'a> {
     }
 }
 
-impl Drop for iu_spinlock_guard<'_> {
+impl Drop for rex_spinlock_guard<'_> {
     /// Unlock the spinlock when the guard is out-of-scope
     fn drop(&mut self) {
         // Put it before unlock so if it panics we will not unlock twice (once
@@ -52,5 +52,5 @@ impl Drop for iu_spinlock_guard<'_> {
 
 /// Unimplement Send and Sync
 /// Ref: <https://doc.rust-lang.org/nomicon/send-and-sync.html>
-impl !Send for iu_spinlock_guard<'_> {}
-impl !Sync for iu_spinlock_guard<'_> {}
+impl !Send for rex_spinlock_guard<'_> {}
+impl !Sync for rex_spinlock_guard<'_> {}

@@ -66,7 +66,7 @@ The Linux directory now hosts the kernel repo, checked out at the pre-set
 commit. To build the kernel, do:
 #+BEGIN_SRC bash
 cd linux
-cp ../q-script/.config .config
+cp ../scripts/q-script/.config .config
 make oldconfig LLVM=1
 make -j`nproc` LLVM=1
 cd -
@@ -91,12 +91,12 @@ gcc --version
 If you don't, update gcc.
 Alternatively, remove the mold linker by commenting out the line ~use-linker = `mold`~ 
 within 
-~rex-kernel/rust/inner-unikernels-config.toml~.
+~rex-kernel/rust/rex-config.toml~.
 
 Bootstrap Rust:
 #+BEGIN_SRC bash
 cd rust
-./x.py install --config=inner-unikernels-config.toml
+./x.py install --config=rex-config.toml
 cd -
 #+END_SRC
 The Rust artifacts are installed under ~rust/dist~.
@@ -147,7 +147,7 @@ at the end of
 Then boot the VM:
 #+BEGIN_SRC bash
 cd linux
-../q-script/yifei-q # use ../q-script/nix-q instead if you are using Nix
+../scripts/q-script/yifei-q # use ../scripts/q-script/nix-q instead if you are using Nix
 #+END_SRC
 
 To run the VM, you may also need to add your user to the ~KVM~ group, using:

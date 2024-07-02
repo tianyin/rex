@@ -5,7 +5,7 @@ pub use crate::bindings::linux::kernel::{
 };
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
 use crate::debug::printk;
-use crate::prog_type::iu_prog;
+use crate::prog_type::rex_prog;
 use crate::utils::*;
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_uchar, c_uint, c_void};
@@ -194,7 +194,7 @@ impl<'a> xdp<'a> {
         Ok(0)
     }
 }
-impl iu_prog for xdp<'_> {
+impl rex_prog for xdp<'_> {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // Return XDP_PASS if Err, i.e. discard event

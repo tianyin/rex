@@ -5,7 +5,7 @@ use crate::linux::bpf::{
 use core::{marker::PhantomData, mem, ptr};
 
 #[repr(C)]
-pub struct IUMap<const MT: bpf_map_type, K, V> {
+pub struct RexMap<const MT: bpf_map_type, K, V> {
     // Map metadata
     map_type: u32,
     key_size: u32,
@@ -21,8 +21,8 @@ pub struct IUMap<const MT: bpf_map_type, K, V> {
     val_type: PhantomData<V>,
 }
 
-impl<const MT: bpf_map_type, K, V> IUMap<MT, K, V> {
-    pub const fn new(ms: u32, mf: u32) -> IUMap<MT, K, V> {
+impl<const MT: bpf_map_type, K, V> RexMap<MT, K, V> {
+    pub const fn new(ms: u32, mf: u32) -> RexMap<MT, K, V> {
         Self {
             map_type: MT,
             key_size: mem::size_of::<K>() as u32,
@@ -36,10 +36,10 @@ impl<const MT: bpf_map_type, K, V> IUMap<MT, K, V> {
     }
 }
 
-unsafe impl<const MT: bpf_map_type, K, V> Sync for IUMap<MT, K, V> {}
+unsafe impl<const MT: bpf_map_type, K, V> Sync for RexMap<MT, K, V> {}
 
-pub type IUArrayMap<V> = IUMap<BPF_MAP_TYPE_ARRAY, u32, V>;
-pub type IUPerCPUArrayMap<V> = IUMap<BPF_MAP_TYPE_PERCPU_ARRAY, u32, V>;
-pub type IUHashMap<K, V> = IUMap<BPF_MAP_TYPE_HASH, K, V>;
-pub type IURingBuf = IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
-pub type IUStackMap<K, V> = IUMap<BPF_MAP_TYPE_STACK_TRACE, K, V>;
+pub type RexArrayMap<V> = RexMap<BPF_MAP_TYPE_ARRAY, u32, V>;
+pub type RexPerCPUArrayMap<V> = RexMap<BPF_MAP_TYPE_PERCPU_ARRAY, u32, V>;
+pub type RexHashMap<K, V> = RexMap<BPF_MAP_TYPE_HASH, K, V>;
+pub type RexRingBuf = RexMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
+pub type RexStackMap<K, V> = RexMap<BPF_MAP_TYPE_STACK_TRACE, K, V>;

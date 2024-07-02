@@ -19,7 +19,7 @@ paste = { workspace = true }
 rlibc = { workspace = true }
 rex-macros = { workspace = true }
 
-[inner_unikernel]
+[rex]
 uheaders = [
   "linux/bpf.h",
   "linux/errno.h",

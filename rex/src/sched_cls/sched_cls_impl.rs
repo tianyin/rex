@@ -9,7 +9,7 @@ pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
 pub use crate::bindings::uapi::linux::pkt_cls::{
     TC_ACT_OK, TC_ACT_REDIRECT, TC_ACT_SHOT,
 };
-use crate::prog_type::iu_prog;
+use crate::prog_type::rex_prog;
 use crate::utils::*;
 
 use crate::{bpf_printk, map::*};
@@ -258,7 +258,7 @@ impl<'a> sched_cls<'a> {
     }
 }
 
-impl iu_prog for sched_cls<'_> {
+impl rex_prog for sched_cls<'_> {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // return TC_ACT_OK if error

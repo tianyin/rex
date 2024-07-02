@@ -76,11 +76,11 @@ def parse_cargo_toml(cargo_toml_path):
     with open(cargo_toml_path, 'rb') as toml_f:
         cargo_toml = tomllib.load(toml_f)
 
-    assert 'inner_unikernel' in cargo_toml, "no inner_unikernel config found"
+    assert 'rex' in cargo_toml, "no rex config found"
 
-    uheaders = cargo_toml['inner_unikernel'].get('uheaders', [])
-    kheaders = cargo_toml['inner_unikernel'].get('kheaders', [])
-    kconfigs = cargo_toml['inner_unikernel'].get('kconfigs', [])
+    uheaders = cargo_toml['rex'].get('uheaders', [])
+    kheaders = cargo_toml['rex'].get('kheaders', [])
+    kconfigs = cargo_toml['rex'].get('kconfigs', [])
 
     return uheaders, kheaders, kconfigs
 

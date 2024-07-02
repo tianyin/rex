@@ -96,15 +96,15 @@ struct parsing_context {
 }
 
 #[rex_map]
-static map_kcache: IUArrayMap<bmc_cache_entry> =
-    IUArrayMap::new(BMC_CACHE_ENTRY_COUNT, 0);
+static map_kcache: RexArrayMap<bmc_cache_entry> =
+    RexArrayMap::new(BMC_CACHE_ENTRY_COUNT, 0);
 
 #[rex_map]
-static map_keys: IUPerCPUArrayMap<memcached_key> =
-    IUPerCPUArrayMap::new(BMC_MAX_KEY_IN_PACKET, 0);
+static map_keys: RexPerCPUArrayMap<memcached_key> =
+    RexPerCPUArrayMap::new(BMC_MAX_KEY_IN_PACKET, 0);
 
 #[rex_map]
-static map_stats: IUPerCPUArrayMap<bmc_stats> = IUPerCPUArrayMap::new(1, 0);
+static map_stats: RexPerCPUArrayMap<bmc_stats> = RexPerCPUArrayMap::new(1, 0);
 
 // payload after header and 'get '
 #[inline(always)]
@@ -151,7 +151,7 @@ fn hash_key(
 
         let entry_valid;
         {
-            let _guard = iu_spinlock_guard::new(&mut entry.lock);
+            let _guard = rex_spinlock_guard::new(&mut entry.lock);
             entry_valid = entry.valid == 1 && entry.hash == key.hash
         }
 
@@ -230,7 +230,7 @@ fn write_pkt_reply(
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         .ok_or(XDP_DROP as i32)?;
 
-    let _guard = iu_spinlock_guard::new(&mut entry.lock);
+    let _guard = rex_spinlock_guard::new(&mut entry.lock);
 
     if entry.valid == 1 && entry.hash == key.hash {
         // bpf_printk!(
@@ -367,7 +367,7 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
             //     hash as u64,
             //     payload[0..16].as_ptr() as u64
             // );
-            let _guard = iu_spinlock_guard::new(&mut entry.lock);
+            let _guard = rex_spinlock_guard::new(&mut entry.lock);
             entry.valid = 0;
         }
     }
@@ -384,10 +384,10 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
             return bmc_invalidate_cache(obj, ctx);
         }
         IPPROTO_UDP => {
-            let header_len = size_of::<ethhdr>() +
-                size_of::<iphdr>() +
-                size_of::<udphdr>() +
-                size_of::<memcached_udp_header>();
+            let header_len = size_of::<ethhdr>()
+                + size_of::<iphdr>()
+                + size_of::<udphdr>()
+                + size_of::<memcached_udp_header>();
             let udp_header = obj.udp_header(ctx);
             let port = u16::from_be(udp_header.dest);
             let payload = &ctx.data_slice[header_len..];
@@ -410,9 +410,9 @@ fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
             let mut off = 4;
             // move offset to the start of the first key
-            while off < BMC_MAX_PACKET_LENGTH &&
-                off + 1 < payload.len() &&
-                payload[off] == b' '
+            while off < BMC_MAX_PACKET_LENGTH
+                && off + 1 < payload.len()
+                && payload[off] == b' '
             {
                 off += 1;
             }
@@ -447,9 +447,9 @@ fn bmc_update_cache(
     let mut hash = FNV_OFFSET_BASIS_32;
 
     let mut off = 6usize;
-    while off < BMC_MAX_KEY_LENGTH &&
-        header_len + off < skb.len() as usize &&
-        payload[off] != b' '
+    while off < BMC_MAX_KEY_LENGTH
+        && header_len + off < skb.len() as usize
+        && payload[off] != b' '
     {
         hash_func!(hash, payload[off]);
         // bpf_printk!(obj, "current tx hash %d payload %d\n", hash as u64,
@@ -465,15 +465,15 @@ fn bmc_update_cache(
         .ok_or(TC_ACT_OK as i32)?;
     // bpf_printk!(obj, "key hash function\n");
 
-    let _guard = iu_spinlock_guard::new(&mut entry.lock);
+    let _guard = rex_spinlock_guard::new(&mut entry.lock);
 
     // check if the cache is up-to-date
     if entry.valid == 1 && entry.hash == hash {
         let mut diff = 0;
         off = 6;
-        while off < BMC_MAX_KEY_LENGTH &&
-            header_len + off < payload.len() as usize &&
-            (payload[off] != b' ' || entry.data[off] != b' ')
+        while off < BMC_MAX_KEY_LENGTH
+            && header_len + off < payload.len() as usize
+            && (payload[off] != b' ' || entry.data[off] != b' ')
         {
             if entry.data[off] != payload[off] {
                 diff = 1;
@@ -493,9 +493,9 @@ fn bmc_update_cache(
     let (mut count, mut i) = (0usize, 0usize);
     entry.len = 0;
     // bpf_printk!(obj, "update_cace\n");
-    while i < BMC_MAX_CACHE_DATA_SIZE &&
-        header_len + i < skb.len() as usize &&
-        count < 2
+    while i < BMC_MAX_CACHE_DATA_SIZE
+        && header_len + i < skb.len() as usize
+        && count < 2
     {
         entry.data[i] = payload[i];
         entry.len += 1;
@@ -522,10 +522,10 @@ fn bmc_update_cache(
 
 #[inline(always)]
 fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
-    let header_len = size_of::<iphdr>() +
-        size_of::<eth_header>() +
-        size_of::<udphdr>() +
-        size_of::<memcached_udp_header>();
+    let header_len = size_of::<iphdr>()
+        + size_of::<eth_header>()
+        + size_of::<udphdr>()
+        + size_of::<memcached_udp_header>();
 
     // check if the packet is long enough
     if skb.len() as usize <= header_len {

@@ -24,31 +24,31 @@ fn main() -> Result<()> {
         .map_err(|_| panic!("\n{}", String::from_utf8_lossy(&output.stderr)))
         .unwrap();
 
-    let mut iustub_outdir = Path::new(&out_dir).join("libiustub");
-    if !iustub_outdir.exists() {
-        fs::create_dir(&iustub_outdir)?;
+    let mut rexstub_outdir = Path::new(&out_dir).join("librexstub");
+    if !rexstub_outdir.exists() {
+        fs::create_dir(&rexstub_outdir)?;
     }
 
-    let iustub_so = iustub_outdir.join("libiustub.so");
+    let rexstub_so = rexstub_outdir.join("librexstub.so");
     Command::new("gcc")
         .arg("-fPIC")
         .arg("-nostartfiles")
         .arg("-nodefaultlibs")
         .arg("--shared")
         .arg("-o")
-        .arg(iustub_so.to_string_lossy().to_mut())
-        .arg("./libiustub/lib.c")
+        .arg(rexstub_so.to_string_lossy().to_mut())
+        .arg("./librexstub/lib.c")
         .output()?;
 
-    iustub_outdir = iustub_outdir.canonicalize()?;
+    rexstub_outdir = rexstub_outdir.canonicalize()?;
 
     println!("cargo:rerun-if-changed=Cargo.toml");
     println!("cargo:rerun-if-changed=./src/*");
-    println!("cargo:rerun-if-changed=./libiustub/*");
-    println!("cargo:rustc-link-lib=dylib=iustub");
+    println!("cargo:rerun-if-changed=./librexstub/*");
+    println!("cargo:rustc-link-lib=dylib=rexstub");
     println!(
         "cargo:rustc-link-search=native={}",
-        iustub_outdir.to_string_lossy()
+        rexstub_outdir.to_string_lossy()
     );
 
     Ok(())

@@ -23,18 +23,18 @@ pub struct KeyT {
 }
 
 #[rex_map]
-static counts: IUHashMap<KeyT, u64> = IUHashMap::new(10000, 0);
+static counts: RexHashMap<KeyT, u64> = RexHashMap::new(10000, 0);
 
 #[rex_map]
-static stackmap: IUStackMap<u32, [u64; PERF_MAX_STACK_DEPTH as usize]> =
-    IUStackMap::new(10000, 0);
+static stackmap: RexStackMap<u32, [u64; PERF_MAX_STACK_DEPTH as usize]> =
+    RexStackMap::new(10000, 0);
 
 pub const KERN_STACKID_FLAGS: u64 = BPF_F_FAST_STACK_CMP as u64;
 pub const USER_STACKID_FLAGS: u64 =
     (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
 #[inline(always)]
-fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
+fn rex_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     let cpu: u32 = obj.bpf_get_smp_processor_id();
     let mut value_buf: bpf_perf_event_value = bpf_perf_event_value {
         counter: 0,
@@ -116,4 +116,4 @@ fn iu_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
 }
 
 #[entry_link(inner_unikernel/perf_event)]
-static PROG: perf_event = perf_event::new(iu_prog1_fn, "iu_prog1");
+static PROG: perf_event = perf_event::new(rex_prog1_fn, "rex_prog1");
