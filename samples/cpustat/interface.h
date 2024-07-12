@@ -1,1 +1,0 @@
-static int (*bpf_map_lookup_elem)(int fd, const void *key, void *value) = (void*)0xffffffff81208f90;
