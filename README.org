@@ -103,7 +103,7 @@ The Rust artifacts are installed under ~rust/dist~.
 
 With the linux and Rust setup, add them to the environment:
 #+BEGIN_SRC bash
-source env.sh
+source ./scripts/env.sh
 #+END_SRC
 
 Finally build librex:
@@ -170,30 +170,6 @@ The following output should be printed out:
 <...>-245     [002] d...1    18.417331: bpf_trace_printk: Rust triggered from PID 245.
 #+END_EXAMPLE
 
-* Docker Setup
-
-In this setup, we will have ~runtime~ docker as the all-in-one environment for compiling and running the samples.
-
-** Host Requirements
-
-- Docker
-- Qemu
-
-** Repo setup 
-
-Clone this repo and its submodules:
-#+BEGIN_SRC bash
-git clone --recursive https://github.com/rosalab/rex-kernel.git
-cd rex-kernel
-#+END_SRC
-
-** Build Docker
-
-#+BEGIN_SRC bash
-# build by docker builder (it takes a lot of time)
-make docker
-#+END_SRC
-
 ** Build Dependencies
 
 #+BEGIN_SRC bash
@@ -247,7 +223,3 @@ Remote debugging using localhost:1234
 Continuing.
 #+END_SRC
 
-*** Docker FAQ
-
-- Q: What can I do if I encounter network error when doing the apt update?
-- A: In the ~./docker/docker-linux-builder/Makefile~, add ~--network=host~ in the docker command. ~docker build --progress=plain --network=host -t runtime~.
