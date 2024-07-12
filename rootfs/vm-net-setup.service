@@ -1,9 +1,0 @@
-[Unit]
-Description=Set up VM network to host
-
-[Service]
-Type=oneshot
-ExecStart=/sbin/vm-net-setup.sh
-
-[Install]
-WantedBy=multi-user.target

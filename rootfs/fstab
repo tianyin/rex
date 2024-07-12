@@ -1,4 +1,0 @@
-/dev/vda                /       ext4    defaults        0       1
-inner_unikernels	/host/inner_unikernels	9p	trans=virtio,rw	0	0
-linux	/host/linux	9p	trans=virtio,rw	0	0
-libbpf-bootstrap	/host/libbpf-bootstrap	9p	trans=virtio,rw	0	0
