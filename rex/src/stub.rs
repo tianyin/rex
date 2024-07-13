@@ -99,7 +99,7 @@ extern "C" {
     /// `asmlinkage int vprintk(const char *fmt, va_list args)`
     pub(crate) fn vprintk(fmt: *const c_uchar, args: VaList) -> i32;
 
-    /// `__nocfi noinline void notrace __noreturn iu_landingpad(char *msg)`
+    /// `__nocfi noinline void notrace __noreturn rex_landingpad(char *msg)`
     ///
     /// The in-kernel panic landingpad for panic recovery
     pub(crate) fn rex_landingpad(msg: *const u8) -> !;
@@ -185,7 +185,7 @@ extern "C" {
     /// `unsigned long __per_cpu_offset[NR_CPUS] __read_mostly;`
     pub(crate) static __per_cpu_offset: [u64; NR_CPUS as usize];
 
-    /// `DEFINE_PER_CPU(struct iu_cleanup_entry[64], iu_cleanup_entries)
+    /// `DEFINE_PER_CPU(struct rex_cleanup_entry[64], rex_cleanup_entries)
     /// ____cacheline_aligned = { 0 };`
     ///
     /// Used for cleanup upon panic
@@ -194,9 +194,9 @@ extern "C" {
     /// dereferenced, it is always used for per-cpu address calculation
     pub(crate) static rex_cleanup_entries: *mut ();
 
-    /// `DEFINE_PER_CPU(void *, iu_stack_ptr);`
+    /// `DEFINE_PER_CPU(void *, rex_stack_ptr);`
     ///
-    /// Top of the per-cpu stack for iu programs
+    /// Top of the per-cpu stack for rex programs
     pub(crate) static rex_stack_ptr: u64;
 
     /// `DEFINE_PER_CPU(struct task_struct *, current_task)

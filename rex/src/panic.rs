@@ -132,15 +132,15 @@ impl<'a> CleanupEntries<'a> {
 // For now, use inline(always) to hint the compiler for inlining if LTO is on
 #[no_mangle]
 #[inline(always)]
-unsafe fn __iu_check_stack() {
-    // subtract 0x2000 because only 2 pages are supposed to be used by iu progs
+unsafe fn __rex_check_stack() {
+    // subtract 0x2000 because only 2 pages are supposed to be used by rex progs
     unsafe {
         core::arch::asm!(
             "mov r10, gs:[r10]",
             "sub r10, 0x2000",
             "cmp rsp, r10",
             "ja 1f",
-            "call __iu_handle_stack_overflow",
+            "call __rex_handle_stack_overflow",
             "1:",
             in("r10") &stub::rex_stack_ptr as *const u64 as u64,
         );
@@ -148,13 +148,13 @@ unsafe fn __iu_check_stack() {
 }
 
 #[no_mangle]
-unsafe fn __iu_handle_timeout() -> ! {
-    panic!("Timeout in inner-unikernel program");
+unsafe fn __rex_handle_timeout() -> ! {
+    panic!("Timeout in Rex program");
 }
 
 #[no_mangle]
-unsafe fn __iu_handle_stack_overflow() -> ! {
-    panic!("Stack overflow in inner-unikernel program");
+unsafe fn __rex_handle_stack_overflow() -> ! {
+    panic!("Stack overflow in Rex program");
 }
 
 // This function is called on panic.
@@ -179,7 +179,7 @@ fn panic(info: &PanicInfo) -> ! {
         msg[..len].copy_from_slice(&(*s).as_bytes()[..len]);
         msg[len] = 0u8;
     } else {
-        let s = "Rust program panicked\n\0";
+        let s = "Rex program panicked\n\0";
         msg[..s.len()].copy_from_slice(s.as_bytes());
     }
 

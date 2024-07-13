@@ -55,7 +55,7 @@ macro_rules! define_prog_entry {
         paste! {
             #[no_mangle]
             #[inline(always)]
-            fn [<__iu_entry_ $prog_ty>](
+            fn [<__rex_entry_ $prog_ty>](
                 prog: &$prog_ty::$prog_ty,
                 ctx: *mut (),
             ) -> u32 {
