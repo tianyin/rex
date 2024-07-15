@@ -51,28 +51,28 @@ fn trace_enter_exit_at(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &exit_open_map)
 }
 
-#[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_open)]
+#[entry_link(rex/tracepoint/syscalls/sys_enter_open)]
 static PROG1: tracepoint = tracepoint::new(
     trace_enter_open,
     "trace_enter_open",
     tp_type::SyscallsEnterOpen,
 );
 
-#[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_openat)]
+#[entry_link(rex/tracepoint/syscalls/sys_enter_openat)]
 static PROG2: tracepoint = tracepoint::new(
     trace_enter_open_at,
     "trace_enter_open_at",
     tp_type::SyscallsEnterOpen,
 );
 
-#[entry_link(inner_unikernel/tracepoint/syscalls/sys_exit_open)]
+#[entry_link(rex/tracepoint/syscalls/sys_exit_open)]
 static PROG3: tracepoint = tracepoint::new(
     trace_enter_exit,
     "trace_enter_exit",
     tp_type::SyscallsExitOpen,
 );
 
-#[entry_link(inner_unikernel/tracepoint/syscalls/sys_exit_openat)]
+#[entry_link(rex/tracepoint/syscalls/sys_exit_openat)]
 static PROG4: tracepoint = tracepoint::new(
     trace_enter_exit_at,
     "trace_enter_exit_at",

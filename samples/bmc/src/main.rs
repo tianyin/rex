@@ -558,11 +558,11 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
     Ok(TC_ACT_OK as i32)
 }
-#[entry_link(inner_unikernel/xdp)]
+#[entry_link(rex/xdp)]
 static PROG1: xdp =
     xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
 
-#[entry_link(inner_unikernel/tc)]
+#[entry_link(rex/tc)]
 static PROG2: sched_cls = sched_cls::new(
     xdp_tx_filter_fn,
     "xdp_tx_filter",

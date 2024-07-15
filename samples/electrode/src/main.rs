@@ -525,11 +525,11 @@ fn handle_prepare_ok(
     return Ok(XDP_PASS as i32);
 }
 
-#[entry_link(inner_unikernel/xdp)]
+#[entry_link(rex/xdp)]
 static PROG1: xdp =
     xdp::new(fast_paxos_main, "fast_paxos", BPF_PROG_TYPE_XDP as u64);
 
-#[entry_link(inner_unikernel/tc)]
+#[entry_link(rex/tc)]
 static PROG2: sched_cls = sched_cls::new(
     fast_broad_cast_main,
     "FastBroadCast",

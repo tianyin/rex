@@ -39,6 +39,6 @@ fn rex_prog1_fn(obj: &xdp, _: &mut xdp_md) -> Result {
     }
 }
 
-#[entry_link(inner_unikernel/xdp)]
+#[entry_link(rex/xdp)]
 static PROG1: xdp =
     xdp::new(rex_prog1_fn, "rex_prog1", BPF_PROG_TYPE_XDP as u64);

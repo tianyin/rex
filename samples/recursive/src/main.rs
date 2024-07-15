@@ -59,5 +59,5 @@ fn calculate_tail_fib(n: u32) {
     black_box(calculate_tail_fib(n - 1))
 }
 
-#[entry_link(inner_unikernel/kprobe/kprobe_target_func)]
+#[entry_link(rex/kprobe/kprobe_target_func)]
 static PROG: kprobe = kprobe::new(iu_recursive, "iu_recursive");

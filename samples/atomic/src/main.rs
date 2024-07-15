@@ -22,5 +22,5 @@ fn rex_prog1_fn(obj: &kprobe, _ctx: &mut pt_regs) -> Result {
 
     Ok(0)
 }
-#[entry_link(inner_unikernel/kprobe/kprobe_target_func)]
+#[entry_link(rex/kprobe/kprobe_target_func)]
 static PROG: kprobe = kprobe::new(rex_prog1_fn, "rex_prog1");

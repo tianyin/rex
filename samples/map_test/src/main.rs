@@ -103,6 +103,6 @@ fn rex_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     })
 }
 
-#[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_dup)]
+#[entry_link(rex/tracepoint/syscalls/sys_enter_dup)]
 static PROG: tracepoint =
     tracepoint::new(rex_prog1_fn, "rex_prog1", tp_type::Void);

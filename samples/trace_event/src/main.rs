@@ -115,5 +115,5 @@ fn rex_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     Ok(0)
 }
 
-#[entry_link(inner_unikernel/perf_event)]
+#[entry_link(rex/perf_event)]
 static PROG: perf_event = perf_event::new(rex_prog1_fn, "rex_prog1");

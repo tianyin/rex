@@ -80,5 +80,5 @@ fn rex_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     }
 }
 
-#[entry_link(inner_unikernel/kprobe/__seccomp_filter)]
+#[entry_link(rex/kprobe/__seccomp_filter)]
 static PROG: kprobe = kprobe::new(rex_prog1_fn, "rex_prog1");
