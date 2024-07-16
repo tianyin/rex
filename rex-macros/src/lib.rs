@@ -1,5 +1,8 @@
+#[macro_use]
+pub(crate) mod args;
 mod kprobe;
 mod tc;
+mod tracepoint;
 mod xdp;
 
 use proc_macro::TokenStream;

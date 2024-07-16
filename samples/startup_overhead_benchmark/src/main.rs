@@ -3,14 +3,11 @@
 
 extern crate rex;
 
-use rex::entry_link;
 use rex::kprobe::*;
+use rex::rex_kprobe;
 use rex::Result;
 
-#[inline(always)]
+#[rex_kprobe(function = "kprobe_target_func")]
 fn rex_prog1_fn(_obj: &kprobe, _ctx: &mut pt_regs) -> Result {
     Ok(0)
 }
-
-#[entry_link(rex/kprobe/kprobe_target_func)]
-static PROG: kprobe = kprobe::new(rex_prog1_fn, "rex_prog1");

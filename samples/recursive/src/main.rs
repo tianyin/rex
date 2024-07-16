@@ -15,7 +15,7 @@ use rex::Result;
 #[rex_map]
 static data_map: RexArrayMap<u32> = RexArrayMap::new(2, 0);
 
-#[rex_kprobe(kprobe_target_func)]
+#[rex_kprobe(function = "kprobe_target_func")]
 fn rex_recursive(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     // let curr_pid: i32 = if let Some(task_struct) = obj.bpf_get_current_task()
     // {     task_struct.get_pid()

@@ -62,7 +62,7 @@ pub fn func_sys_mmap(obj: &kprobe, _: &pt_regs) -> Result {
     Ok(0)
 }
 
-#[rex_kprobe(__seccomp_filter)]
+#[rex_kprobe(function = "__seccomp_filter")]
 fn rex_prog1(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     match ctx.rdi() as u32 {
         __NR_read => func_sys_read(obj, ctx),
