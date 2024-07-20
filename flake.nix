@@ -27,19 +27,15 @@
       fhs = pkgs.buildFHSUserEnv {
         name = "simple-rust-env";
         targetPkgs = pkgs: (with pkgs; [
-
-
           # build deps
-          gcc
+          gcc14
           curl
           diffutils
           xz.dev
           llvm_18
           (hiPrio clang_18)
           lld_18
-          (hiPrio clang-tools.override {
-            llvmPackages = llvmPackages_18;
-          })
+          clang-tools_18
           zlib.dev
           openssl.dev
           flex
