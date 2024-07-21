@@ -8,16 +8,16 @@ use rex::tracepoint::*;
 use rex::{bpf_printk, entry_link, rex_map, Result};
 
 #[rex_map]
-static MAP_HASH: IUHashMap<u32, i64> = IUHashMap::new(1024, 0);
+static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
 
 #[rex_map]
-static ARRAY: IUArray<i64> = IUArray::new(256, 0);
+static ARRAY: RexArray<i64> = RexArray::new(256, 0);
 
 #[rex_map]
-static STACK: IUStack<i64> = IUStack::new(256, 0);
+static STACK: RexStack<i64> = RexStack::new(256, 0);
 
 #[rex_map]
-static QUEUE: IUQueue<i64> = IUQueue::new(256, 0);
+static QUEUE: RexQueue<i64> = RexQueue::new(256, 0);
 
 // #[rex_map]
 // static RINGBUF: IURingBuf = IURingBuf::new(4096, 0);
