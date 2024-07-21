@@ -1,10 +1,12 @@
 #[macro_use]
 pub(crate) mod args;
 mod kprobe;
+mod perf_event;
 mod tc;
 mod tracepoint;
 mod xdp;
 
+use perf_event::PerfEvent;
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 
@@ -79,6 +81,18 @@ pub fn rex_kprobe(attrs: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn rex_tracepoint(attrs: TokenStream, item: TokenStream) -> TokenStream {
     match TracePoint::parse(attrs.into(), item.into()) {
+        Ok(prog) => prog
+            .expand()
+            .unwrap_or_else(|err| abort!(err.span(), "{}", err))
+            .into(),
+        Err(err) => abort!(err.span(), "{}", err),
+    }
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn rex_perf_event(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    match PerfEvent::parse(attrs.into(), item.into()) {
         Ok(prog) => prog
             .expand()
             .unwrap_or_else(|err| abort!(err.span(), "{}", err))
