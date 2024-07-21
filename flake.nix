@@ -28,6 +28,7 @@
         name = "simple-rust-env";
         targetPkgs = pkgs: (with pkgs; [
           # build deps
+          cmake
           gcc14
           curl
           diffutils
