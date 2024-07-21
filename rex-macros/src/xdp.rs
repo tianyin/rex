@@ -29,7 +29,7 @@ impl Xdp {
             #item
 
             #[used]
-            #[link_section = "inner_unikernel/xdp"]
+            #[link_section = "rex/xdp"]
             static #prog_ident: xdp =
                 xdp::new(#fn_name, #function_name, BPF_PROG_TYPE_XDP as u64);
         };

@@ -20,7 +20,7 @@ struct MapEntry {
 static MAP_ARRAY: RexArrayMap<MapEntry> = RexArrayMap::new(256, 0);
 
 #[rex_xdp]
-fn rex_prog1_fn(obj: &xdp, _: &mut xdp_md) -> Result {
+fn rex_prog1(obj: &xdp, _: &mut xdp_md) -> Result {
     if let Some(entry) = obj.bpf_map_lookup_elem(&MAP_ARRAY, &0) {
         let start = obj.bpf_ktime_get_ns();
         {

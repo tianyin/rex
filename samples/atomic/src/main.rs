@@ -10,7 +10,7 @@ use rex::{kprobe::*, rex_kprobe};
 static ATOM: AtomicU64 = AtomicU64::new(42);
 
 #[rex_kprobe(function = "kprobe_target_func")]
-fn rex_prog1_fn(obj: &kprobe, _ctx: &mut pt_regs) -> Result {
+fn rex_prog1(obj: &kprobe, _ctx: &mut pt_regs) -> Result {
     let random = obj.bpf_get_prandom_u32() as u64;
     ATOM.store(random, Ordering::Relaxed);
 
