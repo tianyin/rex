@@ -6,8 +6,8 @@ extern crate rex;
 use rex::linux::bpf::bpf_spin_lock;
 use rex::map::RexArrayMap;
 use rex::spinlock::rex_spinlock_guard;
-use rex::tracepoint::*;
-use rex::{entry_link, rex_map, Result};
+use rex::{rex_map, Result};
+use rex::{rex_tracepoint, tracepoint::*};
 
 #[repr(C)]
 struct MapEntry {
@@ -37,13 +37,9 @@ fn test2(obj: &tracepoint) {
     }
 }
 
-#[inline(always)]
+#[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
 fn rex_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     test1(obj);
     test2(obj);
     Ok(0)
 }
-
-#[entry_link(rex/tracepoint/syscalls/sys_enter_dup)]
-static PROG: tracepoint =
-    tracepoint::new(rex_prog1_fn, "rex_prog1", tp_type::Void);

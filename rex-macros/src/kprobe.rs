@@ -32,7 +32,7 @@ impl KProbe {
         let attached_function = if self.function.is_some() {
             format!("rex/kprobe/{}", self.function.as_ref().unwrap())
         } else {
-            format!("rex/kprobe")
+            "rex/kprobe".to_string()
         };
 
         let function_body_tokens = quote! {

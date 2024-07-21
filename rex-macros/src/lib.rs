@@ -13,6 +13,7 @@ use syn::{
     parse_macro_input, parse_quote, Data, DeriveInput, Fields, ItemStatic,
     Type, TypePath,
 };
+use tracepoint::TracePoint;
 
 use std::borrow::Cow;
 
@@ -66,6 +67,18 @@ pub fn rex_tc(attrs: TokenStream, item: TokenStream) -> TokenStream {
 #[proc_macro_attribute]
 pub fn rex_kprobe(attrs: TokenStream, item: TokenStream) -> TokenStream {
     match KProbe::parse(attrs.into(), item.into()) {
+        Ok(prog) => prog
+            .expand()
+            .unwrap_or_else(|err| abort!(err.span(), "{}", err))
+            .into(),
+        Err(err) => abort!(err.span(), "{}", err),
+    }
+}
+
+#[proc_macro_error]
+#[proc_macro_attribute]
+pub fn rex_tracepoint(attrs: TokenStream, item: TokenStream) -> TokenStream {
+    match TracePoint::parse(attrs.into(), item.into()) {
         Ok(prog) => prog
             .expand()
             .unwrap_or_else(|err| abort!(err.span(), "{}", err))
