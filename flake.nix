@@ -29,6 +29,7 @@
         targetPkgs = pkgs: (with pkgs; [
           # build deps
           cmake
+          ninja # rust build
           gcc14
           curl
           diffutils
