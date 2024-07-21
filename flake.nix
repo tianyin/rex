@@ -57,6 +57,7 @@
             python-pkgs.tqdm
           ]))
 
+          zoxide # in case host is using zoxide
           openssh # q-script ssh support
         ]);
         runScript = "./scripts/start.sh";
