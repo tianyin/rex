@@ -30,11 +30,12 @@
           # build deps
           cmake
           ninja # rust build
-          gcc14
+          (hiPrio gcc14)
+          libgcc
           curl
           diffutils
           xz.dev
-          llvm_18
+          (hiPrio llvm_18)
           (hiPrio clang_18)
           lld_18
           clang-tools_18
