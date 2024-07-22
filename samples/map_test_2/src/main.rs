@@ -5,7 +5,8 @@ extern crate rex;
 
 use rex::map::*;
 use rex::tracepoint::*;
-use rex::{bpf_printk, entry_link, rex_map, Result};
+use rex::rex_tracepoint;
+use rex::{bpf_printk, rex_map, Result};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
@@ -188,8 +189,8 @@ fn map_test_ringbuf(obj: &tracepoint) -> Result {
 }
 */
 
-#[inline(always)]
-fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+#[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
+fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
     map_test_hash(obj).map_err(|e| {
         bpf_printk!(obj, "map_test1 failed with %lld.\n", e as u64);
         e
@@ -211,6 +212,3 @@ fn iu_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
         e
     })
 }
-
-#[entry_link(inner_unikernel/tracepoint/syscalls/sys_enter_dup)]
-static PROG: tracepoint = tracepoint::new(iu_prog1_fn, "iu_prog1", tp_type::Void);
