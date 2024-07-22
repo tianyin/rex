@@ -91,7 +91,7 @@ fn map_test_array(obj: &tracepoint) -> Result {
             bpf_printk!(obj, "Not found.\n");
         }
         Some(val) => {
-            bpf_printk!(obj, "Found Val=%llu in array\n", (*val) as u64);
+            bpf_printk!(obj, "Found Val=%llu.\n", (*val) as u64);
         }
     }
 
@@ -116,7 +116,7 @@ fn map_test_stack(obj: &tracepoint) -> Result {
 
     match STACK.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
-        Some(top) => bpf_printk!(obj, "Top of stack: %llu\n", top as u64),
+        Some(top) => bpf_printk!(obj, "Top of stack: %llu.\n", top as u64),
     };
 
     STACK.pop();
@@ -124,7 +124,7 @@ fn map_test_stack(obj: &tracepoint) -> Result {
 
     match STACK.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
-        Some(next_top) => bpf_printk!(obj, "Next top of stack: %llu\n", next_top as u64),
+        Some(next_top) => bpf_printk!(obj, "Next top of stack: %llu.\n", next_top as u64),
     };
 
     Ok(0)
@@ -148,7 +148,7 @@ fn map_test_queue(obj: &tracepoint) -> Result {
 
     match QUEUE.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
-        Some(front) => bpf_printk!(obj, "Front of queue: %llu\n", front as u64),
+        Some(front) => bpf_printk!(obj, "Front of queue: %llu.\n", front as u64),
     };
 
     QUEUE.pop();
@@ -156,7 +156,7 @@ fn map_test_queue(obj: &tracepoint) -> Result {
 
     match QUEUE.peek() {
         None => bpf_printk!(obj, "Not found.\n"),
-        Some(next_front) => bpf_printk!(obj, "Next front of queue: %llu\n", next_front as u64),
+        Some(next_front) => bpf_printk!(obj, "Next front of queue: %llu.\n", next_front as u64),
     };
     Ok(0)
 }
@@ -192,15 +192,15 @@ fn map_test_ringbuf(obj: &tracepoint) -> Result {
 #[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
 fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
     map_test_hash(obj).map_err(|e| {
-        bpf_printk!(obj, "map_test1 failed with %lld.\n", e as u64);
+        bpf_printk!(obj, "map_test failed with %lld.\n", e as u64);
         e
     })?;
     map_test_array(obj).map_err(|e| {
-        bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
+        bpf_printk!(obj, "map_test failed with %lld.\n", e as u64);
         e
     })?;
     map_test_stack(obj).map_err(|e| {
-        bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
+        bpf_printk!(obj, "map_test failed with %lld.\n", e as u64);
         e
     })?;
     // map_test_ringbuf(obj).map_err(|e| {
@@ -208,7 +208,7 @@ fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
     //     e
     // })?;
     map_test_queue(obj).map_err(|e| {
-        bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
+        bpf_printk!(obj, "map_test failed with %lld.\n", e as u64);
         e
     })
 }
