@@ -1,6 +1,5 @@
 #![no_std]
 #![no_main]
-#![allow(non_upper_case_globals)]
 extern crate rex;
 
 use core::sync::atomic::{AtomicU64, Ordering};
