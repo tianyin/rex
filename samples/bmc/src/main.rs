@@ -117,7 +117,7 @@ fn hash_key(
     let payload = &ctx.data_slice[payload_index..];
 
     while !done_parsing {
-        let mut key = obj
+        let key = obj
             .bpf_map_lookup_elem(&map_keys, &pctx.key_count)
             .ok_or(0i32)?;
 

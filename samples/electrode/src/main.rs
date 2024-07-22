@@ -318,7 +318,7 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
         u32::from_ne_bytes(payload[8..12].try_into().unwrap()) as u64;
 
     let zero = 0u32;
-    let mut ctr_state = obj
+    let ctr_state = obj
         .bpf_map_lookup_elem(&map_ctr_state, &zero)
         .ok_or_else(|| 0i32)?;
 
