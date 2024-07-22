@@ -17,7 +17,7 @@ kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern|xdp_buff|ethhdr|iph
 --opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
 --opaque-type kunit_try_catch --opaque-type spinlock --no-doc-comments
 --use-core --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
---no-debug '.*' --rust-target=1.64 -o %s --
+--no-debug '.*' --rust-target=1.73 -o %s --
 -nostdinc -I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
 -I$LINUX/include -I$LINUX/arch/x86/include/uapi
 -I$LINUX/arch/x86/include/generated/uapi -I$LINUX/include/uapi
