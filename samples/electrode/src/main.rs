@@ -7,8 +7,9 @@ extern crate rex;
 use core::mem::{size_of, swap};
 
 use rex::bpf_printk;
-use rex::entry_link;
 
+use rex::rex_tc;
+use rex::rex_xdp;
 use rex::sched_cls::*;
 
 use rex::utils::*;
@@ -32,7 +33,7 @@ macro_rules! swap_field {
 // Cause Paxos is in fact a serialized protocol, we limit our to one-core, then
 // no lock is needed.
 
-#[inline(always)]
+#[rex_xdp]
 fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let header_len =
         size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
@@ -70,7 +71,7 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     Ok(XDP_PASS as i32)
 }
 
-#[inline(always)]
+#[rex_tc]
 fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let mut header_len =
         size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
@@ -524,14 +525,3 @@ fn handle_prepare_ok(
 
     return Ok(XDP_PASS as i32);
 }
-
-#[entry_link(rex/xdp)]
-static PROG1: xdp =
-    xdp::new(fast_paxos_main, "fast_paxos", BPF_PROG_TYPE_XDP as u64);
-
-#[entry_link(rex/tc)]
-static PROG2: sched_cls = sched_cls::new(
-    fast_broad_cast_main,
-    "FastBroadCast",
-    BPF_PROG_TYPE_SCHED_CLS as u64,
-);

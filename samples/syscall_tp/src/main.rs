@@ -7,8 +7,7 @@ extern crate rex;
 use rex::linux::bpf::BPF_NOEXIST;
 use rex::map::RexArrayMap;
 use rex::tracepoint::{tp_ctx, tp_type, tracepoint};
-use rex::Result;
-use rex::{entry_link, rex_map};
+use rex::{rex_map, rex_tracepoint, Result};
 
 #[rex_map]
 static enter_open_map: RexArrayMap<u32> = RexArrayMap::new(1, 0);
@@ -31,50 +30,31 @@ fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
     Ok(0)
 }
 
-#[inline(always)]
+#[rex_tracepoint(
+    name = "syscalls/sys_enter_open",
+    tp_type = "SyscallsEnterOpen"
+)]
 fn trace_enter_open(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &enter_open_map)
 }
 
-#[inline(always)]
+#[rex_tracepoint(
+    name = "syscalls/sys_enter_openat",
+    tp_type = "SyscallsEnterOpen"
+)]
 fn trace_enter_open_at(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &enter_open_map)
 }
 
-#[inline(always)]
+#[rex_tracepoint(name = "syscalls/sys_exit_open", tp_type = "SyscallsExitOpen")]
 fn trace_enter_exit(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &exit_open_map)
 }
 
-#[inline(always)]
+#[rex_tracepoint(
+    name = "syscalls/sys_exit_openat",
+    tp_type = "SyscallsExitOpen"
+)]
 fn trace_enter_exit_at(obj: &tracepoint, _: tp_ctx) -> Result {
     count(obj, &exit_open_map)
 }
-
-#[entry_link(rex/tracepoint/syscalls/sys_enter_open)]
-static PROG1: tracepoint = tracepoint::new(
-    trace_enter_open,
-    "trace_enter_open",
-    tp_type::SyscallsEnterOpen,
-);
-
-#[entry_link(rex/tracepoint/syscalls/sys_enter_openat)]
-static PROG2: tracepoint = tracepoint::new(
-    trace_enter_open_at,
-    "trace_enter_open_at",
-    tp_type::SyscallsEnterOpen,
-);
-
-#[entry_link(rex/tracepoint/syscalls/sys_exit_open)]
-static PROG3: tracepoint = tracepoint::new(
-    trace_enter_exit,
-    "trace_enter_exit",
-    tp_type::SyscallsExitOpen,
-);
-
-#[entry_link(rex/tracepoint/syscalls/sys_exit_openat)]
-static PROG4: tracepoint = tracepoint::new(
-    trace_enter_exit_at,
-    "trace_enter_exit_at",
-    tp_type::SyscallsExitOpen,
-);

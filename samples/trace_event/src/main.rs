@@ -9,7 +9,7 @@ use rex::linux::bpf::*;
 use rex::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use rex::map::*;
 use rex::perf_event::*;
-use rex::{entry_link, rex_map, Result};
+use rex::{rex_map, rex_perf_event, Result};
 
 pub const TASK_COMM_LEN: usize = 16;
 
@@ -33,8 +33,8 @@ pub const KERN_STACKID_FLAGS: u64 = BPF_F_FAST_STACK_CMP as u64;
 pub const USER_STACKID_FLAGS: u64 =
     (BPF_F_FAST_STACK_CMP | BPF_F_USER_STACK) as u64;
 
-#[inline(always)]
-fn rex_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
+#[rex_perf_event]
+fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     let cpu: u32 = obj.bpf_get_smp_processor_id();
     let mut value_buf: bpf_perf_event_value = bpf_perf_event_value {
         counter: 0,
@@ -114,6 +114,3 @@ fn rex_prog1_fn(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     }
     Ok(0)
 }
-
-#[entry_link(rex/perf_event)]
-static PROG: perf_event = perf_event::new(rex_prog1_fn, "rex_prog1");

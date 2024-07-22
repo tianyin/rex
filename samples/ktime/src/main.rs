@@ -6,7 +6,7 @@ extern crate rex;
 use rex::linux::bpf::*;
 use rex::map::*;
 use rex::tracepoint::*;
-use rex::{bpf_printk, entry_link, rex_map, Result};
+use rex::{bpf_printk, rex_map, rex_tracepoint, Result};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, u64> = RexHashMap::new(1, 0);
@@ -14,7 +14,8 @@ static MAP_HASH: RexHashMap<u32, u64> = RexHashMap::new(1, 0);
 #[rex_map]
 static MAP_ARRAY: RexArrayMap<u64> = RexArrayMap::new(1, 0);
 
-fn rex_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+#[rex_tracepoint(name = "syscalls/sys_enter_getcwd", tp_type = "Void")]
+fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
     let zero = 0u32;
 
     let random = obj.bpf_get_prandom_u32() as u64;
@@ -37,7 +38,3 @@ fn rex_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
 
     Ok(0)
 }
-
-#[entry_link(rex/tracepoint/syscalls/sys_enter_getcwd)]
-static PROG: tracepoint =
-    tracepoint::new(rex_prog1_fn, "rex_prog1", tp_type::Void);

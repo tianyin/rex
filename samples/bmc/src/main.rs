@@ -8,15 +8,14 @@ extern crate rex;
 use core::mem::{size_of, swap};
 
 use rex::bpf_printk;
-use rex::entry_link;
 use rex::linux::bpf::bpf_spin_lock;
 use rex::map::*;
-use rex::rex_map;
 use rex::sched_cls::*;
 use rex::spinlock::*;
 use rex::utils::*;
 use rex::xdp::*;
 use rex::FieldTransmute;
+use rex::{rex_map, rex_tc, rex_xdp};
 
 const BMC_MAX_PACKET_LENGTH: usize = 1500;
 const BMC_CACHE_ENTRY_COUNT: u32 = 3250000;
@@ -375,8 +374,8 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
     Ok(XDP_PASS as i32)
 }
 
-#[inline(always)]
-fn xdp_rx_filter_fn(obj: &xdp, ctx: &mut xdp_md) -> Result {
+#[rex_xdp]
+fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let ip_header_mut = obj.ip_header(ctx);
 
     match u8::from_be(ip_header_mut.protocol) as u32 {
@@ -520,12 +519,12 @@ fn bmc_update_cache(
     Ok(TC_ACT_OK as i32)
 }
 
-#[inline(always)]
-fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
-    let header_len = size_of::<iphdr>()
-        + size_of::<eth_header>()
-        + size_of::<udphdr>()
-        + size_of::<memcached_udp_header>();
+#[rex_tc]
+fn xdp_tx_filter(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
+    let header_len = size_of::<iphdr>() +
+        size_of::<eth_header>() +
+        size_of::<udphdr>() +
+        size_of::<memcached_udp_header>();
 
     // check if the packet is long enough
     if skb.len() as usize <= header_len {
@@ -558,13 +557,3 @@ fn xdp_tx_filter_fn(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
     Ok(TC_ACT_OK as i32)
 }
-#[entry_link(rex/xdp)]
-static PROG1: xdp =
-    xdp::new(xdp_rx_filter_fn, "xdp_rx_filter", BPF_PROG_TYPE_XDP as u64);
-
-#[entry_link(rex/tc)]
-static PROG2: sched_cls = sched_cls::new(
-    xdp_tx_filter_fn,
-    "xdp_tx_filter",
-    BPF_PROG_TYPE_SCHED_CLS as u64,
-);

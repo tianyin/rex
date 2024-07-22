@@ -1,13 +1,14 @@
 #![no_std]
 #![no_main]
+#![allow(non_upper_case_globals)]
 
 extern crate rex;
 
 use rex::bpf_printk;
-use rex::entry_link;
 use rex::kprobe::*;
 use rex::linux::seccomp::seccomp_data;
 use rex::linux::unistd::*;
+use rex::rex_kprobe;
 use rex::Result;
 
 pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> Result {
@@ -61,9 +62,8 @@ pub fn func_sys_mmap(obj: &kprobe, _: &pt_regs) -> Result {
     Ok(0)
 }
 
-#[allow(non_upper_case_globals)]
-#[inline(always)]
-fn rex_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
+#[rex_kprobe(function = "__seccomp_filter")]
+fn rex_prog1(obj: &kprobe, ctx: &mut pt_regs) -> Result {
     match ctx.rdi() as u32 {
         __NR_read => func_sys_read(obj, ctx),
         __NR_write => func_sys_write(obj, ctx),
@@ -79,6 +79,3 @@ fn rex_prog1_fn(obj: &kprobe, ctx: &mut pt_regs) -> Result {
         _ => Ok(0),
     }
 }
-
-#[entry_link(rex/kprobe/__seccomp_filter)]
-static PROG: kprobe = kprobe::new(rex_prog1_fn, "rex_prog1");

@@ -4,12 +4,13 @@
 extern crate rex;
 
 use rex::bpf_printk;
-use rex::entry_link;
+use rex::rex_tracepoint;
 use rex::tracepoint::*;
 use rex::Result;
 
 #[inline(always)]
-fn rex_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
+#[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
+fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
     let option_task = obj.bpf_get_current_task();
     if let Some(task) = option_task {
         let cpu = obj.bpf_get_smp_processor_id();
@@ -23,7 +24,3 @@ fn rex_prog1_fn(obj: &tracepoint, _: tp_ctx) -> Result {
     }
     Ok(0)
 }
-
-#[entry_link(rex/tracepoint/syscalls/sys_enter_dup)]
-static PROG: tracepoint =
-    tracepoint::new(rex_prog1_fn, "rex_prog1", tp_type::Void);
