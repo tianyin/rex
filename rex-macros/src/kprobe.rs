@@ -27,7 +27,8 @@ impl KProbe {
         let fn_name = self.item.sig.ident.clone();
         let item = &self.item;
         let function_name = format!("{}", fn_name);
-        let prog_ident = format_ident!("PROG_{}", fn_name);
+        let prog_ident =
+            format_ident!("PROG_{}", fn_name.to_string().to_uppercase());
 
         let attached_function = if self.function.is_some() {
             format!("rex/kprobe/{}", self.function.as_ref().unwrap())

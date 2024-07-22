@@ -8,7 +8,6 @@ use rex::rex_tracepoint;
 use rex::tracepoint::*;
 use rex::Result;
 
-#[inline(always)]
 #[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
 fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
     let option_task = obj.bpf_get_current_task();
