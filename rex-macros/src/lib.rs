@@ -89,6 +89,7 @@ pub fn rex_map(_: TokenStream, item: TokenStream) -> TokenStream {
     (quote! {
         #[link_section = #section_name]
         #[export_name = #name]
+        #[allow(non_upper_case_globals)]
         #item
     })
     .into()
