@@ -44,7 +44,7 @@ def main():
 
     # only run one repo
     if args.sample:
-        samples_list = [args.sample]
+        samples_list = [Path(args.sample)]
 
     with tqdm(
         total=len(samples_list),
