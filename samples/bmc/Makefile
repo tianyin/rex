@@ -7,7 +7,7 @@ LIBREX_DIR := $(shell if [ -d "/rex-kernel/librex" ]; then echo "/rex-kernel/lib
 NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Cenable_rex
-CARGO_FLAGS = -Zbuild-std=core --target x86_64-unknown-linux-gnu
+CARGO_FLAGS = 
 
 CC = gcc
 

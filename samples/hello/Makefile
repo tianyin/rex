@@ -5,7 +5,7 @@ LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
 LIBREX_DIR := $(shell if [ -d "/rex-kernel/librex" ]; then echo "/rex-kernel/librex"; else echo `realpath ../../librex`; fi)
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Cenable_rex
-CARGO_FLAGS = -Zbuild-std=core --target x86_64-unknown-linux-gnu
+CARGO_FLAGS =
 
 CC = gcc
 

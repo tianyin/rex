@@ -1,4 +1,5 @@
 [build]
+target = "x86_64-unknown-linux-gnu"
 rustflags = [
   "-Cno-redzone",
   "-Ccode-model=kernel",
@@ -7,3 +8,6 @@ rustflags = [
   "-Ccodegen-units=1",
   "-Ctarget-feature=-sse,-sse2,-sse3,-ssse3,-sse4.1,-sse4.2,-avx,-avx2,+soft-float",
 ]
+
+[unstable]
+build-std = ["core"]
