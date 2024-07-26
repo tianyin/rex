@@ -25,8 +25,8 @@ pub struct KeyT {
 static counts: RexHashMap<KeyT, u64> = RexHashMap::new(10000, 0);
 
 #[rex_map]
-static stackmap: RexStackMap<u32, [u64; PERF_MAX_STACK_DEPTH as usize]> =
-    RexStackMap::new(10000, 0);
+static stackmap: RexStackTrace<u32, [u64; PERF_MAX_STACK_DEPTH as usize]> =
+    RexStackTrace::new(10000, 0);
 
 pub const KERN_STACKID_FLAGS: u64 = BPF_F_FAST_STACK_CMP as u64;
 pub const USER_STACKID_FLAGS: u64 =
