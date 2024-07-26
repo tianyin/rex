@@ -315,14 +315,13 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
 pub(crate) fn bpf_ringbuf_reserve(
     map: &'static RexRingBuf,
     size: u64,
-    flags: u64,
 ) -> *mut T {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return core::ptr::null_mut();
     }
 
-    let data = unsafe { stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, flags) };
+    let data = unsafe { stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0) };
 
     data as *mut T
 }
