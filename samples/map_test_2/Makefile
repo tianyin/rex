@@ -28,10 +28,10 @@ endif
 
 all: target/x86_64-unknown-linux-gnu/release/map_test_2 loader event-trigger
 
-target/x86_64-unknown-linux-gnu/debug/map_test: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/debug/map_test_2: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
-target/x86_64-unknown-linux-gnu/release/map_test: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/release/map_test_2: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 llvm-ir: Cargo.toml ./src/*.rs

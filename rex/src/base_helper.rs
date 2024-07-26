@@ -312,7 +312,7 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     }
 }
 
-pub(crate) fn bpf_ringbuf_reserve(
+pub(crate) fn bpf_ringbuf_reserve<T>(
     map: &'static RexRingBuf,
     size: u64,
 ) -> *mut T {
@@ -335,7 +335,7 @@ pub(crate) fn bpf_ringbuf_discard<T>(data: &mut T, flags: u64) {
 }
 
 pub(crate) fn bpf_ringbuf_query(
-    map: &'static IURingBuf,
+    map: &'static RexRingBuf,
     flags: u64,
 ) -> Option<u64> {
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };

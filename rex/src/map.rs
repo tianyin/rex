@@ -57,39 +57,39 @@ pub type RexStackTrace<K, V> = RexMapHandle<BPF_MAP_TYPE_STACK_TRACE, K, V>;
 pub type RexPerCPUArrayMap<V> = RexMapHandle<BPF_MAP_TYPE_PERCPU_ARRAY, u32, V>;
 
 #[repr(C)]
-pub struct IUArray<V> {
-    map: IUMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>,
+pub struct RexArray<V> {
+    map: RexMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>,
 }
 
 #[repr(C)]
-pub struct IUHashMap<K, V> {
-    map: IUMapHandle<BPF_MAP_TYPE_HASH, K, V>,
+pub struct RexHashMap<K, V> {
+    map: RexMapHandle<BPF_MAP_TYPE_HASH, K, V>,
 }
 
 #[repr(C)]
-pub struct IURingBuf {
+pub struct RexRingBuf {
     map_type: u32,
     max_size: u32,
     map_flag: u32,
     pub(crate) kptr: *mut (),
 }
 
-unsafe impl Sync for IURingBuf {}
+unsafe impl Sync for RexRingBuf {}
 
 #[repr(C)]
-pub struct IUStack<V> {
-    map: IUMapHandle<BPF_MAP_TYPE_STACK, (), V>,
+pub struct RexStack<V> {
+    map: RexMapHandle<BPF_MAP_TYPE_STACK, (), V>,
 }
 
 #[repr(C)]
-pub struct IUQueue<V> {
-    map: IUMapHandle<BPF_MAP_TYPE_QUEUE, (), V>,
+pub struct RexQueue<V> {
+    map: RexMapHandle<BPF_MAP_TYPE_QUEUE, (), V>,
 }
 
-impl<'a, K, V> IUHashMap<K, V> {
-    pub const fn new(ms: u32, mf: u32) -> IUHashMap<K, V> {
-        IUHashMap {
-            map: IUMapHandle::new(ms, mf),
+impl<'a, K, V> RexHashMap<K, V> {
+    pub const fn new(ms: u32, mf: u32) -> RexHashMap<K, V> {
+        RexHashMap {
+            map: RexMapHandle::new(ms, mf),
         }
     }
 
@@ -114,10 +114,10 @@ impl<'a, K, V> IUHashMap<K, V> {
     }
 }
 
-impl<'a, V> IUArray<V> {
-    pub const fn new(ms: u32, mf: u32) -> IUArray<V> {
-        IUArray {
-            map: IUMapHandle::new(ms, mf),
+impl<'a, V> RexArray<V> {
+    pub const fn new(ms: u32, mf: u32) -> RexArray<V> {
+        RexArray {
+            map: RexMapHandle::new(ms, mf),
         }
     }
 
@@ -134,22 +134,22 @@ impl<'a, V> IUArray<V> {
     }
 }
 
-impl IURingBuf {
-    pub const fn new(ms: u32, mf: u32) -> IURingBuf {
-        IURingBuf { map_type: BPF_MAP_TYPE_RINGBUF, max_size: ms, map_flag: mf, kptr: ptr::null_mut() }
+impl RexRingBuf {
+    pub const fn new(ms: u32, mf: u32) -> RexRingBuf {
+        RexRingBuf { map_type: BPF_MAP_TYPE_RINGBUF, max_size: ms, map_flag: mf, kptr: ptr::null_mut() }
     }
 
     pub fn reserve<T>(
         &'static self,
         submit_by_default: bool,
         value: T
-    ) -> Option<IURingBufEntry<T>> {
-        let data: *mut T = bpf_ringbuf_reserve(&self, 0);
+    ) -> Option<RexRingBufEntry<T>> {
+        let data: *mut T = bpf_ringbuf_reserve::<T>(&self, 0);
         if data.is_null() {
             None
         } else {
             unsafe { data.write(value); };
-            Some(IURingBufEntry { data: unsafe {
+            Some(RexRingBufEntry { data: unsafe {
                  { &mut *data }
             }, submit_by_default, has_used: false })
         }
@@ -172,10 +172,10 @@ impl IURingBuf {
     }
 }
 
-impl<V> IUStack<V> {
-    pub const fn new(ms: u32, mf: u32) -> IUStack<V> {
-        IUStack {
-            map: IUMapHandle::new(ms, mf),
+impl<V> RexStack<V> {
+    pub const fn new(ms: u32, mf: u32) -> RexStack<V> {
+        RexStack {
+            map: RexMapHandle::new(ms, mf),
         }
     }
 
@@ -196,10 +196,10 @@ impl<V> IUStack<V> {
     }
 }
 
-impl<V> IUQueue<V> {
-    pub const fn new(ms: u32, mf: u32) -> IUQueue<V> {
-        IUQueue {
-            map: IUMapHandle::new(ms, mf),
+impl<V> RexQueue<V> {
+    pub const fn new(ms: u32, mf: u32) -> RexQueue<V> {
+        RexQueue {
+            map: RexMapHandle::new(ms, mf),
         }
     }
 
@@ -220,13 +220,13 @@ impl<V> IUQueue<V> {
     }
 }
 
-pub struct IURingBufEntry<'a, T> {
+pub struct RexRingBufEntry<'a, T> {
     data: &'a mut T,
     submit_by_default: bool,
     has_used: bool,
 }
 
-impl<'a, T> IURingBufEntry<'a, T> {
+impl<'a, T> RexRingBufEntry<'a, T> {
     pub fn submit(mut self) {
         self.has_used = true;
         bpf_ringbuf_submit(self.data, 0)
@@ -242,7 +242,7 @@ impl<'a, T> IURingBufEntry<'a, T> {
     }
 }
 
-impl<'a, T> core::ops::Drop for IURingBufEntry<'a, T> {
+impl<'a, T> core::ops::Drop for RexRingBufEntry<'a, T> {
     fn drop(&mut self) {
         if !self.has_used {
             if self.submit_by_default {
