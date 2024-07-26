@@ -55,16 +55,10 @@ unsafe impl<const MT: bpf_map_type, K, V> Sync for RexMapHandle<MT, K, V> {}
 //pub type IURingBuf = IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
 pub type RexStackTrace<K, V> = RexMapHandle<BPF_MAP_TYPE_STACK_TRACE, K, V>;
 pub type RexPerCPUArrayMap<V> = RexMapHandle<BPF_MAP_TYPE_PERCPU_ARRAY, u32, V>;
-
-#[repr(C)]
-pub struct RexArray<V> {
-    map: RexMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>,
-}
-
-#[repr(C)]
-pub struct RexHashMap<K, V> {
-    map: RexMapHandle<BPF_MAP_TYPE_HASH, K, V>,
-}
+pub type RexArrayMap<V> = RexMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>;
+pub type RexHashMap<K, V> = RexMapHandle<BPF_MAP_TYPE_HASH, K, V>;
+pub type RexStack<V> = RexMapHandle<BPF_MAP_TYPE_STACK, (), V>;
+pub type RexQueue<V> = RexMapHandle<BPF_MAP_TYPE_QUEUE, (), V>;
 
 #[repr(C)]
 pub struct RexRingBuf {
@@ -76,61 +70,39 @@ pub struct RexRingBuf {
 
 unsafe impl Sync for RexRingBuf {}
 
-#[repr(C)]
-pub struct RexStack<V> {
-    map: RexMapHandle<BPF_MAP_TYPE_STACK, (), V>,
-}
-
-#[repr(C)]
-pub struct RexQueue<V> {
-    map: RexMapHandle<BPF_MAP_TYPE_QUEUE, (), V>,
-}
-
 impl<'a, K, V> RexHashMap<K, V> {
-    pub const fn new(ms: u32, mf: u32) -> RexHashMap<K, V> {
-        RexHashMap {
-            map: RexMapHandle::new(ms, mf),
-        }
-    }
-
     pub fn insert(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(&self.map, key, value, BPF_ANY as u64)
+        bpf_map_update_elem(&self, key, value, BPF_ANY as u64)
     }
 
     pub fn insert_new(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(&self.map, key, value, BPF_NOEXIST as u64)
+        bpf_map_update_elem(&self, key, value, BPF_NOEXIST as u64)
     }
 
     pub fn update(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(&self.map, key, value, BPF_EXIST as u64)
+        bpf_map_update_elem(&self, key, value, BPF_EXIST as u64)
     }
 
     pub fn get_mut(&'static self, key: &'a K) -> Option<&'a mut V> {
-        bpf_map_lookup_elem(&self.map, key)
+        bpf_map_lookup_elem(&self, key)
     }
 
     pub fn delete(&'static self, key: &K) -> Result {
-        bpf_map_delete_elem(&self.map, key)
+        bpf_map_delete_elem(&self, key)
     }
 }
 
-impl<'a, V> RexArray<V> {
-    pub const fn new(ms: u32, mf: u32) -> RexArray<V> {
-        RexArray {
-            map: RexMapHandle::new(ms, mf),
-        }
-    }
-
+impl<'a, V> RexArrayMap<V> {
     pub fn insert(&'static self, key: &u32, value: &V) -> Result {
-        bpf_map_update_elem(&self.map, key, value, BPF_ANY as u64)
+        bpf_map_update_elem(&self, key, value, BPF_ANY as u64)
     }
 
     pub fn get_mut(&'static self, key: &'a u32) -> Option<&'a mut V> {
-        bpf_map_lookup_elem(&self.map, key)
+        bpf_map_lookup_elem(&self, key)
     }
 
     pub fn delete(&'static self, key: &u32) -> Result {
-        bpf_map_delete_elem(&self.map, key)
+        bpf_map_delete_elem(&self, key)
     }
 }
 
@@ -173,50 +145,38 @@ impl RexRingBuf {
 }
 
 impl<V> RexStack<V> {
-    pub const fn new(ms: u32, mf: u32) -> RexStack<V> {
-        RexStack {
-            map: RexMapHandle::new(ms, mf),
-        }
-    }
-
     pub fn push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self.map, value, BPF_ANY as u64)
+        bpf_map_push_elem(&self, value, BPF_ANY as u64)
     }
 
     pub fn force_push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self.map, value, BPF_EXIST as u64)
+        bpf_map_push_elem(&self, value, BPF_EXIST as u64)
     }
 
     pub fn pop(&'static self) -> Option<V> {
-        bpf_map_pop_elem(&self.map)
+        bpf_map_pop_elem(&self)
     }
 
     pub fn peek(&'static self) -> Option<V> {
-        bpf_map_peek_elem(&self.map)
+        bpf_map_peek_elem(&self)
     }
 }
 
 impl<V> RexQueue<V> {
-    pub const fn new(ms: u32, mf: u32) -> RexQueue<V> {
-        RexQueue {
-            map: RexMapHandle::new(ms, mf),
-        }
-    }
-
     pub fn push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self.map, value, BPF_ANY as u64)
+        bpf_map_push_elem(&self, value, BPF_ANY as u64)
     }
 
     pub fn force_push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self.map, value, BPF_EXIST as u64)
+        bpf_map_push_elem(&self, value, BPF_EXIST as u64)
     }
 
     pub fn pop(&'static self) -> Option<V> {
-        bpf_map_pop_elem(&self.map)
+        bpf_map_pop_elem(&self)
     }
 
     pub fn peek(&'static self) -> Option<V> {
-        bpf_map_peek_elem(&self.map)
+        bpf_map_peek_elem(&self)
     }
 }
 
