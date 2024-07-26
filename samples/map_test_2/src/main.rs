@@ -12,7 +12,7 @@ use rex::{bpf_printk, rex_map, Result};
 static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
 
 #[rex_map]
-static ARRAY: RexArray<i64> = RexArray::new(256, 0);
+static ARRAY: RexArrayMap<i64> = RexArrayMap::new(256, 0);
 
 #[rex_map]
 static STACK: RexStack<i64> = RexStack::new(256, 0);
