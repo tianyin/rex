@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "map_test"
+name = "map_test_2"
 version = "0.1.0"
 dependencies = [
  "rex",
