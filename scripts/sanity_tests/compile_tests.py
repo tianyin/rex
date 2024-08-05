@@ -8,7 +8,7 @@ import time
 from pathlib import Path
 from tqdm import tqdm
 
-exclusion_list = ["cpustat", "memcached_benchmark"]
+exclusion_list = ["electrode", "memcached_benchmark"]
 
 script_path = Path(__file__).resolve()
 repo_path = script_path.parent.parent.parent
@@ -62,15 +62,6 @@ def main():
     samples_list = sorted(filter(is_sample, samples_list),
                           key=lambda x: x.name)
 
-    # import concurrent.futures
-    # with concurrent.futures.ThreadPoolExecutor() as executor:
-    #     list(
-    #         tqdm(
-    #             executor.map(run_make, samples_list),
-    #             total=len(samples_list),
-    #             desc="Building",
-    #         )
-    #     )
     with tqdm(total=len(samples_list), desc='   \033[34mBuilding\033[0m',
               leave=False, dynamic_ncols=True) as pbar:
         start_time = time.time()
