@@ -3,15 +3,15 @@ use crate::{
     base_helper::{
         bpf_map_delete_elem, bpf_map_lookup_elem, bpf_map_peek_elem,
         bpf_map_pop_elem, bpf_map_push_elem, bpf_map_update_elem,
-        bpf_ringbuf_discard, bpf_ringbuf_reserve, bpf_ringbuf_submit,
-        bpf_ringbuf_query
+        bpf_ringbuf_discard, bpf_ringbuf_query, bpf_ringbuf_reserve,
+        bpf_ringbuf_submit,
     },
     linux::bpf::{
         bpf_map_type, BPF_ANY, BPF_EXIST, BPF_MAP_TYPE_ARRAY,
-        BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_QUEUE, BPF_MAP_TYPE_RINGBUF,
-        BPF_MAP_TYPE_STACK, BPF_MAP_TYPE_STACK_TRACE, BPF_NOEXIST,
-        BPF_RB_AVAIL_DATA, BPF_RB_CONS_POS, BPF_RB_PROD_POS, BPF_RB_RING_SIZE,
-        BPF_MAP_TYPE_PERCPU_ARRAY
+        BPF_MAP_TYPE_HASH, BPF_MAP_TYPE_PERCPU_ARRAY, BPF_MAP_TYPE_QUEUE,
+        BPF_MAP_TYPE_RINGBUF, BPF_MAP_TYPE_STACK, BPF_MAP_TYPE_STACK_TRACE,
+        BPF_NOEXIST, BPF_RB_AVAIL_DATA, BPF_RB_CONS_POS, BPF_RB_PROD_POS,
+        BPF_RB_RING_SIZE,
     },
 };
 use core::{marker::PhantomData, mem, ptr};
@@ -108,22 +108,35 @@ impl<'a, V> RexArrayMap<V> {
 
 impl RexRingBuf {
     pub const fn new(ms: u32, mf: u32) -> RexRingBuf {
-        RexRingBuf { map_type: BPF_MAP_TYPE_RINGBUF, max_size: ms, map_flag: mf, kptr: ptr::null_mut() }
+        RexRingBuf {
+            map_type: BPF_MAP_TYPE_RINGBUF,
+            max_size: ms,
+            map_flag: mf,
+            kptr: ptr::null_mut(),
+        }
     }
 
     pub fn reserve<T>(
         &'static self,
         submit_by_default: bool,
-        value: T
+        value: T,
     ) -> Option<RexRingBufEntry<T>> {
         let data: *mut T = bpf_ringbuf_reserve::<T>(&self, 0);
         if data.is_null() {
             None
         } else {
-            unsafe { data.write(value); };
-            Some(RexRingBufEntry { data: unsafe {
-                 { &mut *data }
-            }, submit_by_default, has_used: false })
+            unsafe {
+                data.write(value);
+            };
+            Some(RexRingBufEntry {
+                data: unsafe {
+                    {
+                        &mut *data
+                    }
+                },
+                submit_by_default,
+                has_used: false,
+            })
         }
     }
 

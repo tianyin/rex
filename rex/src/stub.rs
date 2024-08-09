@@ -2,7 +2,7 @@
 use core::ffi::{c_uchar, VaList};
 
 use crate::bindings::linux::kernel::CONFIG_NR_CPUS as NR_CPUS;
-use crate::bindings::linux::kernel::{sk_buff, xdp_buff};
+use crate::bindings::linux::kernel::{pcpu_hot, sk_buff, xdp_buff};
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
 use crate::perf_event::bpf_perf_event_data_kern;
 
@@ -175,9 +175,6 @@ extern "C" {
 
 /// Global variables
 extern "C" {
-    /// `DEFINE_PER_CPU_READ_MOSTLY(int, cpu_number);`
-    pub(crate) static cpu_number: i32;
-
     /// `extern unsigned long volatile __cacheline_aligned_in_smp
     /// __jiffy_arch_data jiffies;`
     ///
@@ -209,5 +206,6 @@ extern "C" {
     /// ____cacheline_aligned = &init_task;`
     ///
     /// Per-cpu point of the current task
-    pub(crate) static current_task: *const ();
+    #[allow(improper_ctypes)]
+    pub(crate) static pcpu_hot: pcpu_hot;
 }

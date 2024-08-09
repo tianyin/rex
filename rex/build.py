@@ -11,7 +11,7 @@ bindgen_cmd = 'bindgen --use-core --no-doc-comments --rust-target=1.64 '\
 
 bindgen_kernel_cmd = '''bindgen %s --allowlist-type="(task_struct|tk_read_base|
 seqcount_raw_spinlock_t|clocksource|seqcount_t|seqcount_latch_t|timekeeper|
-kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern|xdp_buff|ethhdr|iphdr|tcphdr|udphdr|sk_buff|sock)"
+kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern|xdp_buff|ethhdr|iphdr|tcphdr|udphdr|sk_buff|sock|pcpu_hot)"
 --allowlist-var="(___GFP.*|CONFIG_.*)" --opaque-type xregs_state --opaque-type desc_struct
 --opaque-type arch_lbr_state --opaque-type local_apic --opaque-type alt_instr
 --opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
