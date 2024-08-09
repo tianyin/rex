@@ -35,12 +35,10 @@ using namespace std::literals::string_literals;
 static int debug = 0;
 
 static const bpf_sec_def *find_sec_def(const char *sec_name) {
-  int i, n = ARRAY_SIZE(section_defs);
-
-  for (i = 0; i < n; i++) {
-    if (strncmp(sec_name, section_defs[i].sec, section_defs[i].len))
+  for (size_t i = 0; i < global_bpf_section_defs.size; i++) {
+    if (strcmp(sec_name, global_bpf_section_defs.arr[i].sec))
       continue;
-    return &section_defs[i];
+    return &global_bpf_section_defs.arr[i];
   }
 
   return nullptr;
@@ -177,14 +175,10 @@ public:
     // bpf_program will never outlive "this" as both are managed by rex_obj,
     // so just redirect pointers
     return bpf_program{
+        .name = name.data(),
         .sec_name = scn_name.data(),
         .sec_idx = (size_t)-1,
-        .name = name.data(),
-        .instances =
-            {
-                .nr = 1,
-                .fds = &prog_fd.value(),
-            },
+        .fd = prog_fd.value(),
         .type = prog_type,
     };
   }
