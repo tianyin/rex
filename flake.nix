@@ -53,6 +53,10 @@
           rust-bindgen
           pahole
 
+          bear # generate compile commands
+          rsync # for make headers_install
+          gdb
+
           # python3 scripts
           (pkgs.python3.withPackages (python-pkgs: [
             # select Python packages here
