@@ -40,7 +40,7 @@ impl TracePoint {
             format_ident!("PROG_{}", fn_name.to_string().to_uppercase());
 
         let attached_name = format!(
-            "rex/tracepoint/{}",
+            "rex/tracepoint+{}",
             self.name.as_ref().expect_or_abort(
                 "Please provide valid tracepoint attached point"
             )

@@ -32,11 +32,19 @@
 // See https://en.cppreference.com/w/cpp/string/basic_string/operator%22%22s
 using namespace std::literals::string_literals;
 
-static int debug = 0;
+static int debug = 1;
 
+/**
+ * @brief Walk throught the static const struct bpf_sec_def section_defs
+ * in libbpf.c and figure out the valid bpf section
+ *
+ * @param sec_name section for our own rex prog
+ * @return section_defs
+ */
 static const bpf_sec_def *find_sec_def(const char *sec_name) {
   for (size_t i = 0; i < global_bpf_section_defs.size; i++) {
-    if (strcmp(sec_name, global_bpf_section_defs.arr[i].sec))
+    size_t length = std::strlen(global_bpf_section_defs.arr[i].sec);
+    if (strncmp(sec_name, global_bpf_section_defs.arr[i].sec, length))
       continue;
     return &global_bpf_section_defs.arr[i];
   }
@@ -430,10 +438,10 @@ int rex_obj::parse_progs() {
 
     scn_name = elf_strptr(elf.get(), shstrndx, elf64_getshdr(scn)->sh_name);
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
-    /*if (debug) {
+    if (debug) {
             std::clog << "section: \"" << scn_name << "\"" << std::endl;
             std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
-    }*/
+    }
 
     sec_def = find_sec_def(scn_name);
     if (!sec_def)
