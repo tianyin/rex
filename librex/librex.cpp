@@ -23,6 +23,7 @@
 #include <vector>
 
 #include "bindings.h"
+#include "bpf/libbpf.h"
 #include "librex.h"
 
 #define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
@@ -34,6 +35,37 @@ using namespace std::literals::string_literals;
 
 static int debug = 1;
 
+#define str_has_pfx(str, pfx) \
+	(strncmp(str, pfx, __builtin_constant_p(pfx) ? sizeof(pfx) - 1 : strlen(pfx)) == 0)
+
+static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_name)
+{
+	size_t len = strlen(sec_def->sec);
+
+	/* "type/" always has to have proper SEC("type/extras") form */
+	if (sec_def->sec[len - 1] == '/') {
+		if (str_has_pfx(sec_name, sec_def->sec))
+			return true;
+		return false;
+	}
+
+	/* "type+" means it can be either exact SEC("type") or
+	 * well-formed SEC("type/extras") with proper '/' separator
+	 */
+	if (sec_def->sec[len - 1] == '+') {
+		len--;
+		/* not even a prefix */
+		if (strncmp(sec_name, sec_def->sec, len) != 0)
+			return false;
+		/* exact match or has '/' separator */
+		if (sec_name[len] == '\0' || sec_name[len] == '/')
+			return true;
+		return false;
+	}
+
+	return strcmp(sec_name, sec_def->sec) == 0;
+}
+
 /**
  * @brief Walk throught the static const struct bpf_sec_def section_defs
  * in libbpf.c and figure out the valid bpf section
@@ -43,8 +75,7 @@ static int debug = 1;
  */
 static const bpf_sec_def *find_sec_def(const char *sec_name) {
   for (size_t i = 0; i < global_bpf_section_defs.size; i++) {
-    size_t length = std::strlen(global_bpf_section_defs.arr[i].sec);
-    if (strncmp(sec_name, global_bpf_section_defs.arr[i].sec, length))
+    if (!sec_def_matches(&global_bpf_section_defs.arr[i], sec_name))
       continue;
     return &global_bpf_section_defs.arr[i];
   }
@@ -152,7 +183,7 @@ struct rex_prog {
 private:
   std::string name;
   std::string scn_name;
-  enum bpf_prog_type prog_type;
+  const struct bpf_sec_def *sec_def;
   Elf64_Off offset;
   std::optional<int> prog_fd;
   rex_obj &obj;
@@ -161,7 +192,7 @@ public:
   rex_prog() = delete;
   rex_prog(const char *nm, const char *scn_nm, Elf64_Off off, rex_obj &obj)
       : name(nm), scn_name(scn_nm), offset(off), obj(obj) {
-    prog_type = find_sec_def(scn_name.c_str())->prog_type;
+    sec_def = find_sec_def(scn_name.c_str());
   }
 
   rex_prog(const rex_prog &) = delete;
@@ -186,8 +217,9 @@ public:
         .name = name.data(),
         .sec_name = scn_name.data(),
         .sec_idx = (size_t)-1,
+        .sec_def = sec_def,
         .fd = prog_fd.value(),
-        .type = prog_type,
+        .type = sec_def->prog_type,
     };
   }
 
@@ -447,6 +479,9 @@ int rex_obj::parse_progs() {
     if (!sec_def)
       continue;
 
+    if (debug)
+      std::clog << "successfully matched" << std::endl;
+
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
     progs.emplace_back(sym_name, scn_name, sym->st_value, *this);
   }
@@ -637,7 +672,7 @@ int rex_obj::load() {
 
   for (auto &prog : progs) {
     int curr_fd;
-    attr.prog_type = prog.prog_type;
+    attr.prog_type = prog.sec_def->prog_type;
     strncpy(attr.prog_name, prog.name.c_str(), sizeof(attr.prog_name) - 1);
     attr.base_prog_fd = this->prog_fd.value();
     attr.prog_offset = prog.offset;
@@ -691,10 +726,12 @@ bpf_object *rex_obj::bpf_obj() {
   // Fill in maps
   i = 0;
   for (auto &[_, m_def] : map_defs) {
-    if (std::optional<bpf_map> map = m_def.bpfmap())
-      ptr->maps[i++] = std::move(map.value());
-    else
+    if (std::optional<bpf_map> map = m_def.bpfmap()) {
+      ptr->maps[i] = std::move(map.value());
+      ptr->maps[i++].obj = ptr.get();
+    } else {
       return nullptr;
+    }
   }
   ptr->nr_maps = i;
 
@@ -710,6 +747,7 @@ bpf_object *rex_obj::bpf_obj() {
     }
   }
   ptr->nr_programs = i;
+  ptr->loaded = true;
 
   // Now transfer the ownership
   bpf_obj_ptr = std::move(ptr);

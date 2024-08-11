@@ -12,7 +12,7 @@ endif
 
 INC += -I${LINUX}/usr/include -I${LINUX}/tools/lib
 
-CXXFLAGS += -O2 -march=native -pipe -std=c++23 -fPIC -Wall -Werror
+CXXFLAGS += -O2 -march=native -pipe -std=c++23 -fPIC -Wall -Werror -g
 CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
 
 ifeq ($(LLVM),1) # LLVM ThinLTO
