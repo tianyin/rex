@@ -23,47 +23,43 @@
 #include <vector>
 
 #include "bindings.h"
-#include "bpf/libbpf.h"
 #include "librex.h"
 
-#define ARRAY_SIZE(x) (sizeof(x) / sizeof(*(x)))
-
-// Yes, this is opposite to the idea of not doing 'using namespace', but it
-// seems to be the only way one can get access to operator""s
-// See https://en.cppreference.com/w/cpp/string/basic_string/operator%22%22s
 using namespace std::literals::string_literals;
 
-static int debug = 1;
+namespace {
 
-#define str_has_pfx(str, pfx) \
-	(strncmp(str, pfx, __builtin_constant_p(pfx) ? sizeof(pfx) - 1 : strlen(pfx)) == 0)
+int debug = 1;
 
-static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_name)
-{
-	size_t len = strlen(sec_def->sec);
+#define str_has_pfx(str, pfx)                                                  \
+  (strncmp(str, pfx,                                                           \
+           __builtin_constant_p(pfx) ? sizeof(pfx) - 1 : strlen(pfx)) == 0)
 
-	/* "type/" always has to have proper SEC("type/extras") form */
-	if (sec_def->sec[len - 1] == '/') {
-		if (str_has_pfx(sec_name, sec_def->sec))
-			return true;
-		return false;
-	}
+bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_name) {
+  size_t len = strlen(sec_def->sec);
 
-	/* "type+" means it can be either exact SEC("type") or
-	 * well-formed SEC("type/extras") with proper '/' separator
-	 */
-	if (sec_def->sec[len - 1] == '+') {
-		len--;
-		/* not even a prefix */
-		if (strncmp(sec_name, sec_def->sec, len) != 0)
-			return false;
-		/* exact match or has '/' separator */
-		if (sec_name[len] == '\0' || sec_name[len] == '/')
-			return true;
-		return false;
-	}
+  /* "type/" always has to have proper SEC("type/extras") form */
+  if (sec_def->sec[len - 1] == '/') {
+    if (str_has_pfx(sec_name, sec_def->sec))
+      return true;
+    return false;
+  }
 
-	return strcmp(sec_name, sec_def->sec) == 0;
+  /* "type+" means it can be either exact SEC("type") or
+   * well-formed SEC("type/extras") with proper '/' separator
+   */
+  if (sec_def->sec[len - 1] == '+') {
+    len--;
+    /* not even a prefix */
+    if (strncmp(sec_name, sec_def->sec, len) != 0)
+      return false;
+    /* exact match or has '/' separator */
+    if (sec_name[len] == '\0' || sec_name[len] == '/')
+      return true;
+    return false;
+  }
+
+  return strcmp(sec_name, sec_def->sec) == 0;
 }
 
 /**
@@ -73,7 +69,7 @@ static bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_n
  * @param sec_name section for our own rex prog
  * @return section_defs
  */
-static const bpf_sec_def *find_sec_def(const char *sec_name) {
+const bpf_sec_def *find_sec_def(const char *sec_name) {
   for (size_t i = 0; i < global_bpf_section_defs.size; i++) {
     if (!sec_def_matches(&global_bpf_section_defs.arr[i], sec_name))
       continue;
@@ -83,19 +79,20 @@ static const bpf_sec_def *find_sec_def(const char *sec_name) {
   return nullptr;
 }
 
-template <std::integral T>
-static inline T val_from_buf(const unsigned char *buf) {
+template <std::integral T> inline T val_from_buf(const unsigned char *buf) {
   return *reinterpret_cast<const T *>(buf);
 }
 
 template <std::integral T>
-static inline void val_to_buf(unsigned char *buf, const T val) {
+inline void val_to_buf(unsigned char *buf, const T val) {
   *reinterpret_cast<T *>(buf) = val;
 }
 
-static inline long bpf(__u64 cmd, union bpf_attr *attr, unsigned int size) {
+inline long bpf(__u64 cmd, union bpf_attr *attr, unsigned int size) {
   return syscall(__NR_bpf, cmd, attr, size);
 }
+
+} // end anonymous namespace
 
 // This struct is POD, meaning the C++ standard guarantees the same memory
 // layout as that of the equivalent C struct
@@ -471,8 +468,8 @@ int rex_obj::parse_progs() {
     scn_name = elf_strptr(elf.get(), shstrndx, elf64_getshdr(scn)->sh_name);
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
     if (debug) {
-            std::clog << "section: \"" << scn_name << "\"" << std::endl;
-            std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
+      std::clog << "section: \"" << scn_name << "\"" << std::endl;
+      std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
     }
 
     sec_def = find_sec_def(scn_name);
