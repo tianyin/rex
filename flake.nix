@@ -52,6 +52,7 @@
           ncurses.dev
           rust-bindgen
           pahole
+          strace 
 
           bear # generate compile commands
           rsync # for make headers_install
