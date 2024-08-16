@@ -45,6 +45,7 @@ kheaders = [
   "linux/udp.h",
   "linux/skbuff.h",
   "net/xdp.h",
+  "linux/perf_event.h",
 ]
 
 kconfigs = ["CONFIG_BPF_KPROBE_OVERRIDE", "CONFIG_KALLSYMS_ALL"]
