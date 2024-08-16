@@ -63,7 +63,7 @@ bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_name) {
 }
 
 /**
- * @brief Walk throught the static const struct bpf_sec_def section_defs
+ * @brief Walk through the static const struct bpf_sec_def section_defs
  * in libbpf.c and figure out the valid bpf section
  *
  * @param sec_name section for our own rex prog
