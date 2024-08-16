@@ -2,9 +2,10 @@
 use core::ffi::{c_uchar, VaList};
 
 use crate::bindings::linux::kernel::CONFIG_NR_CPUS as NR_CPUS;
-use crate::bindings::linux::kernel::{pcpu_hot, sk_buff, xdp_buff};
+use crate::bindings::linux::kernel::{
+    bpf_perf_event_data_kern, pcpu_hot, sk_buff, xdp_buff,
+};
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
-use crate::perf_event::bpf_perf_event_data_kern;
 
 /// Functions
 extern "C" {
@@ -117,6 +118,10 @@ extern "C" {
     /// bpf_map *map, u64 flags)`
     ///
     /// The specialized version of `bpf_get_stackid` for perf event programs
+    ///
+    /// Also allow improper_ctypes here since the empty lock_class_key is
+    /// guaranteed not touched by us
+    #[allow(improper_ctypes)]
     pub(crate) fn bpf_get_stackid_pe(
         ctx: *const bpf_perf_event_data_kern,
         map: *mut (),
@@ -125,6 +130,10 @@ extern "C" {
 
     /// `long bpf_perf_prog_read_value(struct bpf_perf_event_data *ctx, struct
     /// bpf_perf_event_value *buf, u32 buf_size)`
+    ///
+    /// Also allow improper_ctypes here since the empty lock_class_key is
+    /// guaranteed not touched by us
+    #[allow(improper_ctypes)]
     pub(crate) fn bpf_perf_prog_read_value(
         ctx: *const bpf_perf_event_data_kern,
         buf: &mut bpf_perf_event_value,
