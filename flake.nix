@@ -58,6 +58,11 @@
           rsync # for make headers_install
           gdb
 
+
+          # bmc deps
+          iproute2
+          memcached
+
           # python3 scripts
           (pkgs.python3.withPackages (python-pkgs: [
             # select Python packages here
