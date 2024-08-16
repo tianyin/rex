@@ -302,7 +302,7 @@ CMDLINE=""
 QEMUARG=""
 
 NRCPU=4
-MEMORY=2048
+MEMORY=8192
 
 while getopts "hgmsk:c:a:H:N:M:q:" opt; do
 	case $opt in
