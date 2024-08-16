@@ -21,7 +21,7 @@ pub mod prog_type;
 //pub mod sysctl;
 pub mod task_struct;
 // pub mod timekeeping;
-// pub mod sched_cls;
+pub mod sched_cls;
 pub mod spinlock;
 pub mod tracepoint;
 pub mod utils;
@@ -69,7 +69,7 @@ define_prog_entry!(tracepoint);
 define_prog_entry!(kprobe);
 define_prog_entry!(perf_event);
 define_prog_entry!(xdp);
-// define_prog_entry!(sched_cls);
+define_prog_entry!(sched_cls);
 
 pub use bindings::uapi::*;
 pub use utils::Result;
