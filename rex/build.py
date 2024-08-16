@@ -20,39 +20,45 @@ bindgen_kernel_cmd = '''bindgen %s --allowlist-type="%s"
 --opaque-type desc_struct --opaque-type arch_lbr_state --opaque-type
 local_apic --opaque-type alt_instr --opaque-type x86_msi_data --opaque-type
 x86_msi_addr_lo --opaque-type kunit_try_catch --opaque-type spinlock
---no-doc-comments --use-core --with-derive-default --ctypes-prefix
-core::ffi --no-layout-tests --no-debug '.*' --rust-target=1.73 -o %s --
--nostdinc -I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
+--no-doc-comments --blocklist-function __list_.*_report --use-core
+--with-derive-default --ctypes-prefix core::ffi --no-layout-tests
+--no-debug '.*' --rust-target=1.73 -o %s -- -nostdinc
+-I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
 -I$LINUX/include -I$LINUX/arch/x86/include/uapi
 -I$LINUX/arch/x86/include/generated/uapi -I$LINUX/include/uapi
 -I$LINUX/include/generated/uapi -include
 $LINUX/include/linux/compiler-version.h -include
 $LINUX/include/linux/kconfig.h -include
-$LINUX/include/linux/compiler_types.h -D__KERNEL__ -Wall -Wundef
--Werror=strict-prototypes -Wno-trigraphs -fno-strict-aliasing -fno-common
--fshort-wchar -fno-PIE -Werror=implicit-function-declaration
--Werror=implicit-int -Werror=return-type -Wno-format-security
--funsigned-char -std=gnu11 --target=x86_64-linux-gnu -fintegrated-as
--Werror=unknown-warning-option -Werror=ignored-optimization-argument
--Werror=option-ignored -Werror=unused-command-line-argument -mno-sse
--mno-mmx -mno-sse2 -mno-3dnow -mno-avx -fcf-protection=none -m64
--falign-loops=1 -mno-80387 -mno-fp-ret-in-387 -mstack-alignment=8
--mskip-rax-setup -mtune=generic -mno-red-zone -mcmodel=kernel
--Wno-sign-compare -fno-asynchronous-unwind-tables
--mretpoline-external-thunk -mfunction-return=thunk-extern
--fno-delete-null-pointer-checks -Wno-frame-address
--Wno-address-of-packed-member -O2 -Wframe-larger-than=2048
--fstack-protector-strong -Wno-gnu -Wno-unused-but-set-variable
--Wno-unused-const-variable -fomit-frame-pointer -fno-stack-clash-protection
--fno-lto -falign-functions=16 -Wdeclaration-after-statement -Wvla
--Wno-pointer-sign -Wcast-function-type -Wimplicit-fallthrough
--fno-strict-overflow -fno-stack-check -Werror=date-time
--Werror=incompatible-pointer-types -Wno-initializer-overrides -Wno-format
--Wformat-extra-args -Wformat-invalid-specifier -Wformat-zero-length
--Wnonnull -Wformat-insufficient-args -Wno-sign-compare
--Wno-pointer-to-enum-cast -Wno-tautological-constant-out-of-range-compare
--Wno-unaligned-access -g -DKBUILD_MODNAME='"inner_unikernel"' -D__BINDGEN__
--DMODULE'''
+$LINUX/include/linux/compiler_types.h -D__KERNEL__
+--target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option
+-Werror=ignored-optimization-argument -Werror=option-ignored
+-Werror=unused-command-line-argument -fmacro-prefix-map=./= -std=gnu11
+-fshort-wchar -funsigned-char -fno-common -fno-PIE -fno-strict-aliasing
+-mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx -fcf-protection=branch
+-fno-jump-tables -m64 -falign-loops=1 -mno-80387 -mno-fp-ret-in-387
+-mstack-alignment=8 -mskip-rax-setup -mtune=generic -mno-red-zone
+-mcmodel=kernel -Wno-sign-compare -fno-asynchronous-unwind-tables
+-fno-delete-null-pointer-checks -O2 -fstack-protector-strong
+-fno-stack-clash-protection -pg -mfentry -DCC_USING_NOP_MCOUNT
+-DCC_USING_FENTRY -fno-lto -falign-functions=16 -fstrict-flex-arrays=3
+-fno-strict-overflow -fno-stack-check -Wall -Wundef
+-Werror=implicit-function-declaration -Werror=implicit-int
+-Werror=return-type -Werror=strict-prototypes -Wno-format-security
+-Wno-trigraphs -Wno-frame-address -Wno-address-of-packed-member
+-Wmissing-declarations -Wmissing-prototypes -Wframe-larger-than=2048
+-Wno-gnu -Wvla -Wno-pointer-sign -Wcast-function-type
+-Wimplicit-fallthrough -Werror=date-time -Werror=incompatible-pointer-types
+-Wenum-conversion -Wextra -Wunused -Wno-unused-but-set-variable
+-Wno-unused-const-variable -Wno-format-overflow
+-Wno-format-overflow-non-kprintf -Wno-format-truncation-non-kprintf
+-Wno-override-init -Wno-pointer-to-enum-cast
+-Wno-tautological-constant-out-of-range-compare -Wno-unaligned-access
+-Wno-enum-compare-conditional -Wno-enum-enum-conversion
+-Wno-missing-field-initializers -Wno-type-limits -Wno-shift-negative-value
+-Wno-sign-compare -Wno-unused-parameter -g
+-DKBUILD_MODFILE='"rex/rex_generated"' -DKBUILD_BASENAME='"rex_generated"'
+-DKBUILD_MODNAME='"rex_generated"' -D__KBUILD_MODNAME=kmod_rex_generated
+-D__BINDGEN__ -DMODULE'''
 
 
 def prep_uapi_headers(usr_include, headers, out_dir):
