@@ -5,9 +5,11 @@ import sys
 import tomllib
 
 # https://github.com/rust-lang/rust-bindgen
-bindgen_cmd = 'bindgen %s --use-core --no-doc-comments --rust-target=1.73 '\
-        '--translate-enum-integer-types --no-layout-tests '\
-        '--no-prepend-enum-name --blocklist-type pt_regs -o %s'
+bindgen_cmd = '''bindgen $LINUX/usr/include/%s --use-core
+--with-derive-default --ctypes-prefix core::ffi --no-layout-tests
+--no-debug '.*' --no-doc-comments --rust-target=1.73
+--translate-enum-integer-types --no-prepend-enum-name --blocklist-type
+pt_regs -o %s -- -I$LINUX/usr/include'''
 
 k_structs = ['task_struct', 'tk_read_base', 'seqcount_raw_spinlock_t',
              'clocksource', 'seqcount_t', 'seqcount_latch_t', 'timekeeper',
@@ -62,16 +64,16 @@ $LINUX/include/linux/compiler_types.h -D__KERNEL__
 -D__BINDGEN__ -DMODULE'''
 
 
-def prep_uapi_headers(usr_include, headers, out_dir):
-    for h in headers:
-        header = os.path.join(usr_include, h)
+def prep_uapi_headers(linux_path, headers, out_dir):
+    for header in headers:
         subdir, hfile = os.path.split(header)
         subdir = os.path.join(out_dir, subdir)
         if not os.path.exists(subdir):
-                os.makedirs(subdir)
+            os.makedirs(subdir)
 
         out_f = os.path.join(subdir, '%s.rs' % os.path.splitext(hfile)[0])
-        subprocess.run(bindgen_cmd % (header, out_f), check=True, shell=True)
+        cmd = bindgen_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
+        subprocess.run(cmd % (header, out_f), check=True, shell=True)
 
 
 def parse_cargo_toml(cargo_toml_path):
@@ -125,8 +127,7 @@ def main(argv):
     uheaders, kheaders, kconfigs = result
 
     u_out_dir = os.path.join(out_dir, 'uapi')
-    prep_uapi_headers(os.path.join(linux_path, 'usr/include'), uheaders,
-                      u_out_dir)
+    prep_uapi_headers(linux_path, uheaders, u_out_dir)
     prep_kernel_headers(kheaders, linux_path, out_dir)
     parse_kconfigs(os.path.join(linux_path, '.config'), kconfigs)
     return 0
