@@ -116,7 +116,6 @@ int main(int argc, char *argv[])
 {
 	struct rlimit r = { RLIM_INFINITY, RLIM_INFINITY };
 	int base_fd, rx_prog_fd, tx_prog_fd, xdp_main_prog_fd;
-	struct bpf_object_load_attr load_attr;
 	struct bpf_program *rx_prog, *tx_prog;
 	struct bpf_object *obj;
 	char filename[PATH_MAX];
@@ -182,8 +181,8 @@ int main(int argc, char *argv[])
 	xdp_flags |= XDP_FLAGS_DRV_MODE;
 	/* xdp_flags |= XDP_FLAGS_SKB_MODE; */
 	for (int i = 0; i < interface_count; i++) {
-		if (bpf_set_link_xdp_fd(interfaces_idx[i], xdp_main_prog_fd,
-					xdp_flags) < 0) {
+		if (bpf_xdp_attach(interfaces_idx[i], xdp_main_prog_fd,
+					xdp_flags, NULL) < 0) {
 			fprintf(stderr,
 				"Error: bpf_set_link_xdp_fd failed for interface %d\n",
 				interfaces_idx[i]);
@@ -259,7 +258,7 @@ int main(int argc, char *argv[])
 	write_stats_to_file(STATS_PATH, map_stats_fd);
 
 	for (int i = 0; i < interface_count; i++) {
-		bpf_set_link_xdp_fd(interfaces_idx[i], -1, xdp_flags);
+		bpf_xdp_attach(interfaces_idx[i], -1, xdp_flags, NULL);
 	}
 	return ret;
 }
