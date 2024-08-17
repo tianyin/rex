@@ -34,11 +34,13 @@ macro_rules! decl_reg_accessors1 {
 
 macro_rules! decl_reg_accessors2 {
     ($t:ident $($ts:ident)*) => {
-        paste! {#[inline(always)]
-        pub fn [<r $t>](&self) -> u64 {
-            unsafe { (*self.kptr.regs).$t }
+        paste! {
+            #[inline(always)]
+            pub fn [<r $t>](&self) -> u64 {
+                unsafe { (*self.kptr.regs).$t }
+            }
         }
-        decl_reg_accessors2!($($ts)*);}
+        decl_reg_accessors2!($($ts)*);
     };
     () => {};
 }
@@ -51,18 +53,22 @@ impl<'a> bpf_perf_event_data<'a> {
     decl_reg_accessors2!(bp bx ax cx dx si di ip sp);
 
     // orig_rax cs eflags ss cannot be batch-processed by macros
+    #[inline(always)]
     pub fn orig_rax(&self) -> u64 {
         unsafe { (*self.kptr.regs).orig_ax }
     }
 
+    #[inline(always)]
     pub fn cs(&self) -> u64 {
         unsafe { (*self.kptr.regs).__bindgen_anon_1.cs as u64 }
     }
 
+    #[inline(always)]
     pub fn eflags(&self) -> u64 {
         unsafe { (*self.kptr.regs).flags }
     }
 
+    #[inline(always)]
     pub fn ss(&self) -> u64 {
         unsafe { (*self.kptr.regs).__bindgen_anon_2.ss as u64 }
     }
