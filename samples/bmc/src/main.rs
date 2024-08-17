@@ -200,10 +200,9 @@ fn prepare_packet(
     swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
 
     let ip_header_mut = obj.ip_header(ctx);
-    swap(
-        &mut ip_header_mut.get_addr().saddr,
-        &mut ip_header_mut.get_addr().daddr,
-    );
+    let temp: u32 = *ip_header_mut.saddr();
+    *ip_header_mut.saddr() = *ip_header_mut.daddr();
+    *ip_header_mut.daddr() = temp;
 
     let udp_header = obj.udp_header(ctx);
     swap(&mut udp_header.source, &mut udp_header.dest);

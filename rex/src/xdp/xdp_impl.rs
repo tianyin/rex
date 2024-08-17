@@ -19,10 +19,13 @@ pub use crate::bindings::uapi::linux::bpf::{
 pub use crate::bindings::uapi::linux::r#in::{IPPROTO_TCP, IPPROTO_UDP};
 
 impl iphdr {
-    // WARN: not sure this is a direct access
     #[inline(always)]
-    pub fn get_addr(&self) -> iphdr__bindgen_ty_1__bindgen_ty_1 {
-        unsafe { self.__bindgen_anon_1.__bindgen_anon_1 }
+    pub fn saddr(&mut self) -> &mut u32 {
+        unsafe { &mut self.__bindgen_anon_1.__bindgen_anon_1.saddr }
+    }
+
+    pub fn daddr(&mut self) -> &mut u32 {
+        unsafe { &mut self.__bindgen_anon_1.__bindgen_anon_1.daddr }
     }
 }
 
