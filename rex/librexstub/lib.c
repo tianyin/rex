@@ -34,10 +34,9 @@ KSYM_FUNC(bpf_ktime_get_boot_ns)
 KSYM_FUNC(bpf_ktime_get_coarse_ns)
 
 // Global variables
-int cpu_number;
 unsigned long jiffies;
 int numa_node;
 unsigned long *__per_cpu_offset;
 void *rex_cleanup_entries;
 unsigned long rex_stack_ptr;
-void *current_task;
+void *pcpu_hot;

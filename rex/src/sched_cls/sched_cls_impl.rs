@@ -31,12 +31,20 @@ impl<'a> __sk_buff<'a> {
 
     #[inline(always)]
     pub fn protocol(&self) -> u16be {
-        u16be(self.kptr.protocol)
+        u16be(unsafe {
+            (self.kptr.__bindgen_anon_4.__bindgen_anon_1)
+                .as_ref()
+                .protocol
+        })
     }
 
     #[inline(always)]
     pub fn priority(&self) -> u32 {
-        self.kptr.priority
+        unsafe {
+            (self.kptr.__bindgen_anon_4.__bindgen_anon_1)
+                .as_ref()
+                .priority
+        }
     }
 
     #[inline(always)]
@@ -60,7 +68,7 @@ impl<'a> __sk_buff<'a> {
 
     #[inline(always)]
     pub fn hash(&self) -> u32 {
-        self.kptr.hash
+        unsafe { (self.kptr.__bindgen_anon_4.__bindgen_anon_1).as_ref().hash }
     }
 
     #[inline(always)]
@@ -90,12 +98,30 @@ impl<'a> __sk_buff<'a> {
     #[inline(always)]
     // TODO: may need to update based on __sk_buff
     pub fn vlan_tci(&self) -> u16 {
-        self.kptr.vlan_tci
+        unsafe {
+            (self
+                .kptr
+                .__bindgen_anon_4
+                .__bindgen_anon_1
+                .as_ref()
+                .__bindgen_anon_2
+                .__bindgen_anon_1
+                .vlan_tci)
+        }
     }
 
     #[inline(always)]
     pub fn vlan_proto(&self) -> u16be {
-        u16be(self.kptr.vlan_proto)
+        u16be(unsafe {
+            (self
+                .kptr
+                .__bindgen_anon_4
+                .__bindgen_anon_1
+                .as_ref()
+                .__bindgen_anon_2
+                .__bindgen_anon_1
+                .vlan_proto)
+        })
     }
 
     #[inline(always)]
@@ -113,7 +139,11 @@ impl<'a> __sk_buff<'a> {
 
     #[inline(always)]
     pub fn tc_index(&self) -> u16 {
-        self.kptr.tc_index
+        unsafe {
+            (self.kptr.__bindgen_anon_4.__bindgen_anon_1)
+                .as_ref()
+                .tc_index
+        }
     }
 
     #[inline(always)]
@@ -130,7 +160,7 @@ impl<'a> __sk_buff<'a> {
 
     #[inline(always)]
     pub fn sk(&self) -> &'a sock {
-        unsafe { &*self.kptr.__bindgen_anon_2.sk }
+        unsafe { &*self.kptr.sk }
     }
 }
 

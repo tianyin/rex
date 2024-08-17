@@ -1,6 +1,8 @@
 use crate::bindings::linux::kernel::CONFIG_NR_CPUS as NR_CPUS;
 use crate::stub;
 
+use core::ptr::addr_of;
+
 pub(crate) trait PerCPURead<T> {
     unsafe fn this_cpu_read(addr: u64) -> T;
 }
@@ -107,7 +109,7 @@ pub(crate) unsafe fn this_cpu_read<T: PerCPURead<T>>(pcp_addr: u64) -> T {
 #[inline(always)]
 unsafe fn __this_cpu_ptr(pcp_addr: u64) -> u64 {
     let cpu_id = unsafe {
-        this_cpu_read::<u32>(&stub::cpu_number as *const i32 as u64) as usize
+        this_cpu_read::<u32>(cpu_number() as *const i32 as u64) as usize
     };
 
     pcp_addr + stub::__per_cpu_offset[cpu_id]
@@ -119,4 +121,24 @@ pub(crate) unsafe fn this_cpu_ptr<T>(pcp_addr: u64) -> *const T {
 
 pub(crate) unsafe fn this_cpu_ptr_mut<T>(pcp_addr: u64) -> *mut T {
     __this_cpu_ptr(pcp_addr) as *mut T
+}
+
+#[inline(always)]
+pub(crate) fn current_task() -> *const () {
+    unsafe {
+        addr_of!(
+            stub::pcpu_hot
+                .__bindgen_anon_1
+                .__bindgen_anon_1
+                .current_task
+        ) as *const *const () as *const ()
+    }
+}
+
+#[inline(always)]
+pub(crate) fn cpu_number() -> *const () {
+    unsafe {
+        addr_of!(stub::pcpu_hot.__bindgen_anon_1.__bindgen_anon_1.cpu_number)
+            as *const ()
+    }
 }

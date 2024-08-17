@@ -1,5 +1,6 @@
 use crate::stub;
 
+use crate::bindings::linux::kernel::iphdr__bindgen_ty_1__bindgen_ty_1;
 pub use crate::bindings::linux::kernel::{
     ethhdr, iphdr, tcphdr, udphdr, xdp_buff,
 };
@@ -16,6 +17,14 @@ pub use crate::bindings::uapi::linux::bpf::{
     BPF_PROG_TYPE_XDP, XDP_ABORTED, XDP_DROP, XDP_PASS, XDP_REDIRECT, XDP_TX,
 };
 pub use crate::bindings::uapi::linux::r#in::{IPPROTO_TCP, IPPROTO_UDP};
+
+impl iphdr {
+    // WARN: not sure this is a direct access
+    #[inline(always)]
+    pub fn get_addr(&self) -> iphdr__bindgen_ty_1__bindgen_ty_1 {
+        unsafe { self.__bindgen_anon_1.__bindgen_anon_1 }
+    }
+}
 
 #[inline(always)]
 pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {

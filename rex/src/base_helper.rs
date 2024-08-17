@@ -3,17 +3,17 @@ use crate::debug::printk;
 use crate::linux::bpf::bpf_map_type;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
-use crate::per_cpu::this_cpu_read;
+use crate::per_cpu::{cpu_number, this_cpu_read};
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
 use crate::utils::{to_result, Result};
-use core::mem::{MaybeUninit, self};
+use core::mem::{self, MaybeUninit};
 // use crate::timekeeping::*;
 
 use core::intrinsics::unlikely;
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
-    unsafe { this_cpu_read(&stub::cpu_number as *const i32 as u64) }
+    unsafe { this_cpu_read(cpu_number() as *const i32 as u64) }
 }
 
 pub(crate) fn bpf_trace_printk(
@@ -152,8 +152,8 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
 
 // pub(crate) fn bpf_for_each_map_elem<const MT: bpf_map_type, K, V, C>(
 //     map: &'static RexMapHandle<MT, K, V>,
-//     callback_fn: extern "C" fn(*const (), *const K, *const V, *const C) -> i64,
-//     callback_ctx: &C,
+//     callback_fn: extern "C" fn(*const (), *const K, *const V, *const C) ->
+// i64,     callback_ctx: &C,
 //     flags: u64,
 // ) -> Result {
 //     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
@@ -321,7 +321,9 @@ pub(crate) fn bpf_ringbuf_reserve<T>(
         return core::ptr::null_mut();
     }
 
-    let data = unsafe { stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0) };
+    let data = unsafe {
+        stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0)
+    };
 
     data as *mut T
 }

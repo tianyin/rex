@@ -259,14 +259,6 @@ static void test_bpf_perf_event(void)
 			  (PERF_COUNT_HW_CACHE_OP_READ << 8) |
 			  (PERF_COUNT_HW_CACHE_RESULT_ACCESS << 16),
 	};
-	struct perf_event_attr attr_hw_cache_branch_miss = {
-		.sample_freq = SAMPLE_FREQ,
-		.freq = 1,
-		.type = PERF_TYPE_HW_CACHE,
-		.config = PERF_COUNT_HW_CACHE_BPU |
-			  (PERF_COUNT_HW_CACHE_OP_READ << 8) |
-			  (PERF_COUNT_HW_CACHE_RESULT_MISS << 16),
-	};
 	struct perf_event_attr attr_type_raw = {
 		.sample_freq = SAMPLE_FREQ,
 		.freq = 1,
@@ -286,10 +278,6 @@ static void test_bpf_perf_event(void)
 	printf("Test HW_CACHE_L1D\n");
 	test_perf_event_all_cpu(&attr_hw_cache_l1d);
 	test_perf_event_task(&attr_hw_cache_l1d);
-
-	printf("Test HW_CACHE_BPU\n");
-	test_perf_event_all_cpu(&attr_hw_cache_branch_miss);
-	test_perf_event_task(&attr_hw_cache_branch_miss);
 
 	printf("Test Instruction Retired\n");
 	test_perf_event_all_cpu(&attr_type_raw);

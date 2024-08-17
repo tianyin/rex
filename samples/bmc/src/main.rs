@@ -200,7 +200,10 @@ fn prepare_packet(
     swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
 
     let ip_header_mut = obj.ip_header(ctx);
-    swap(&mut ip_header_mut.saddr, &mut ip_header_mut.daddr);
+    swap(
+        &mut ip_header_mut.get_addr().saddr,
+        &mut ip_header_mut.get_addr().daddr,
+    );
 
     let udp_header = obj.udp_header(ctx);
     swap(&mut udp_header.source, &mut udp_header.dest);
@@ -382,10 +385,10 @@ fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {
             return bmc_invalidate_cache(obj, ctx);
         }
         IPPROTO_UDP => {
-            let header_len = size_of::<ethhdr>()
-                + size_of::<iphdr>()
-                + size_of::<udphdr>()
-                + size_of::<memcached_udp_header>();
+            let header_len = size_of::<ethhdr>() +
+                size_of::<iphdr>() +
+                size_of::<udphdr>() +
+                size_of::<memcached_udp_header>();
             let udp_header = obj.udp_header(ctx);
             let port = u16::from_be(udp_header.dest);
             let payload = &ctx.data_slice[header_len..];
@@ -408,9 +411,9 @@ fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
             let mut off = 4;
             // move offset to the start of the first key
-            while off < BMC_MAX_PACKET_LENGTH
-                && off + 1 < payload.len()
-                && payload[off] == b' '
+            while off < BMC_MAX_PACKET_LENGTH &&
+                off + 1 < payload.len() &&
+                payload[off] == b' '
             {
                 off += 1;
             }
@@ -445,9 +448,9 @@ fn bmc_update_cache(
     let mut hash = FNV_OFFSET_BASIS_32;
 
     let mut off = 6usize;
-    while off < BMC_MAX_KEY_LENGTH
-        && header_len + off < skb.len() as usize
-        && payload[off] != b' '
+    while off < BMC_MAX_KEY_LENGTH &&
+        header_len + off < skb.len() as usize &&
+        payload[off] != b' '
     {
         hash_func!(hash, payload[off]);
         // bpf_printk!(obj, "current tx hash %d payload %d\n", hash as u64,
@@ -469,9 +472,9 @@ fn bmc_update_cache(
     if entry.valid == 1 && entry.hash == hash {
         let mut diff = 0;
         off = 6;
-        while off < BMC_MAX_KEY_LENGTH
-            && header_len + off < payload.len() as usize
-            && (payload[off] != b' ' || entry.data[off] != b' ')
+        while off < BMC_MAX_KEY_LENGTH &&
+            header_len + off < payload.len() as usize &&
+            (payload[off] != b' ' || entry.data[off] != b' ')
         {
             if entry.data[off] != payload[off] {
                 diff = 1;
@@ -491,9 +494,9 @@ fn bmc_update_cache(
     let (mut count, mut i) = (0usize, 0usize);
     entry.len = 0;
     // bpf_printk!(obj, "update_cace\n");
-    while i < BMC_MAX_CACHE_DATA_SIZE
-        && header_len + i < skb.len() as usize
-        && count < 2
+    while i < BMC_MAX_CACHE_DATA_SIZE &&
+        header_len + i < skb.len() as usize &&
+        count < 2
     {
         entry.data[i] = payload[i];
         entry.len += 1;

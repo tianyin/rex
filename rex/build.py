@@ -5,84 +5,87 @@ import sys
 import tomllib
 
 # https://github.com/rust-lang/rust-bindgen
-bindgen_cmd = 'bindgen --use-core --no-doc-comments --rust-target=1.64 '\
-        '--translate-enum-integer-types --no-layout-tests '\
-        '--no-prepend-enum-name --blocklist-type pt_regs'.split()
+bindgen_cmd = '''bindgen $LINUX/usr/include/%s --use-core
+--with-derive-default --ctypes-prefix core::ffi --no-layout-tests
+--no-debug '.*' --no-doc-comments --rust-target=1.73
+--translate-enum-integer-types --no-prepend-enum-name --blocklist-type
+pt_regs -o %s -- -I$LINUX/usr/include'''
 
-bindgen_kernel_cmd = '''bindgen %s --allowlist-type="(task_struct|tk_read_base|
-seqcount_raw_spinlock_t|clocksource|seqcount_t|seqcount_latch_t|timekeeper|
-kcsan_ctx|rnd_state|timespec64|bpf_spin_lock|bpf_sysctl_kern|xdp_buff|ethhdr|iphdr|tcphdr|udphdr|sk_buff|sock)"
---allowlist-var="(___GFP.*|CONFIG_.*)" --opaque-type xregs_state --opaque-type desc_struct
---opaque-type arch_lbr_state --opaque-type local_apic --opaque-type alt_instr
---opaque-type x86_msi_data --opaque-type x86_msi_addr_lo
---opaque-type kunit_try_catch --opaque-type spinlock --no-doc-comments
---use-core --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
---no-debug '.*' --rust-target=1.73 -o %s --
--nostdinc -I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
+k_structs = ['task_struct', 'tk_read_base', 'seqcount_raw_spinlock_t',
+             'clocksource', 'seqcount_t', 'seqcount_latch_t', 'timekeeper',
+             'kcsan_ctx', 'rnd_state', 'timespec64', 'bpf_spin_lock',
+             'bpf_sysctl_kern', 'xdp_buff', 'ethhdr', 'iphdr', 'tcphdr',
+             'udphdr', 'sk_buff', 'sock', 'pcpu_hot',
+             'bpf_perf_event_data_kern']
+
+bindgen_kernel_cmd = '''bindgen %s --allowlist-type="%s"
+--allowlist-var="(___GFP.*|CONFIG_.*)" --opaque-type xregs_state
+--opaque-type desc_struct --opaque-type arch_lbr_state --opaque-type
+local_apic --opaque-type alt_instr --opaque-type x86_msi_data --opaque-type
+x86_msi_addr_lo --opaque-type kunit_try_catch --opaque-type spinlock
+--no-doc-comments --blocklist-function __list_.*_report --use-core
+--with-derive-default --ctypes-prefix core::ffi --no-layout-tests
+--no-debug '.*' --rust-target=1.73 -o %s -- -nostdinc
+-I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
 -I$LINUX/include -I$LINUX/arch/x86/include/uapi
 -I$LINUX/arch/x86/include/generated/uapi -I$LINUX/include/uapi
--I$LINUX/include/generated/uapi
--include $LINUX/include/linux/compiler-version.h
--include $LINUX/include/linux/kconfig.h
--include $LINUX/include/linux/compiler_types.h -D__KERNEL__
--Wall -Wundef -Werror=strict-prototypes -Wno-trigraphs
--fno-strict-aliasing -fno-common -fshort-wchar -fno-PIE
--Werror=implicit-function-declaration -Werror=implicit-int
--Werror=return-type -Wno-format-security -funsigned-char -std=gnu11
+-I$LINUX/include/generated/uapi -include
+$LINUX/include/linux/compiler-version.h -include
+$LINUX/include/linux/kconfig.h -include
+$LINUX/include/linux/compiler_types.h -D__KERNEL__
 --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option
 -Werror=ignored-optimization-argument -Werror=option-ignored
--Werror=unused-command-line-argument -mno-sse -mno-mmx -mno-sse2 -mno-3dnow
--mno-avx -fcf-protection=none -m64 -falign-loops=1 -mno-80387
--mno-fp-ret-in-387 -mstack-alignment=8 -mskip-rax-setup -mtune=generic
--mno-red-zone -mcmodel=kernel -Wno-sign-compare -fno-asynchronous-unwind-tables
--mretpoline-external-thunk -mfunction-return=thunk-extern
--fno-delete-null-pointer-checks -Wno-frame-address
--Wno-address-of-packed-member -O2 -Wframe-larger-than=2048
--fstack-protector-strong -Wno-gnu -Wno-unused-but-set-variable
--Wno-unused-const-variable -fomit-frame-pointer -fno-stack-clash-protection
--fno-lto -falign-functions=16 -Wdeclaration-after-statement -Wvla
--Wno-pointer-sign -Wcast-function-type -Wimplicit-fallthrough
--fno-strict-overflow -fno-stack-check -Werror=date-time
--Werror=incompatible-pointer-types -Wno-initializer-overrides -Wno-format
--Wformat-extra-args -Wformat-invalid-specifier -Wformat-zero-length -Wnonnull
--Wformat-insufficient-args -Wno-sign-compare -Wno-pointer-to-enum-cast
--Wno-tautological-constant-out-of-range-compare -Wno-unaligned-access -g
--DKBUILD_MODNAME='"inner_unikernel"'
+-Werror=unused-command-line-argument -fmacro-prefix-map=./= -std=gnu11
+-fshort-wchar -funsigned-char -fno-common -fno-PIE -fno-strict-aliasing
+-mno-sse -mno-mmx -mno-sse2 -mno-3dnow -mno-avx -fcf-protection=branch
+-fno-jump-tables -m64 -falign-loops=1 -mno-80387 -mno-fp-ret-in-387
+-mstack-alignment=8 -mskip-rax-setup -mtune=generic -mno-red-zone
+-mcmodel=kernel -Wno-sign-compare -fno-asynchronous-unwind-tables
+-fno-delete-null-pointer-checks -O2 -fstack-protector-strong
+-fno-stack-clash-protection -pg -mfentry -DCC_USING_NOP_MCOUNT
+-DCC_USING_FENTRY -fno-lto -falign-functions=16 -fstrict-flex-arrays=3
+-fno-strict-overflow -fno-stack-check -Wall -Wundef
+-Werror=implicit-function-declaration -Werror=implicit-int
+-Werror=return-type -Werror=strict-prototypes -Wno-format-security
+-Wno-trigraphs -Wno-frame-address -Wno-address-of-packed-member
+-Wmissing-declarations -Wmissing-prototypes -Wframe-larger-than=2048
+-Wno-gnu -Wvla -Wno-pointer-sign -Wcast-function-type
+-Wimplicit-fallthrough -Werror=date-time -Werror=incompatible-pointer-types
+-Wenum-conversion -Wextra -Wunused -Wno-unused-but-set-variable
+-Wno-unused-const-variable -Wno-format-overflow
+-Wno-format-overflow-non-kprintf -Wno-format-truncation-non-kprintf
+-Wno-override-init -Wno-pointer-to-enum-cast
+-Wno-tautological-constant-out-of-range-compare -Wno-unaligned-access
+-Wno-enum-compare-conditional -Wno-enum-enum-conversion
+-Wno-missing-field-initializers -Wno-type-limits -Wno-shift-negative-value
+-Wno-sign-compare -Wno-unused-parameter -g
+-DKBUILD_MODFILE='"rex/rex_generated"' -DKBUILD_BASENAME='"rex_generated"'
+-DKBUILD_MODNAME='"rex_generated"' -D__KBUILD_MODNAME=kmod_rex_generated
 -D__BINDGEN__ -DMODULE'''
 
-def gen_inc_directive(header):
-    return '#include <%s>\n' % header
 
-# Generates Rust binding from C/C++ header
-def bindgen(header):
-    p = subprocess.run([*bindgen_cmd, header], check=True, capture_output=True)
-    output = p.stdout.decode('utf-8')
-    assert 'std::' not in output # sanity check
-    return output
-
-def prep_headers(usr_include, headers, out_dir):
-    for h in headers:
-        output = bindgen(os.path.join(usr_include, h))
-
-        subdir, file = os.path.split(h)
+def prep_uapi_headers(linux_path, headers, out_dir):
+    for header in headers:
+        subdir, hfile = os.path.split(header)
         subdir = os.path.join(out_dir, subdir)
         if not os.path.exists(subdir):
             os.makedirs(subdir)
 
-        with open(os.path.join(subdir, '%s.rs' % file[:-2]), 'w') as bind_f:
-            bind_f.write(output)
+        out_f = os.path.join(subdir, '%s.rs' % os.path.splitext(hfile)[0])
+        cmd = bindgen_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
+        subprocess.run(cmd % (header, out_f), check=True, shell=True)
+
 
 def parse_cargo_toml(cargo_toml_path):
     with open(cargo_toml_path, 'rb') as toml_f:
         cargo_toml = tomllib.load(toml_f)
-
-    assert 'rex' in cargo_toml, "no rex config found"
 
     uheaders = cargo_toml['rex'].get('uheaders', [])
     kheaders = cargo_toml['rex'].get('kheaders', [])
     kconfigs = cargo_toml['rex'].get('kconfigs', [])
 
     return uheaders, kheaders, kconfigs
+
 
 def prep_kernel_headers(headers, linux_path, out_dir):
     bindings_h = os.path.join(out_dir, 'bindings.h')
@@ -93,10 +96,12 @@ def prep_kernel_headers(headers, linux_path, out_dir):
 
     with open(bindings_h, 'w') as bindings:
         for h in headers:
-            bindings.write(gen_inc_directive(h))
+            bindings.write('#include <%s>\n' % h)
 
     cmd = bindgen_kernel_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
-    subprocess.run(cmd % (bindings_h, kernel_rs), check=True, shell=True)
+    subprocess.run(cmd % (bindings_h, '|'.join(k_structs), kernel_rs),
+                   check=True, shell=True)
+
 
 def parse_kconfigs(dot_config_path, kconfigs):
     if len(kconfigs) == 0:
@@ -112,6 +117,7 @@ def parse_kconfigs(dot_config_path, kconfigs):
                             filter(lambda l: l[0] != '#' and ptn.match(l),
                                    dot_config_content)))))
 
+
 def main(argv):
     linux_path = argv[1]
     out_dir = argv[2]
@@ -121,10 +127,11 @@ def main(argv):
     uheaders, kheaders, kconfigs = result
 
     u_out_dir = os.path.join(out_dir, 'uapi')
-    prep_headers(os.path.join(linux_path, 'usr/include'), uheaders, u_out_dir)
+    prep_uapi_headers(linux_path, uheaders, u_out_dir)
     prep_kernel_headers(kheaders, linux_path, out_dir)
     parse_kconfigs(os.path.join(linux_path, '.config'), kconfigs)
     return 0
+
 
 if __name__ == '__main__':
     exit(main(sys.argv))

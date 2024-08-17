@@ -1,10 +1,12 @@
-use super::binding::{
+use crate::bindings::linux::kernel::{
     bpf_perf_event_data_kern, bpf_user_pt_regs_t, perf_sample_data,
 };
+
 use crate::bindings::uapi::linux::bpf::{
     bpf_map_type, bpf_perf_event_value, BPF_MAP_TYPE_STACK_TRACE,
     BPF_PROG_TYPE_PERF_EVENT,
 };
+
 use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::prog_type::rex_prog;
@@ -13,26 +15,63 @@ use crate::task_struct::TaskStruct;
 use crate::utils::{to_result, Result};
 
 use core::intrinsics::unlikely;
+use paste::paste;
 
-#[derive(Debug)]
 pub struct bpf_perf_event_data<'a> {
     kptr: &'a mut bpf_perf_event_data_kern,
 }
 
-macro_rules! decl_reg_accessors {
+macro_rules! decl_reg_accessors1 {
     ($t:ident $($ts:ident)*) => {
         #[inline(always)]
         pub fn $t(&self) -> u64 {
             unsafe { (*self.kptr.regs).$t }
         }
-        decl_reg_accessors!($($ts)*);
+        decl_reg_accessors1!($($ts)*);
+    };
+    () => {};
+}
+
+macro_rules! decl_reg_accessors2 {
+    ($t:ident $($ts:ident)*) => {
+        paste! {
+            #[inline(always)]
+            pub fn [<r $t>](&self) -> u64 {
+                unsafe { (*self.kptr.regs).$t }
+            }
+        }
+        decl_reg_accessors2!($($ts)*);
     };
     () => {};
 }
 
 impl<'a> bpf_perf_event_data<'a> {
-    decl_reg_accessors!(r15 r14 r13 r12 rbp rbx r11 r10 r9 r8 rax rcx rdx rsi
-        rdi orig_rax rip cs eflags rsp ss);
+    // regs that does not require special handling
+    decl_reg_accessors1!(r15 r14 r13 r12 r11 r10 r9 r8);
+
+    // regs that does not have the 'r' prefix in kernel pt_regs
+    decl_reg_accessors2!(bp bx ax cx dx si di ip sp);
+
+    // orig_rax cs eflags ss cannot be batch-processed by macros
+    #[inline(always)]
+    pub fn orig_rax(&self) -> u64 {
+        unsafe { (*self.kptr.regs).orig_ax }
+    }
+
+    #[inline(always)]
+    pub fn cs(&self) -> u64 {
+        unsafe { (*self.kptr.regs).__bindgen_anon_1.cs as u64 }
+    }
+
+    #[inline(always)]
+    pub fn eflags(&self) -> u64 {
+        unsafe { (*self.kptr.regs).flags }
+    }
+
+    #[inline(always)]
+    pub fn ss(&self) -> u64 {
+        unsafe { (*self.kptr.regs).__bindgen_anon_2.ss as u64 }
+    }
 
     #[inline(always)]
     pub fn sample_period(&self) -> u64 {
