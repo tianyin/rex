@@ -1,5 +1,5 @@
 use proc_macro::TokenStream;
-use syn::{ Type, TypePath};
+use syn::{Type, TypePath};
 
 fn type_checking(type_path: &TypePath) -> bool {
     let type_name = type_path.path.segments.last().unwrap().ident.to_string();
