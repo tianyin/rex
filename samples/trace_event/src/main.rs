@@ -64,7 +64,7 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
             "CPU-%d period %lld ip %llx",
             cpu as u64,
             ctx.sample_period(),
-            ctx.rip()
+            ctx.regs().rip()
         );
         0i32
     })? as u32;
@@ -77,7 +77,7 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
             "CPU-%d period %lld ip %llx",
             cpu as u64,
             ctx.sample_period(),
-            ctx.rip()
+            ctx.regs().rip()
         );
         0i32
     })? as u32;

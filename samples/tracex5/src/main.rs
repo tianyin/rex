@@ -8,10 +8,11 @@ use rex::bpf_printk;
 use rex::kprobe::*;
 use rex::linux::seccomp::seccomp_data;
 use rex::linux::unistd::*;
+use rex::pt_regs::PtRegs;
 use rex::rex_kprobe;
 use rex::Result;
 
-pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> Result {
+pub fn func_sys_write(obj: &kprobe, ctx: &PtRegs) -> Result {
     let mut sd: seccomp_data = seccomp_data {
         nr: 0,
         arch: 0,
@@ -34,7 +35,7 @@ pub fn func_sys_write(obj: &kprobe, ctx: &pt_regs) -> Result {
     Ok(0)
 }
 
-pub fn func_sys_read(obj: &kprobe, ctx: &pt_regs) -> Result {
+pub fn func_sys_read(obj: &kprobe, ctx: &PtRegs) -> Result {
     let mut sd: seccomp_data = seccomp_data {
         nr: 0,
         arch: 0,
@@ -57,13 +58,13 @@ pub fn func_sys_read(obj: &kprobe, ctx: &pt_regs) -> Result {
     Ok(0)
 }
 
-pub fn func_sys_mmap(obj: &kprobe, _: &pt_regs) -> Result {
+pub fn func_sys_mmap(obj: &kprobe, _: &PtRegs) -> Result {
     bpf_printk!(obj, "mmap\n");
     Ok(0)
 }
 
 #[rex_kprobe(function = "__seccomp_filter")]
-fn rex_prog1(obj: &kprobe, ctx: &mut pt_regs) -> Result {
+fn rex_prog1(obj: &kprobe, ctx: &mut PtRegs) -> Result {
     match ctx.rdi() as u32 {
         __NR_read => func_sys_read(obj, ctx),
         __NR_write => func_sys_write(obj, ctx),

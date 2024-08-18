@@ -19,6 +19,7 @@ pub mod map;
 pub mod perf_event;
 pub mod prog_type;
 //pub mod sysctl;
+pub mod pt_regs;
 pub mod task_struct;
 // pub mod timekeeping;
 pub mod sched_cls;

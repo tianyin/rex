@@ -1,5 +1,5 @@
 use crate::bindings::linux::kernel::{
-    bpf_perf_event_data_kern, bpf_user_pt_regs_t, perf_sample_data,
+    bpf_perf_event_data_kern, perf_sample_data,
 };
 
 use crate::bindings::uapi::linux::bpf::{
@@ -10,6 +10,7 @@ use crate::bindings::uapi::linux::bpf::{
 use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::prog_type::rex_prog;
+use crate::pt_regs::PtRegs;
 use crate::stub;
 use crate::task_struct::TaskStruct;
 use crate::utils::{to_result, Result};
@@ -22,56 +23,10 @@ pub struct bpf_perf_event_data {
     kdata: bpf_perf_event_data_kern,
 }
 
-macro_rules! decl_reg_accessors1 {
-    ($t:ident $($ts:ident)*) => {
-        #[inline(always)]
-        pub fn $t(&self) -> u64 {
-            unsafe { (*self.kdata.regs).$t }
-        }
-        decl_reg_accessors1!($($ts)*);
-    };
-    () => {};
-}
-
-macro_rules! decl_reg_accessors2 {
-    ($t:ident $($ts:ident)*) => {
-        paste! {
-            #[inline(always)]
-            pub fn [<r $t>](&self) -> u64 {
-                unsafe { (*self.kdata.regs).$t }
-            }
-        }
-        decl_reg_accessors2!($($ts)*);
-    };
-    () => {};
-}
-
 impl bpf_perf_event_data {
-    // regs that does not require special handling
-    decl_reg_accessors1!(r15 r14 r13 r12 r11 r10 r9 r8);
-
-    // regs that does not have the 'r' prefix in kernel pt_regs
-    decl_reg_accessors2!(bp bx ax cx dx si di ip sp);
-
-    // orig_rax cs eflags ss cannot be batch-processed by macros
     #[inline(always)]
-    pub fn orig_rax(&self) -> u64 {
-        unsafe { (*self.kdata.regs).orig_ax }
-    }
-
-    #[inline(always)]
-    pub fn cs(&self) -> u64 {
-        unsafe { (*self.kdata.regs).__bindgen_anon_1.cs as u64 }
-    }
-
-    #[inline(always)]
-    pub fn eflags(&self) -> u64 {
-        unsafe { (*self.kdata.regs).flags }
-    }
-
-    #[inline(always)]
-    pub fn ss(&self) -> u64 {
-        unsafe { (*self.kdata.regs).__bindgen_anon_2.ss as u64 }
+    pub fn regs(&self) -> &PtRegs {
+        unsafe { &*(self.kdata.regs as *const PtRegs) }
     }
 
     #[inline(always)]
