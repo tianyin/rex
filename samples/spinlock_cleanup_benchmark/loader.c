@@ -16,7 +16,7 @@
 
 #include <librex.h>
 
-#define EXE                                                                    \
+#define EXE \
 	"./target/x86_64-unknown-linux-gnu/release/spinlock_cleanup_benchmark"
 
 int main(int argc, char **argv)
@@ -44,7 +44,7 @@ int main(int argc, char **argv)
 	}
 	int xdp_main_prog_fd = bpf_program__fd(prog);
 
-	if (bpf_set_link_xdp_fd(interface_idx, xdp_main_prog_fd, xdp_flags) <
+	if (bpf_xdp_attach(interface_idx, xdp_main_prog_fd, xdp_flags, NULL) <
 	    0) {
 		fprintf(stderr, "ERROR: xdp failed");
 		return 1;
