@@ -3,13 +3,14 @@
 extern crate rex;
 
 use core::sync::atomic::{AtomicU64, Ordering};
+use rex::pt_regs::PtRegs;
 use rex::{bpf_printk, Result};
 use rex::{kprobe::*, rex_kprobe};
 
 static ATOM: AtomicU64 = AtomicU64::new(42);
 
 #[rex_kprobe(function = "kprobe_target_func")]
-fn rex_prog1(obj: &kprobe, _ctx: &mut pt_regs) -> Result {
+fn rex_prog1(obj: &kprobe, _ctx: &mut PtRegs) -> Result {
     let random = obj.bpf_get_prandom_u32() as u64;
     ATOM.store(random, Ordering::Relaxed);
 

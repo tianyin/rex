@@ -4,10 +4,11 @@
 extern crate rex;
 
 use rex::kprobe::*;
+use rex::pt_regs::PtRegs;
 use rex::rex_kprobe;
 use rex::Result;
 
 #[rex_kprobe(function = "kprobe_target_func")]
-fn rex_prog1(_obj: &kprobe, _ctx: &mut pt_regs) -> Result {
+fn rex_prog1(_obj: &kprobe, _ctx: &mut PtRegs) -> Result {
     Ok(0)
 }
