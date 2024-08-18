@@ -17,15 +17,16 @@ use crate::utils::{to_result, Result};
 use core::intrinsics::unlikely;
 use paste::paste;
 
-pub struct bpf_perf_event_data<'a> {
-    kptr: &'a mut bpf_perf_event_data_kern,
+#[repr(transparent)]
+pub struct bpf_perf_event_data {
+    kdata: bpf_perf_event_data_kern,
 }
 
 macro_rules! decl_reg_accessors1 {
     ($t:ident $($ts:ident)*) => {
         #[inline(always)]
         pub fn $t(&self) -> u64 {
-            unsafe { (*self.kptr.regs).$t }
+            unsafe { (*self.kdata.regs).$t }
         }
         decl_reg_accessors1!($($ts)*);
     };
@@ -37,7 +38,7 @@ macro_rules! decl_reg_accessors2 {
         paste! {
             #[inline(always)]
             pub fn [<r $t>](&self) -> u64 {
-                unsafe { (*self.kptr.regs).$t }
+                unsafe { (*self.kdata.regs).$t }
             }
         }
         decl_reg_accessors2!($($ts)*);
@@ -45,7 +46,7 @@ macro_rules! decl_reg_accessors2 {
     () => {};
 }
 
-impl<'a> bpf_perf_event_data<'a> {
+impl bpf_perf_event_data {
     // regs that does not require special handling
     decl_reg_accessors1!(r15 r14 r13 r12 r11 r10 r9 r8);
 
@@ -55,32 +56,32 @@ impl<'a> bpf_perf_event_data<'a> {
     // orig_rax cs eflags ss cannot be batch-processed by macros
     #[inline(always)]
     pub fn orig_rax(&self) -> u64 {
-        unsafe { (*self.kptr.regs).orig_ax }
+        unsafe { (*self.kdata.regs).orig_ax }
     }
 
     #[inline(always)]
     pub fn cs(&self) -> u64 {
-        unsafe { (*self.kptr.regs).__bindgen_anon_1.cs as u64 }
+        unsafe { (*self.kdata.regs).__bindgen_anon_1.cs as u64 }
     }
 
     #[inline(always)]
     pub fn eflags(&self) -> u64 {
-        unsafe { (*self.kptr.regs).flags }
+        unsafe { (*self.kdata.regs).flags }
     }
 
     #[inline(always)]
     pub fn ss(&self) -> u64 {
-        unsafe { (*self.kptr.regs).__bindgen_anon_2.ss as u64 }
+        unsafe { (*self.kdata.regs).__bindgen_anon_2.ss as u64 }
     }
 
     #[inline(always)]
     pub fn sample_period(&self) -> u64 {
-        unsafe { (&*self.kptr.data).period }
+        unsafe { (&*self.kdata.data).period }
     }
 
     #[inline(always)]
     pub fn addr(&self) -> u64 {
-        unsafe { (&*self.kptr.data).addr }
+        unsafe { (&*self.kdata.data).addr }
     }
 }
 
@@ -114,11 +115,8 @@ impl<'a> perf_event<'a> {
         }
     }
 
-    fn convert_ctx(&self, ctx: *mut ()) -> bpf_perf_event_data {
-        let kptr: &mut bpf_perf_event_data_kern =
-            unsafe { &mut *(ctx as *mut bpf_perf_event_data_kern) };
-
-        bpf_perf_event_data { kptr }
+    fn convert_ctx(&self, ctx: *mut ()) -> &bpf_perf_event_data {
+        unsafe { &*(ctx as *mut bpf_perf_event_data) }
     }
 
     pub fn bpf_perf_prog_read_value(
@@ -127,9 +125,11 @@ impl<'a> perf_event<'a> {
         buf: &mut bpf_perf_event_value,
     ) -> Result {
         let size = core::mem::size_of::<bpf_perf_event_value>() as u32;
+        let ctx_kptr = ctx as *const bpf_perf_event_data
+            as *const bpf_perf_event_data_kern;
 
         unsafe {
-            to_result!(stub::bpf_perf_prog_read_value(ctx.kptr, buf, size))
+            to_result!(stub::bpf_perf_prog_read_value(ctx_kptr, buf, size))
         }
     }
 
@@ -144,8 +144,11 @@ impl<'a> perf_event<'a> {
             return Err(EINVAL as i32);
         }
 
+        let ctx_kptr = ctx as *const bpf_perf_event_data
+            as *const bpf_perf_event_data_kern;
+
         unsafe {
-            to_result!(stub::bpf_get_stackid_pe(ctx.kptr, map_kptr, flags))
+            to_result!(stub::bpf_get_stackid_pe(ctx_kptr, map_kptr, flags))
         }
     }
 
@@ -157,6 +160,6 @@ impl<'a> perf_event<'a> {
 impl rex_prog for perf_event<'_> {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
-        ((self.prog)(self, &newctx)).unwrap_or_else(|_| 0) as u32
+        ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32
     }
 }
