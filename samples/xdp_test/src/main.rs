@@ -12,9 +12,20 @@ use rex::{rex_tc, rex_xdp};
 
 #[rex_xdp]
 fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    let ip_header_mut = obj.ip_header(ctx);
+    let ip_header: &mut iphdr = obj.ip_header(ctx);
 
-    match u8::from_be(ip_header_mut.protocol) as u32 {
+    bpf_printk!(
+        obj,
+        "IP saddr %pi4\n",
+        ip_header.saddr() as *const u32 as u64
+    );
+    bpf_printk!(
+        obj,
+        "IP daddr %pi4\n",
+        ip_header.daddr() as *const u32 as u64
+    );
+
+    match u8::from_be(ip_header.protocol) as u32 {
         IPPROTO_TCP => {
             bpf_printk!(obj, "TCP packet!")
         }
@@ -31,6 +42,16 @@ fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {
 fn xdp_tx_filter(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let ip_header = obj.ip_header(skb);
 
+    bpf_printk!(
+        obj,
+        "IP saddr %pi4\n",
+        ip_header.saddr() as *const u32 as u64
+    );
+    bpf_printk!(
+        obj,
+        "IP daddr %pi4\n",
+        ip_header.daddr() as *const u32 as u64
+    );
     if u8::from_be(ip_header.protocol) as u32 == IPPROTO_UDP {
         bpf_printk!(obj, "UDP packet!");
     }
