@@ -503,17 +503,17 @@ macro_rules! bpf_printk {
     };
 
     ($obj:expr, $fmt:expr, $arg1:expr) => {
-        $obj.bpf_trace_printk($fmt, $arg1, 0, 0)
+        $obj.bpf_trace_printk($fmt, $arg1.into(), 0, 0)
             .map_or_else(|_| (), |_| ())
     };
 
     ($obj:expr, $fmt:expr, $arg1:expr, $arg2:expr) => {
-        $obj.bpf_trace_printk($fmt, $arg1, $arg2, 0)
+        $obj.bpf_trace_printk($fmt, $arg1.into(), $arg2.into(), 0)
             .map_or_else(|_| (), |_| ())
     };
 
     ($obj:expr, $fmt:expr, $arg1:expr, $arg2:expr, $arg3:expr) => {
-        $obj.bpf_trace_printk($fmt, $arg1, $arg2, $arg3)
+        $obj.bpf_trace_printk($fmt, $arg1.into(), $arg2.into(), $arg3.into())
             .map_or_else(|_| (), |_| ())
     };
 }
