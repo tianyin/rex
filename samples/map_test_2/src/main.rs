@@ -124,7 +124,9 @@ fn map_test_stack(obj: &tracepoint) -> Result {
 
     match STACK.peek() {
         None => bpf_printk!(obj, c"Not found.\n"),
-        Some(next_top) => bpf_printk!(obj, c"Next top of stack: %llu.\n", next_top as u64),
+        Some(next_top) => {
+            bpf_printk!(obj, c"Next top of stack: %llu.\n", next_top as u64)
+        }
     };
 
     Ok(0)
@@ -148,7 +150,9 @@ fn map_test_queue(obj: &tracepoint) -> Result {
 
     match QUEUE.peek() {
         None => bpf_printk!(obj, c"Not found.\n"),
-        Some(front) => bpf_printk!(obj, c"Front of queue: %llu.\n", front as u64),
+        Some(front) => {
+            bpf_printk!(obj, c"Front of queue: %llu.\n", front as u64)
+        }
     };
 
     QUEUE.pop();
@@ -156,7 +160,9 @@ fn map_test_queue(obj: &tracepoint) -> Result {
 
     match QUEUE.peek() {
         None => bpf_printk!(obj, c"Not found.\n"),
-        Some(next_front) => bpf_printk!(obj, c"Next front of queue: %llu.\n", next_front as u64),
+        Some(next_front) => {
+            bpf_printk!(obj, c"Next front of queue: %llu.\n", next_front as u64)
+        }
     };
     Ok(0)
 }
