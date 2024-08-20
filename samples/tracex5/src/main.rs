@@ -26,7 +26,7 @@ pub fn func_sys_write(obj: &kprobe, ctx: &PtRegs) -> Result {
     if sd.args[2] == 512 {
         bpf_printk!(
             obj,
-            "write(fd=%d, buf=%p, size=%d)\n",
+            c"write(fd=%d, buf=%p, size=%d)\n",
             sd.args[0],
             sd.args[1],
             sd.args[2]
@@ -49,7 +49,7 @@ pub fn func_sys_read(obj: &kprobe, ctx: &PtRegs) -> Result {
     if sd.args[2] > 128 && sd.args[2] <= 1024 {
         bpf_printk!(
             obj,
-            "read(fd=%d, buf=%p, size=%d)\n",
+            c"read(fd=%d, buf=%p, size=%d)\n",
             sd.args[0],
             sd.args[1],
             sd.args[2]
@@ -59,7 +59,7 @@ pub fn func_sys_read(obj: &kprobe, ctx: &PtRegs) -> Result {
 }
 
 pub fn func_sys_mmap(obj: &kprobe, _: &PtRegs) -> Result {
-    bpf_printk!(obj, "mmap\n");
+    bpf_printk!(obj, c"mmap\n");
     Ok(0)
 }
 
@@ -72,7 +72,7 @@ fn rex_prog1(obj: &kprobe, ctx: &mut PtRegs) -> Result {
         __NR_getuid..=__NR_getsid => {
             bpf_printk!(
                 obj,
-                "syscall=%d (one of get/set uid/pid/gid)\n",
+                c"syscall=%d (one of get/set uid/pid/gid)\n",
                 ctx.rdi()
             );
             Ok(0)

@@ -7,6 +7,7 @@ use crate::per_cpu::{cpu_number, this_cpu_read};
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
 use crate::utils::{to_result, Result};
+use core::ffi::CStr;
 use core::mem::{self, MaybeUninit};
 // use crate::timekeeping::*;
 
@@ -17,15 +18,15 @@ pub(crate) fn bpf_get_smp_processor_id() -> u32 {
 }
 
 pub(crate) fn bpf_trace_printk(
-    fmt: &str,
+    fmt: &CStr,
     arg1: u64,
     arg2: u64,
     arg3: u64,
 ) -> Result {
     unsafe {
-        to_result!(stub::bpf_trace_printk_rex(
+        to_result!(stub::bpf_trace_printk(
             fmt.as_ptr(),
-            fmt.len() as u32,
+            (fmt.count_bytes() + 1) as u32,
             arg1,
             arg2,
             arg3
@@ -357,7 +358,7 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_trace_printk(
             &self,
-            fmt: &str,
+            fmt: &core::ffi::CStr,
             arg1: u64,
             arg2: u64,
             arg3: u64,

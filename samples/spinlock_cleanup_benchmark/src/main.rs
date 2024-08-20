@@ -29,12 +29,12 @@ fn rex_prog1(obj: &xdp, _: &mut xdp_md) -> Result {
         let end = obj.bpf_ktime_get_ns();
         bpf_printk!(
             obj,
-            "Spinlock allocation and cleanup: %llu ns",
+            c"Spinlock allocation and cleanup: %llu ns",
             end - start
         );
         Ok(XDP_PASS as i32)
     } else {
-        bpf_printk!(obj, "Unable to look up map");
+        bpf_printk!(obj, c"Unable to look up map");
         Err(XDP_PASS as i32)
     }
 }

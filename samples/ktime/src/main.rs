@@ -25,7 +25,7 @@ fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
     obj.bpf_map_lookup_elem(&MAP_HASH, &zero);
     let end = obj.bpf_ktime_get_ns();
 
-    bpf_printk!(obj, "Time elapsed: %llu", end - start);
+    bpf_printk!(obj, c"Time elapsed: %llu", end - start);
 
     // let random = obj.bpf_get_prandom_u32() as u64;
     // obj.bpf_map_update_elem(&MAP_ARRAY, &zero, &random, BPF_ANY as u64)?;

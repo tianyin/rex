@@ -18,7 +18,7 @@ fn rex_prog1(obj: &kprobe, _ctx: &mut PtRegs) -> Result {
     let val = ATOM.load(Ordering::Relaxed);
     let end = obj.bpf_ktime_get_ns();
 
-    bpf_printk!(obj, "Time elapsed: %llu %llu", end - start, val);
+    bpf_printk!(obj, c"Time elapsed: %llu %llu", end - start, val);
 
     Ok(0)
 }

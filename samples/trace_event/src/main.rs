@@ -61,7 +61,7 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
         .map_err(|_| {
         bpf_printk!(
             obj,
-            "CPU-%d period %lld ip %llx",
+            c"CPU-%d period %lld ip %llx",
             cpu as u64,
             ctx.sample_period(),
             ctx.regs().rip()
@@ -74,7 +74,7 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
         .map_err(|_| {
         bpf_printk!(
             obj,
-            "CPU-%d period %lld ip %llx",
+            c"CPU-%d period %lld ip %llx",
             cpu as u64,
             ctx.sample_period(),
             ctx.regs().rip()
@@ -85,13 +85,13 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     obj.bpf_perf_prog_read_value(ctx, &mut value_buf)
         .map_or_else(
             |err| {
-                bpf_printk!(obj, "Get Time Failed, ErrCode: %d", err as u64);
+                bpf_printk!(obj, c"Get Time Failed, ErrCode: %d", err as u64);
                 err as u64
             },
             |val| {
                 bpf_printk!(
                     obj,
-                    "Time Enabled: %llu, Time Running: %llu",
+                    c"Time Enabled: %llu, Time Running: %llu",
                     value_buf.enabled,
                     value_buf.running
                 );
@@ -100,7 +100,7 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
         );
 
     if ctx.addr() != 0 {
-        bpf_printk!(obj, "Address recorded on event: %llx", ctx.addr());
+        bpf_printk!(obj, c"Address recorded on event: %llx", ctx.addr());
     }
 
     match obj.bpf_map_lookup_elem(&counts, &key) {

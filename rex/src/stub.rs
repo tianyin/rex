@@ -1,5 +1,5 @@
 /// All kernel symbols we need should be declared here
-use core::ffi::{c_uchar, VaList};
+use core::ffi::{c_char, c_uchar, VaList};
 
 use crate::bindings::linux::kernel::CONFIG_NR_CPUS as NR_CPUS;
 use crate::bindings::linux::kernel::{
@@ -12,8 +12,8 @@ extern "C" {
     /// `long bpf_trace_printk(const char *fmt, u32 fmt_size, ...)`
     ///
     /// Helpers takes at most 5 args so this function takes at most 3 fmt args
-    pub(crate) fn bpf_trace_printk_rex(
-        fmt: *const u8,
+    pub(crate) fn bpf_trace_printk(
+        fmt: *const c_char,
         fmt_size: u32,
         arg1: u64,
         arg2: u64,

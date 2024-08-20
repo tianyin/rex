@@ -3,7 +3,7 @@
   int func() { return 0; }
 
 KSYM_FUNC(bpf_get_current_pid_tgid)
-KSYM_FUNC(bpf_trace_printk_rex)
+KSYM_FUNC(bpf_trace_printk)
 KSYM_FUNC(bpf_map_lookup_elem)
 KSYM_FUNC(bpf_map_update_elem)
 KSYM_FUNC(bpf_map_delete_elem)

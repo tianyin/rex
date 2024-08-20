@@ -16,7 +16,7 @@ fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
         let pid = task.get_pid();
         bpf_printk!(
             obj,
-            "Rust triggered from PID %u on CPU %u.\n",
+            c"Rust triggered from PID %u on CPU %u.\n",
             pid as u64,
             cpu as u64
         );

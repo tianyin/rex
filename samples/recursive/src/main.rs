@@ -42,7 +42,7 @@ fn rex_recursive(obj: &kprobe, ctx: &mut PtRegs) -> Result {
     let end_time: u64 = obj.bpf_ktime_get_ns();
     // bpf_printk!(obj, "Result: %d", result as u64);
 
-    bpf_printk!(obj, "Time: %llu", end_time - start_time);
+    bpf_printk!(obj, c"Time: %llu", end_time - start_time);
 
     Ok(0)
 }

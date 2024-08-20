@@ -279,7 +279,7 @@ fn write_pkt_reply(
         match obj.bpf_xdp_adjust_tail(ctx, padding) {
             Ok(_) => {}
             Err(_) => {
-                bpf_printk!(obj, "adjust tail failed\n");
+                bpf_printk!(obj, c"adjust tail failed\n");
                 return Ok(XDP_DROP as i32);
             }
         }
