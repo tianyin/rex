@@ -4,7 +4,7 @@
 int main(void)
 {
     char buf[256];
-    getcwd(buf, 256);
-    // printf("%s\n", buf);
+    char *result = getcwd(buf, 256);
+    (void)result;
     return 0;
 }
