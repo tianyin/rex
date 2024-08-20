@@ -133,11 +133,12 @@ impl<'a> CleanupEntries<'a> {
 #[no_mangle]
 #[inline(always)]
 unsafe fn __rex_check_stack() {
-    // subtract 0x2000 because only 2 pages are supposed to be used by rex progs
+    // subtract 0x4000 because these 4 pages are either used by the kernel or
+    // panic handling
     unsafe {
         core::arch::asm!(
             "mov r10, gs:[r10]",
-            "sub r10, 0x2000",
+            "sub r10, 0x4000",
             "cmp rsp, r10",
             "ja 1f",
             "call __rex_handle_stack_overflow",
