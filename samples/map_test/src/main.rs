@@ -83,7 +83,7 @@ fn map_test2(obj: &tracepoint) -> Result {
             bpf_printk!(obj, c"Not found.\n");
         }
         Some(val) => {
-            bpf_printk!(obj, c"Found Val=%llu.\n", (*val).try_into().unwrap());
+            bpf_printk!(obj, c"Found Val=%llu.\n", *val);
         }
     }
     // let ret = obj.bpf_map_push_elem(MAP_ARRAY, pid as u64, BPF_EXIST.into());
