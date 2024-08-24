@@ -35,8 +35,8 @@
           curl
           diffutils
           xz.dev
-          (hiPrio llvm_18)
-          (hiPrio clang_18)
+          llvm_18
+          clang_18
           lld_18
           clang-tools_18
           zlib.dev
