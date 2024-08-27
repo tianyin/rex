@@ -112,7 +112,10 @@ def parse_kconfigs(dot_config_path, kconfigs):
 
     ptn = re.compile('(%s)' % '|'.join(kconfigs))
 
-    print('\n'.join(map(lambda l: 'cargo:rustc-cfg=%s="%s"' % l,
+    fmt = 'cargo:rustc-cfg=%s="%s"\n' + \
+          'cargo::rustc-check-cfg=cfg(%s, values("%s"))'
+
+    print('\n'.join(map(lambda l: fmt % (l * 2),
                         map(lambda l: tuple(l.strip().split('=')),
                             filter(lambda l: l[0] != '#' and ptn.match(l),
                                    dot_config_content)))))
