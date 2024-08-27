@@ -1,13 +1,12 @@
 #![no_std]
 #![no_main]
-#![allow(non_camel_case_types)]
 
 extern crate rex;
 
 use rex::bpf_printk;
+use rex::rex_xdp;
 use rex::utils::*;
 use rex::xdp::*;
-use rex::{rex_xdp};
 
 #[rex_xdp]
 fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {

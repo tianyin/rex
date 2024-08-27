@@ -28,8 +28,6 @@ struct bpf_progs_desc {
 	struct bpf_program *prog;
 };
 
-;
-
 static struct bpf_progs_desc progs[] = {
 	{ "xdp_rx_filter", BPF_PROG_TYPE_XDP, 0, -1, NULL }
 };
