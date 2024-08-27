@@ -14,6 +14,7 @@ INC += -I${LINUX}/usr/include -I${LINUX}/tools/lib
 
 CXXFLAGS += -O2 -march=native -pipe -std=c++23 -fPIC -Wall -Werror -g
 CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
+CXXFLAGS += -fvisibility=hidden
 
 ifeq ($(LLVM),1) # LLVM ThinLTO
 CXXFLAGS += -flto=thin

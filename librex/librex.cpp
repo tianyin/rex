@@ -752,11 +752,12 @@ bpf_object *rex_obj::bpf_obj() {
   return bpf_obj_ptr.get();
 }
 
-void rex_set_debug(int val) { debug = val; }
+[[gnu::visibility("default")]] void rex_set_debug(int val) { debug = val; }
 
 static std::vector<std::unique_ptr<rex_obj>> objs;
 
-rex_obj *rex_obj_load(const char *file_path) {
+[[nodiscard, gnu::visibility("default")]] rex_obj *
+rex_obj_load(const char *file_path) {
   int ret;
   if (elf_version(EV_CURRENT) == EV_NONE) {
     std::cerr << "elf: failed to init libelf" << std::endl;
@@ -782,7 +783,8 @@ rex_obj *rex_obj_load(const char *file_path) {
   }
 }
 
-bpf_object *rex_obj_get_bpf(rex_obj *obj) {
+[[nodiscard, gnu::visibility("default")]] bpf_object *
+rex_obj_get_bpf(rex_obj *obj) {
   try {
     return obj->bpf_obj();
   } catch (std::exception &e) {
