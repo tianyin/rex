@@ -222,5 +222,5 @@ extern "C" {
     ///  
     ///  Used to indidicate whether a BPF program in a CPU is executing
     ///  inside a helper, or inside a panic handler, or just in BPF text.
-    pub(crate) static mut bpf_termination_flag: u64;
+    pub(crate) static mut bpf_termination_flag: u8;
 }

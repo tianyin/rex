@@ -17,12 +17,11 @@ use core::intrinsics::unlikely;
 macro_rules! termination_check {
     ($func:expr) => {{
         // Declare and initialize the termination flag pointer
-        // TODO: change this u64 to u8
-        let mut termination_flag: *mut u64;
+        let mut termination_flag: *mut u8;
         unsafe {
             termination_flag = crate::per_cpu::this_cpu_ptr_mut(
                 core::ptr::addr_of_mut!(crate::stub::bpf_termination_flag)
-                    as *mut u64 as *mut () as u64,
+                    as u64,
             );
 
             // Set the termination flag
@@ -537,21 +536,14 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn dummy_long_running_helper(&self) -> u32 {
             unsafe {
-                let termination_flag: *mut u64 =
+                let termination_flag: *mut u8 =
                     crate::per_cpu::this_cpu_ptr_mut(core::ptr::addr_of_mut!(
                         crate::stub::bpf_termination_flag
-                    ) as *mut u64
-                        as *mut ()
-                        as u64);
+                    ) as u64);
 
                 *termination_flag = 1;
                 // simulate long runtime
-                let mut target = 1000;
-                loop {
-                    target -= 1;
-                    if target == *termination_flag {
-                        break;
-                    }
+                for _ in 0..10000 {
                     crate::base_helper::bpf_trace_printk(
                         c"Inside loop of helper",
                         0,
