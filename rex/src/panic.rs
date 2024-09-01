@@ -149,7 +149,7 @@ unsafe fn __rex_check_stack() {
 }
 
 #[no_mangle]
-unsafe fn __rex_handle_timeout() -> ! {
+pub(crate) unsafe fn __rex_handle_timeout() -> ! {
     panic!("Timeout in Rex program");
 }
 

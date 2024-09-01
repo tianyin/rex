@@ -217,4 +217,10 @@ extern "C" {
     /// Per-cpu point of the current task
     #[allow(improper_ctypes)]
     pub(crate) static pcpu_hot: pcpu_hot;
+
+    ///  `DEFINE_PER_CPU(int, bpf_termination_flag);`
+    ///  
+    ///  Used to indidicate whether a BPF program in a CPU is executing
+    ///  inside a helper, or inside a panic handler, or just in BPF text.
+    pub(crate) static mut bpf_termination_flag: u64;
 }

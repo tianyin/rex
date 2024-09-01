@@ -3,6 +3,7 @@ use crate::debug::printk;
 use crate::linux::bpf::bpf_map_type;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
+use crate::panic::__rex_handle_timeout;
 use crate::per_cpu::{cpu_number, this_cpu_read};
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
@@ -12,6 +13,39 @@ use core::mem::{self, MaybeUninit};
 // use crate::timekeeping::*;
 
 use core::intrinsics::unlikely;
+
+macro_rules! termination_check {
+    ($func:expr) => {{
+        // Declare and initialize the termination flag pointer
+        // TODO: change this u64 to u8
+        let mut termination_flag: *mut u64;
+        unsafe {
+            termination_flag = crate::per_cpu::this_cpu_ptr_mut(
+                core::ptr::addr_of_mut!(crate::stub::bpf_termination_flag)
+                    as *mut u64 as *mut () as u64,
+            );
+
+            // Set the termination flag
+            *termination_flag = 1;
+        }
+
+        // Call the provided function
+        let res = $func;
+
+        // Check the termination flag and handle timeout
+        unsafe {
+            if *termination_flag == 2 {
+                crate::panic::__rex_handle_timeout();
+            } else {
+                // Reset the termination flag upon exiting
+                *termination_flag = 0;
+            }
+        }
+
+        // Return the result of the function call
+        res
+    }};
+}
 
 pub(crate) fn bpf_get_smp_processor_id() -> u32 {
     unsafe { this_cpu_read(cpu_number() as *const i32 as u64) }
@@ -23,7 +57,7 @@ pub(crate) fn bpf_trace_printk(
     arg2: u64,
     arg3: u64,
 ) -> Result {
-    unsafe {
+    termination_check!(unsafe {
         to_result!(stub::bpf_trace_printk(
             fmt.as_ptr(),
             (fmt.count_bytes() + 1) as u32,
@@ -31,7 +65,7 @@ pub(crate) fn bpf_trace_printk(
             arg2,
             arg3
         ))
-    }
+    })
 }
 
 pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
@@ -43,10 +77,10 @@ pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
         return None;
     }
 
-    let value = unsafe {
+    let value = termination_check!(unsafe {
         stub::bpf_map_lookup_elem(map_kptr, key as *const K as *const ())
             as *mut V
-    };
+    });
 
     if value.is_null() {
         None
@@ -66,14 +100,14 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    unsafe {
+    termination_check!(unsafe {
         to_result!(stub::bpf_map_update_elem(
             map_kptr,
             key as *const K as *const (),
             value as *const V as *const (),
             flags
         ) as i32)
-    }
+    })
 }
 
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
@@ -85,12 +119,12 @@ pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    unsafe {
+    termination_check!(unsafe {
         to_result!(stub::bpf_map_delete_elem(
             map_kptr,
             key as *const K as *const ()
         ) as i32)
-    }
+    })
 }
 
 pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
@@ -103,13 +137,13 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
         return Err(EINVAL as i32);
     }
 
-    unsafe {
+    termination_check!(unsafe {
         to_result!(stub::bpf_map_push_elem(
             map_kptr,
             value as *const V as *const (),
             flags
         ) as i32)
-    }
+    })
 }
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
@@ -122,12 +156,12 @@ pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
 
     let mut value: MaybeUninit<V> = MaybeUninit::uninit();
 
-    let res = unsafe {
+    let res = termination_check!(unsafe {
         to_result!(stub::bpf_map_pop_elem(
             map_kptr,
             value.as_mut_ptr() as *mut ()
         ) as i32)
-    };
+    });
     res.map(|_| unsafe { value.assume_init() }).ok()
 }
 
@@ -141,12 +175,12 @@ pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
 
     let mut value: MaybeUninit<V> = MaybeUninit::uninit();
 
-    let res = unsafe {
+    let res = termination_check!(unsafe {
         to_result!(stub::bpf_map_peek_elem(
             map_kptr,
             value.as_mut_ptr() as *mut ()
         ) as i32)
-    };
+    });
 
     res.map(|_| unsafe { value.assume_init() }).ok()
 }
@@ -174,13 +208,13 @@ pub(crate) fn bpf_probe_read_kernel<T>(
     dst: &mut T,
     unsafe_ptr: *const (),
 ) -> Result {
-    unsafe {
+    termination_check!(unsafe {
         to_result!(stub::bpf_probe_read_kernel(
             dst as *mut T as *mut (),
             core::mem::size_of::<T>() as u32,
             unsafe_ptr,
         ))
-    }
+    })
 }
 
 pub(crate) fn bpf_strcmp(s1: &str, s2: &str) -> i32 {
@@ -267,15 +301,15 @@ pub(crate) fn bpf_ktime_get_boot_ns_origin() -> u64 {
 */
 
 pub(crate) fn bpf_ktime_get_ns() -> u64 {
-    unsafe { stub::bpf_ktime_get_ns() }
+    termination_check!(unsafe { stub::bpf_ktime_get_ns() })
 }
 
 pub(crate) fn bpf_ktime_get_boot_ns() -> u64 {
-    unsafe { stub::bpf_ktime_get_boot_ns() }
+    termination_check!(unsafe { stub::bpf_ktime_get_boot_ns() })
 }
 
 pub(crate) fn bpf_ktime_get_coarse_ns() -> u64 {
-    unsafe { stub::bpf_ktime_get_coarse_ns() }
+    termination_check!(unsafe { stub::bpf_ktime_get_coarse_ns() })
 }
 
 /*
@@ -293,7 +327,7 @@ pub(crate) fn bpf_ktime_get_coarse_ns() -> u64 {
 */
 
 pub(crate) fn bpf_get_prandom_u32() -> u32 {
-    bpf_user_rnd_u32()
+    termination_check!(bpf_user_rnd_u32())
 }
 
 // In document it says that data is a pointer to an array of 64-bit values.
@@ -302,7 +336,7 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     fmt: &str,
     data: &[u64; M],
 ) -> Result {
-    unsafe {
+    termination_check!(unsafe {
         to_result!(stub::bpf_snprintf(
             str.as_mut_ptr(),
             N as u32,
@@ -310,7 +344,7 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
             data.as_ptr(),
             M as u32,
         ) as i32)
-    }
+    })
 }
 
 pub(crate) fn bpf_ringbuf_reserve<T>(
@@ -322,19 +356,23 @@ pub(crate) fn bpf_ringbuf_reserve<T>(
         return core::ptr::null_mut();
     }
 
-    let data = unsafe {
+    let data = termination_check!(unsafe {
         stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0)
-    };
+    });
 
     data as *mut T
 }
 
 pub(crate) fn bpf_ringbuf_submit<T>(data: &mut T, flags: u64) {
-    unsafe { stub::bpf_ringbuf_submit(data as *mut T as *mut (), flags) }
+    termination_check!(unsafe {
+        stub::bpf_ringbuf_submit(data as *mut T as *mut (), flags)
+    })
 }
 
 pub(crate) fn bpf_ringbuf_discard<T>(data: &mut T, flags: u64) {
-    unsafe { stub::bpf_ringbuf_discard(data as *mut T as *mut (), flags) }
+    termination_check!(unsafe {
+        stub::bpf_ringbuf_discard(data as *mut T as *mut (), flags)
+    })
 }
 
 pub(crate) fn bpf_ringbuf_query(
@@ -345,7 +383,9 @@ pub(crate) fn bpf_ringbuf_query(
     if unlikely(map_kptr.is_null()) {
         return None;
     }
-    Some(unsafe { stub::bpf_ringbuf_query(map_kptr, flags) })
+    Some(termination_check!(unsafe {
+        stub::bpf_ringbuf_query(map_kptr, flags)
+    }))
 }
 
 macro_rules! base_helper_defs {
@@ -491,6 +531,53 @@ macro_rules! base_helper_defs {
         #[inline(always)]
         pub fn bpf_ringbuf_submit<T>(&self, data: &mut T, flags: u64) {
             crate::base_helper::bpf_ringbuf_submit(data, flags)
+        }
+
+        // NOTE: test only
+        #[inline(always)]
+        pub fn dummy_long_running_helper(&self) -> u32 {
+            unsafe {
+                let termination_flag: *mut u64 =
+                    crate::per_cpu::this_cpu_ptr_mut(core::ptr::addr_of_mut!(
+                        crate::stub::bpf_termination_flag
+                    ) as *mut u64
+                        as *mut ()
+                        as u64);
+
+                *termination_flag = 1;
+                // simulate long runtime
+                let mut target = 1000;
+                loop {
+                    target -= 1;
+                    if target == *termination_flag {
+                        break;
+                    }
+                    crate::base_helper::bpf_trace_printk(
+                        c"Inside loop of helper",
+                        0,
+                        0,
+                        0,
+                    );
+                }
+                crate::base_helper::bpf_trace_printk(
+                    c"Exit loop of helper. ",
+                    0,
+                    0,
+                    0,
+                );
+                if *termination_flag == 2 {
+                    crate::base_helper::bpf_trace_printk(
+                        c"Helper finds termination flag set. Calling panic! ",
+                        0,
+                        0,
+                        0,
+                    );
+                    crate::panic::__rex_handle_timeout();
+                } else {
+                    *termination_flag = 0; // exiting
+                }
+                0
+            }
         }
     };
 }

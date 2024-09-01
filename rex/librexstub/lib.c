@@ -40,3 +40,4 @@ unsigned long *__per_cpu_offset;
 void *rex_cleanup_entries;
 unsigned long rex_stack_ptr;
 void *pcpu_hot;
+unsigned long bpf_termination_flag;
