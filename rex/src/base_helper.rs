@@ -20,7 +20,7 @@ macro_rules! termination_check {
         let mut termination_flag: *mut u8;
         unsafe {
             termination_flag = crate::per_cpu::this_cpu_ptr_mut(
-                core::ptr::addr_of_mut!(crate::stub::bpf_termination_flag)
+                core::ptr::addr_of_mut!(crate::stub::rex_termination_state)
                     as u64,
             );
 
@@ -538,7 +538,7 @@ macro_rules! base_helper_defs {
             unsafe {
                 let termination_flag: *mut u8 =
                     crate::per_cpu::this_cpu_ptr_mut(core::ptr::addr_of_mut!(
-                        crate::stub::bpf_termination_flag
+                        crate::stub::rex_termination_state
                     ) as u64);
 
                 *termination_flag = 1;
