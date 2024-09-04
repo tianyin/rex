@@ -29,7 +29,7 @@ def run_make(directory):
     try:
         args = parse_arguments()
         if not args.no_clean_build:
-            command = "make clean; make"
+            command = "make clean; make LLVM=1"
         else:
             command = "make LLVM=1"
 
