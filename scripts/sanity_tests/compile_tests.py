@@ -13,6 +13,7 @@ exclusion_list = ["electrode", "memcached_benchmark"]
 script_path = Path(__file__).resolve()
 repo_path = script_path.parent.parent.parent
 samples_path = repo_path.joinpath("samples")
+librex_path = repo_path.joinpath("librex")
 
 # Set Path env
 kernel_path = repo_path.joinpath("./linux")
@@ -24,12 +25,13 @@ os.environ["RUST_BACKTRACE"] = "1"
 
 # Run make
 def run_make(directory):
+    """Compile rex samples"""
     try:
         args = parse_arguments()
         if not args.no_clean_build:
             command = "make clean; make"
         else:
-            command = "make"
+            command = "make LLVM=1"
 
         os.chdir(directory)
         subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
@@ -62,6 +64,8 @@ def main():
     samples_list = sorted(filter(is_sample, samples_list),
                           key=lambda x: x.name)
 
+    # append librex to compile list
+    samples_list.insert(0, librex_path)
     with tqdm(total=len(samples_list), desc='   \033[34mBuilding\033[0m',
               leave=False, dynamic_ncols=True) as pbar:
         start_time = time.time()
