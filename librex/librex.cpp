@@ -25,7 +25,7 @@
 #include "bindings.h"
 #include "librex.h"
 
-using namespace std::literals::string_literals;
+using namespace std::literals;
 
 namespace {
 
@@ -265,6 +265,7 @@ private:
   std::vector<rex_rela_dyn> dyn_relas;
   std::vector<rex_dyn_sym> dyn_syms;
   std::vector<std::string> rela_sym_name;
+  std::optional<unsigned long> timeout_handler_off;
 
   std::unique_ptr<unsigned char[], file_map_del> file_map;
   std::optional<int> prog_fd;
@@ -467,6 +468,10 @@ int rex_obj::parse_progs() {
 
     scn_name = elf_strptr(elf.get(), shstrndx, elf64_getshdr(scn)->sh_name);
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
+
+    if ("__rex_handle_timeout"sv == sym_name)
+      timeout_handler_off = sym->st_value;
+
     if (debug) {
       std::clog << "section: \"" << scn_name << "\"" << std::endl;
       std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
@@ -482,6 +487,17 @@ int rex_obj::parse_progs() {
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
     progs.emplace_back(sym_name, scn_name, sym->st_value, *this);
   }
+
+  if (!timeout_handler_off) {
+    std::cerr << "elf: __rex_handle_timeout not found" << std::endl;
+    return -1;
+  }
+
+  if (debug) {
+    std::clog << "Found __rex_handle_timeout at offset" << std::hex
+              << timeout_handler_off.value() << std::dec << std::endl;
+  }
+
   return 0;
 };
 
@@ -674,6 +690,7 @@ int rex_obj::load() {
     attr.base_prog_fd = this->prog_fd.value();
     attr.prog_offset = prog.offset;
     attr.license = (__u64) "GPL";
+    attr.unwinder_insn_off = timeout_handler_off.value();
     curr_fd = bpf(BPF_PROG_LOAD_REX, &attr, sizeof(attr));
 
     if (curr_fd < 0) {
