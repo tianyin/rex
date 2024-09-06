@@ -33,7 +33,7 @@ macro_rules! termination_check {
 
         // Check the termination flag and handle timeout
         unsafe {
-            if *termination_flag == 2 {
+            if core::intrinsics::unlikely(*termination_flag == 2) {
                 crate::panic::__rex_handle_timeout();
             } else {
                 // Reset the termination flag upon exiting
