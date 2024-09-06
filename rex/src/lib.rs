@@ -4,7 +4,6 @@
     const_mut_refs,
     core_intrinsics,
     negative_impls,
-    panic_info_message
 )]
 #![allow(
     non_camel_case_types,

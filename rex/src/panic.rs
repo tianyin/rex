@@ -140,9 +140,9 @@ unsafe fn __rex_check_stack() {
             "mov r10, gs:[r10]",
             "sub r10, 0x4000",
             "cmp rsp, r10",
-            "ja 1f",
+            "ja 2f",
             "call __rex_handle_stack_overflow",
-            "1:",
+            "2:",
             in("r10") &stub::rex_stack_ptr as *const u64 as u64,
         );
     }
@@ -165,24 +165,15 @@ fn panic(info: &PanicInfo) -> ! {
 
     // Print the msg
     let mut msg = [0u8; 128];
-    if let Some(args) = info.message() {
-        // Only works in the most trivial case: no format args
-        if let Some(s) = args.as_str() {
-            let len = core::cmp::min(msg.len() - 1, s.len());
-            msg[..len].copy_from_slice(&(*s).as_bytes()[..len]);
-            msg[len] = 0u8;
-        } else {
-            let s = "Rust program panicked\n\0";
-            msg[..s.len()].copy_from_slice(s.as_bytes());
-        }
-    } else if let Some(s) = info.payload().downcast_ref::<&str>() {
+    let args = info.message();
+    // Only works in the most trivial case: no format args
+    if let Some(s) = args.as_str() {
         let len = core::cmp::min(msg.len() - 1, s.len());
         msg[..len].copy_from_slice(&(*s).as_bytes()[..len]);
         msg[len] = 0u8;
     } else {
-        let s = "Rex program panicked\n\0";
+        let s = "Rust program panicked\n\0";
         msg[..s.len()].copy_from_slice(s.as_bytes());
     }
-
     unsafe { stub::rex_landingpad(msg.as_ptr()) }
 }
