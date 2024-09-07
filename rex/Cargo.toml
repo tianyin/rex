@@ -16,7 +16,6 @@ doctest = false
 
 [dependencies]
 paste = { workspace = true }
-rlibc = { workspace = true }
 rex-macros = { workspace = true }
 
 [rex]

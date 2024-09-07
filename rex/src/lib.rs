@@ -34,7 +34,6 @@ mod read_once;
 mod stub;
 
 extern crate paste;
-extern crate rlibc;
 
 use crate::prog_type::rex_prog;
 use core::panic::PanicInfo;
