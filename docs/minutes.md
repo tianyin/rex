@@ -1,4 +1,50 @@
-MEETING MINUTES
+# 24-09-06 (scribe: Jinghao)
+
+[[Slides](https://docs.google.com/presentation/d/1x9eB45MpkaFqxvVSZnJ9IRYEHbDp7P5NrW37OeVVWl0/edit?usp=sharing),
+[Recording](https://illinois.zoom.us/rec/share/Qvyye3k4oL9VFppgo8cqiAm0p1H4qiNhMCT5-xk9EOI89LGgI8Z3DZ5yZsOcy8y0.Eo8_KU7TO9sYZVO3)]
+
+### Where we are
+- We implemented **program termination** support for Rex programs
+  - Based on Raj's previous IPI-based implementation
+    - Works by sending an IPI to the CPU that runs the program
+    - Resets `%rip` to the `__rex_handle_timeout` to trigger a panic
+    - Handles helper calls by deferring termination after helper call
+      returns
+      - This is because kernel code is not unwind safe
+  - Needs to efficiently and automatically trigger the termination - use a
+    watchdog timer
+    - Armed at boot time and runs periodically
+    - Each time the timer fires, the timer handler function checks each
+      online CPU for long running programs
+      - Works by comparing the program start time (in a per-CPU variable)
+        to the current `jiffies` time
+      - If runtime exceeds threshold (same as timer period, currently 20s),
+        send an IPI to the target CPU
+    - Does not work if timer and program are on the same CPU
+      - Under this case the IPI function is called synchronously, which
+        does not provide the register information of the program
+      - Solution: makes the timer rotate on each online CPU
+      - Program will be terminated the next time the timer triggers on a
+        different CPU
+  - Limitation:
+    - Cannot handle programs in hardirq
+- The failure model of Rex programs
+  - Failures in Rex may not happen synchronously
+    - In contrast, errors in BPF mostly come from helper function return
+      values
+    - When error occurs, what the program was doing at that time will
+      always be completed
+    - In Rex, the data the program touched may not be consistent (in order
+      words, make sense for that particular application)
+  - Shall we implement failure stop and cleanup all related data (programs,
+    maps, etc)
+  - Or shall we just let the application to handle it and decide how to
+    continue?
+
+### Next step
+- Setup the new machine and rerun experiments
+- Take a look at the programs running in hardirq
+- Think about the failure model of Rex programs
 
 # 23-08-28 (scribe: Jinghao & Ruowen)
 ### Where we are
