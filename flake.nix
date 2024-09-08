@@ -52,7 +52,7 @@
           ncurses.dev
           rust-bindgen
           pahole
-          strace 
+          strace
 
           bear # generate compile commands
           rsync # for make headers_install
@@ -64,10 +64,11 @@
           memcached
 
           # python3 scripts
-          (pkgs.python3.withPackages (python-pkgs: [
-            # select Python packages here
-            python-pkgs.tqdm
-          ]))
+          (pkgs.python3.withPackages
+            (python-pkgs: (with python-pkgs;  [
+              # select Python packages here
+              tqdm
+            ])))
 
           zoxide # in case host is using zoxide
           openssh # q-script ssh support

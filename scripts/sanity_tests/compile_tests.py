@@ -1,6 +1,7 @@
 #!/bin/python
 
 import argparse
+import re
 import os
 import subprocess
 import time
@@ -23,24 +24,65 @@ os.environ["PATH"] = str(rust_path) + os.pathsep + os.environ["PATH"]
 os.environ["LINUX"] = str(kernel_path)
 os.environ["RUST_BACKTRACE"] = "1"
 
+
+def check_simd_inst(path):
+    command = f"objdump -d {path}"
+    result = subprocess.run(
+        command, shell=True, capture_output=True, text=True, check=True
+    )
+    lines = result.stdout.splitlines()
+    lines = [line.strip() for line in lines]
+    for line in lines:
+        # skip symbol name
+        if line and re.match(r"\w+ <.+>:", line, re.I):
+            continue
+        if "mm" in line:
+            print(line)
+            raise Exception(f"Found SIMD in program {path}")
+
 # Run make
 def run_make(directory):
     """Compile rex samples"""
     try:
+        debug_target = ""
+        release_target = ""
+
         args = parse_arguments()
         if not args.no_clean_build:
             command = "make clean; make LLVM=1"
         else:
             command = "make LLVM=1"
 
+        if "librex" not in str(directory):
+            # the naming rule for samples/trace_event is slightly different
+            sample_name = (
+                "trace_event_kern"
+                if "trace_event" in str(directory)
+                else directory.name
+            )
+            if args.debug:
+                # also compile debug target
+                debug_target = f"target/x86_64-unknown-linux-gnu/debug/{sample_name}"
+                command += f" all {debug_target}"
+
+            release_target = f"target/x86_64-unknown-linux-gnu/release/{sample_name}"
+
         os.chdir(directory)
         subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
+
+        if debug_target:
+            check_simd_inst(debug_target)
+
+        if release_target:
+            check_simd_inst(release_target)
+
         # print(f"Build succeeded in {directory}")
     except subprocess.CalledProcessError as e:
         print(f"Build failed in {directory}")
         print(f"Error: {e.stderr}")
     finally:
         os.chdir("..")
+
 
 def parse_arguments():
     parser = argparse.ArgumentParser(
@@ -49,10 +91,14 @@ def parse_arguments():
     parser.add_argument(
         "--no-clean-build", action="store_true", help="Perform rust clean build."
     )
+    parser.add_argument("--debug", action="store_true", help="Perform debug build")
+
     return parser.parse_args()
+
 
 def is_sample(path):
     return path.is_dir() and path.name not in exclusion_list
+
 
 def main():
     original_dir = os.getcwd()
@@ -61,8 +107,7 @@ def main():
     # get samples_list
     samples_list = list(samples_path.iterdir())
     # filter out directory
-    samples_list = sorted(filter(is_sample, samples_list),
-                          key=lambda x: x.name)
+    samples_list = sorted(filter(is_sample, samples_list), key=lambda x: x.name)
 
     # append librex to compile list
     samples_list.insert(0, librex_path)
@@ -80,6 +125,7 @@ def main():
     elapsed = end_time - start_time
     print("All builds completed in %.3fs." % elapsed)
     os.chdir(original_dir)
+
 
 if __name__ == "__main__":
     main()
