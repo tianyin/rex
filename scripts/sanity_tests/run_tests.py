@@ -3,13 +3,14 @@
 ''':' ; exec "$(command -v python)" "$0" "$@"
 '''
 
-import os
-import time
 import argparse
+import os
+import subprocess
+import sys
+import time
+
 from pathlib import Path
 from tqdm import tqdm
-import subprocess
-
 
 exclusion_list = ["cpustat", "memcached_benchmark"]
 
@@ -84,7 +85,7 @@ def main():
                     print("   \033[91mFailed\033[0m  %s" % sample.name)
 
             except Exception:
-                print(f"{sample.name} test run failed")
+                print(f"{sample.name} test run failed", file=sys.stderr)
                 subprocess.run("pkill qemu-system-x86", shell=True)
             finally:
                 pbar.update(1)

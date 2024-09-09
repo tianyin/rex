@@ -1,9 +1,10 @@
 #!/bin/python
 
 import argparse
-import re
 import os
+import re
 import subprocess
+import sys
 import time
 
 from pathlib import Path
@@ -37,7 +38,7 @@ def check_simd_inst(path):
         if line and re.match(r"\w+ <.+>:", line, re.I):
             continue
         if "mm" in line:
-            print(line)
+            print(line, file=sys.stderr)
             raise Exception(f"Found SIMD in program {path}")
 
 # Run make
@@ -78,8 +79,8 @@ def run_make(directory):
 
         # print(f"Build succeeded in {directory}")
     except subprocess.CalledProcessError as e:
-        print(f"Build failed in {directory}")
-        print(f"Error: {e.stderr}")
+        print(f"Build failed in {directory}", file=sys.stderr)
+        print(f"Error: {e.stderr}", file=sys.stderr)
     finally:
         os.chdir("..")
 
