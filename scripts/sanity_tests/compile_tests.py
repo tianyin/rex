@@ -37,7 +37,9 @@ def check_simd_inst(path):
         # skip symbol name
         if line and re.match(r"\w+ <.+>:", line, re.I):
             continue
-        if "mm" in line:
+
+        # SIMD register
+        if re.match(r"xmm|ymm|zmm", line, re.I):
             print(line, file=sys.stderr)
             raise Exception(f"Found SIMD in program {path}")
 
