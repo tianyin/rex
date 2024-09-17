@@ -1,3 +1,37 @@
+# 24-09-13 (scribe: Jinghao)
+
+[[Slides](https://docs.google.com/presentation/d/1F3JTY6pDPSJaW4ZFzKcG-9KTGtJjTP9bjwG2Xus7zt0/edit?usp=sharing),
+[Recording](https://illinois.zoom.us/rec/share/jMIw1NkPRQejFnEGC5wWXRZZ4gDHtPwGLAfUR8ol3fgM5M-gQhmgv-_haHefpWgm.czt91Yb_7H007f0L)]
+
+### Where we are
+- New machine for experiment is ready
+- Termination:
+  - The use of a regular timer (`struct timer_list`) does not work for softirq
+    - Timer interrupt does not fire, probably due to softirqs from timer get
+      queued.
+  - Potential solution: high resolution timers (`struct hrtimer`)
+    - Can run in hardirq
+    - Two things to figure out:
+      - How to deal with the same CPU case, as `hrtimer`s cannot be migrated
+        between CPUs easily
+      - Sending IPI from hardirq risks deadlocks, as per kernel warning
+- Rex Failure model
+  - Previously discused two ways to handle program crashes:
+    - Continue allowing other instances to run
+    - Detach and remove all related programs and maps
+  - New "middle ground" implementation: send a core-dump signal to loader
+    - If unhandled, effecitvely forces loader to dump core and remove userspace
+      references to the rex objects (e.g., programs, maps)
+    - Alternatively loader can try to handle to signal and perform recovery
+    - Problem: The recovery may not be reliable, as it is implemented by the
+      user
+  - Current plan: note in the paper that by default we remvoe all related
+    programs and maps
+
+### Next step
+- Finish termination
+- Rerun experiment
+
 # 24-09-06 (scribe: Jinghao)
 
 [[Slides](https://docs.google.com/presentation/d/1x9eB45MpkaFqxvVSZnJ9IRYEHbDp7P5NrW37OeVVWl0/edit?usp=sharing),
