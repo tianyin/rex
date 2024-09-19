@@ -53,6 +53,7 @@
           rust-bindgen
           pahole
           strace
+          zstd
 
           bear # generate compile commands
           rsync # for make headers_install
