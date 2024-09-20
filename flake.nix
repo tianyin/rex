@@ -24,62 +24,70 @@
         inherit system;
         # overlays = overlays;
       };
+      rexPackages = with pkgs; [
+        # build deps
+        cmake
+        ninja # rust build
+        (hiPrio gcc14)
+        libgcc
+        curl
+        diffutils
+        xz.dev
+        llvm_18
+        clang_18
+        lld_18
+        clang-tools_18
+        zlib.dev
+        openssl.dev
+        flex
+        bison
+        busybox
+        qemu
+        mold
+        perl
+        pkg-config
+        elfutils.dev
+        ncurses.dev
+        rust-bindgen
+        pahole
+        strace
+        zstd
+
+        bear # generate compile commands
+        rsync # for make headers_install
+        gdb
+
+        # bmc deps
+        iproute2
+        memcached
+
+        # python3 scripts
+        (pkgs.python3.withPackages
+          (python-pkgs: (with python-pkgs;  [
+            # select Python packages here
+            tqdm
+          ])))
+
+        zoxide # in case host is using zoxide
+        openssh # q-script ssh support
+      ];
+
       fhs = pkgs.buildFHSUserEnv {
         name = "simple-rust-env";
-        targetPkgs = pkgs: (with pkgs; [
-          # build deps
-          cmake
-          ninja # rust build
-          (hiPrio gcc14)
-          libgcc
-          curl
-          diffutils
-          xz.dev
-          llvm_18
-          clang_18
-          lld_18
-          clang-tools_18
-          zlib.dev
-          openssl.dev
-          flex
-          bison
-          busybox
-          qemu
-          mold
-          perl
-          pkg-config
-          elfutils.dev
-          ncurses.dev
-          rust-bindgen
-          pahole
-          strace
-          zstd
-
-          bear # generate compile commands
-          rsync # for make headers_install
-          gdb
-
-
-          # bmc deps
-          iproute2
-          memcached
-
-          # python3 scripts
-          (pkgs.python3.withPackages
-            (python-pkgs: (with python-pkgs;  [
-              # select Python packages here
-              tqdm
-            ])))
-
-          zoxide # in case host is using zoxide
-          openssh # q-script ssh support
-        ]);
+        targetPkgs = pkgs: rexPackages;
         runScript = "./scripts/start.sh";
       };
     in
     {
       devShells."${system}" = {
         default = fhs.env;
+        rex = pkgs.mkShell {
+          buildInputs = rexPackages;
+          shellHook = ''
+            echo "Running ./scripts/start.sh..."
+            source ./scripts/env.sh
+          '';
+        };
       };
     };
 }
