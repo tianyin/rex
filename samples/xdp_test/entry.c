@@ -173,8 +173,8 @@ int main(int argc, char *argv[])
 	}
 
 	// unattach program
-	for (int i = 0; i < interface_count; i++) {
-		bpf_xdp_attach(interfaces_idx[i], -1, xdp_flags, NULL);
-	}
+	for (int i = 0; i < interface_count; i++)
+		bpf_xdp_detach(interfaces_idx[i], xdp_flags, NULL);
+
 	return ret;
 }
