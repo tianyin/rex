@@ -29,7 +29,7 @@ int main(void)
 		return 1;
 	}
 
-	prog = bpf_object__find_program_by_name(obj, "iu_recursive");
+	prog = bpf_object__find_program_by_name(obj, "rex_recursive");
 	if (!prog) {
 		fprintf(stderr, "_start not found\n");
 		return 1;
