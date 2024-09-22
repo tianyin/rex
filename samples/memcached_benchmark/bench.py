@@ -2,6 +2,9 @@ import csv
 import resource
 import subprocess
 
+
+CLIENT_IP = "192.168.50.253"
+
 import numpy as np
 from tqdm import tqdm
 
@@ -42,10 +45,10 @@ def run_bench():
     return float(output[0].split()[4])
 
 def run_vanilla(nr_threads):
-    start = [*'ssh 10.0.0.3 -t'.split(),
+    start = [*f'ssh {CLIENT_IP} -t'.split(),
              'sudo /root/run-memcached.sh %d' % nr_threads]
 
-    stop = [*'ssh 10.0.0.3 -t'.split(),
+    stop = [*f'ssh {CLIENT_IP} -t'.split(),
             'sudo /root/stop-memcached.sh %d' % nr_threads]
 
     with MemcachedCtx(start, stop):
@@ -54,10 +57,10 @@ def run_vanilla(nr_threads):
     return result
 
 def run_bpf(nr_threads):
-    start = [*'ssh 10.0.0.3 -t'.split(),
+    start = [*f'ssh {CLIENT_IP} -t'.split(),
              'sudo /root/attach-bpf.sh %d' % nr_threads]
 
-    stop = [*'ssh 10.0.0.3 -t'.split(),
+    stop = [*f'ssh {CLIENT_IP} -t'.split(),
             'sudo /root/detach-bpf.sh %d' % nr_threads]
 
     with MemcachedCtx(start, stop):
@@ -66,10 +69,10 @@ def run_bpf(nr_threads):
     return result
 
 def run_rust(nr_threads):
-    start = [*'ssh 10.0.0.3 -t'.split(),
+    start = [*f'ssh {CLIENT_IP} -t'.split(),
              'sudo /root/attach-rust.sh %d' % nr_threads]
 
-    stop = [*'ssh 10.0.0.3 -t'.split(),
+    stop = [*f'ssh {CLIENT_IP} -t'.split(),
             'sudo /root/detach-rust.sh %d' % nr_threads]
 
     with MemcachedCtx(start, stop):
