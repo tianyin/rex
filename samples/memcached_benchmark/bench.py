@@ -82,7 +82,7 @@ def run_rust(nr_threads):
 
 def main():
     max_cpu = 8
-    rounds = 1
+    rounds = 10
     increase_fd_limit(102400)
 
     data = {
@@ -97,12 +97,17 @@ def main():
             data['bpf'][i][j] = run_bpf(i + 1)
             data['rust'][i][j] = run_rust(i + 1)
 
-    result = [('nr_cpu', *data.keys())]
+    result = [('nr_cpu', *data.keys(),
+               *list(map(lambda x: x + '-stdev', data.keys())))]
 
     for i in range(max_cpu):
         row = [i]
+
         for v in data.values():
             row.append(np.mean(v[i]))
+
+        for v in data.values():
+            row.append(np.std(v[i]))
 
         result.append(tuple(row))
 
