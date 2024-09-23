@@ -36,8 +36,8 @@ def increase_fd_limit(new_limit):
 
 def run_bench():
     # cmd = 'cargo run -r -- bench -n 200000000 -t 40 -s 10.0.1.1 -p 11211'.split()
-    cmd = 'cargo run -r -- bench -n 20000000 -t 40 -s 10.0.1.1 -p 11211 | tee /tmp/run_bench_temp'.split()
-    subprocess.run(cmd, check=True, capture_output=False, text=True)
+    cmd = 'cargo run -r -- bench -n 20000000 -t 32 -s 10.0.1.1 -p 11211 | tee /tmp/run_bench_temp'
+    subprocess.run(cmd, check=True, capture_output=False, text=True, shell=True)
     output = Path("/tmp/run_bench_temp").read_text().split('\n')
     output = filter(lambda x: x.startswith('Throughput across all threads:'),
                     map(str.strip, output))
