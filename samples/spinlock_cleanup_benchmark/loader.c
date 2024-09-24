@@ -29,7 +29,8 @@ int main(int argc, char **argv)
 
 	int interface_idx = atoi(argv[1]);
 	unsigned int xdp_flags = 0;
-	xdp_flags |= XDP_FLAGS_SKB_MODE;
+	xdp_flags |= XDP_FLAGS_DRV_MODE;
+	/* xdp_flags |= XDP_FLAGS_SKB_MODE; */
 
 	obj = rex_obj_get_bpf(rex_obj_load(EXE));
 	if (!obj) {
