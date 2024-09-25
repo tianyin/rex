@@ -6,5 +6,5 @@ for i in {0..32}; do
 	# cat /sys/kernel/debug/tracing/trace > "./output/bpf_${i}"
 	echo > /sys/kernel/debug/tracing/trace
 	echo $i
-	# sleep 1
+	sleep 0.5
 done
