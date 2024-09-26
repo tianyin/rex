@@ -35,7 +35,7 @@ fn rex_prog1(obj: &kprobe, _ctx: &mut PtRegs) -> Result {
     // obj.bpf_map_lookup_elem(&MAP_ARRAY, &zero);
     // let end = obj.bpf_ktime_get_ns();
     //
-    // bpf_printk!(obj, "Time elapsed: %llu", end - start);
+    // bpf_printk!(obj, c"Time elapsed: %llu", end - start);
 
     Ok(0)
 }
