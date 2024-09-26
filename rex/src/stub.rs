@@ -1,7 +1,6 @@
 /// All kernel symbols we need should be declared here
 use core::ffi::{c_char, c_uchar, VaList};
 
-use crate::bindings::linux::kernel::CONFIG_NR_CPUS as NR_CPUS;
 use crate::bindings::linux::kernel::{
     bpf_perf_event_data_kern, pcpu_hot, sk_buff, xdp_buff,
 };
@@ -194,9 +193,6 @@ extern "C" {
     /// `DEFINE_PER_CPU(int, numa_node);`
     pub(crate) static numa_node: i32;
 
-    /// `unsigned long __per_cpu_offset[NR_CPUS] __read_mostly;`
-    pub(crate) static __per_cpu_offset: [u64; NR_CPUS as usize];
-
     /// `DEFINE_PER_CPU(struct rex_cleanup_entry[64], rex_cleanup_entries)
     /// ____cacheline_aligned = { 0 };`
     ///
@@ -223,4 +219,10 @@ extern "C" {
     ///  Used to indidicate whether a BPF program in a CPU is executing
     ///  inside a helper, or inside a panic handler, or just in BPF text.
     pub(crate) static mut rex_termination_state: u8;
+
+    /// DEFINE_PER_CPU_READ_MOSTLY(unsigned long, this_cpu_off) =
+    /// BOOT_PERCPU_OFFSET;
+    ///
+    /// Offset on the current
+    pub(crate) static this_cpu_off: u64;
 }

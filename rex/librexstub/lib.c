@@ -36,8 +36,8 @@ KSYM_FUNC(bpf_ktime_get_coarse_ns)
 // Global variables
 unsigned long jiffies;
 int numa_node;
-unsigned long *__per_cpu_offset;
 void *rex_cleanup_entries;
 unsigned long rex_stack_ptr;
 void *pcpu_hot;
 unsigned char rex_termination_state;
+unsigned long this_cpu_off;
