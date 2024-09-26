@@ -12,6 +12,7 @@ pub use crate::bindings::uapi::linux::pkt_cls::{
 use crate::prog_type::rex_prog;
 use crate::utils::*;
 
+use crate::base_helper::termination_check;
 use crate::{bpf_printk, map::*};
 use core::ffi::{c_char, c_uchar, c_uint, c_void};
 use core::{mem, slice};
@@ -252,7 +253,9 @@ impl<'a> sched_cls<'a> {
         ifindex: u32,
         flags: u64,
     ) -> Result {
-        let ret = unsafe { stub::bpf_clone_redirect(skb.kptr, ifindex, flags) };
+        let ret = termination_check!(unsafe {
+            stub::bpf_clone_redirect(skb.kptr, ifindex, flags)
+        });
 
         if ret != 0 {
             return Err(ret);
