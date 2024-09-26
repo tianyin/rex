@@ -7,6 +7,7 @@ use crate::bindings::uapi::linux::bpf::{
     BPF_PROG_TYPE_PERF_EVENT,
 };
 
+use crate::base_helper::{base_helper_defs, termination_check};
 use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::prog_type::rex_prog;
@@ -83,9 +84,9 @@ impl<'a> perf_event<'a> {
         let ctx_kptr = ctx as *const bpf_perf_event_data
             as *const bpf_perf_event_data_kern;
 
-        unsafe {
+        termination_check!(unsafe {
             to_result!(stub::bpf_perf_prog_read_value(ctx_kptr, buf, size))
-        }
+        })
     }
 
     pub fn bpf_get_stackid_pe<K, V>(
@@ -102,9 +103,9 @@ impl<'a> perf_event<'a> {
         let ctx_kptr = ctx as *const bpf_perf_event_data
             as *const bpf_perf_event_data_kern;
 
-        unsafe {
+        termination_check!(unsafe {
             to_result!(stub::bpf_get_stackid_pe(ctx_kptr, map_kptr, flags))
-        }
+        })
     }
 
     pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {

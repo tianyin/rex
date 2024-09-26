@@ -604,3 +604,4 @@ macro_rules! bpf_printk {
 
 pub(crate) use base_helper_defs;
 pub use bpf_printk;
+pub(crate) use termination_check;
