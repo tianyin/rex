@@ -1,5 +1,6 @@
 use crate::stub;
 
+use crate::base_helper::termination_check;
 use crate::bindings::linux::kernel::iphdr__bindgen_ty_1__bindgen_ty_1;
 pub use crate::bindings::linux::kernel::{
     ethhdr, iphdr, tcphdr, udphdr, xdp_buff,
@@ -188,7 +189,9 @@ impl<'a> xdp<'a> {
     // WARN: this function is unsafe
     #[inline(always)]
     pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> Result {
-        let ret = unsafe { stub::bpf_xdp_adjust_tail(ctx.kptr, offset) };
+        let ret = termination_check!(unsafe {
+            stub::bpf_xdp_adjust_tail(ctx.kptr, offset)
+        });
         if ret != 0 {
             return Err(ret);
         }
