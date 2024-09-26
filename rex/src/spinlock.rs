@@ -1,3 +1,4 @@
+use crate::base_helper::termination_check;
 use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
 use crate::panic::CleanupEntries;
 use crate::stub;
@@ -16,19 +17,21 @@ pub struct rex_spinlock_guard<'a> {
 impl<'a> rex_spinlock_guard<'a> {
     /// Constructor function that locks the spinlock
     pub fn new(lock: &'a mut bpf_spin_lock) -> Self {
-        // Put it before lock so if it panics we will not be holding the lock
-        // without a valid cleanup entry for it
-        let cleanup_idx = CleanupEntries::register_cleanup(
-            Self::panic_cleanup,
-            lock as *mut bpf_spin_lock as *mut (),
-        );
+        termination_check!({
+            // Put it before lock so if it panics we will not be holding the
+            // lock without a valid cleanup entry for it
+            let cleanup_idx = CleanupEntries::register_cleanup(
+                Self::panic_cleanup,
+                lock as *mut bpf_spin_lock as *mut (),
+            );
 
-        // Lock
-        unsafe {
-            stub::bpf_spin_lock(lock);
-        }
+            // Lock
+            unsafe {
+                stub::bpf_spin_lock(lock);
+            }
 
-        Self { lock, cleanup_idx }
+            Self { lock, cleanup_idx }
+        })
     }
 
     /// Function that unlocks the spinlock, used by cleanup list and drop
@@ -40,13 +43,15 @@ impl<'a> rex_spinlock_guard<'a> {
 impl Drop for rex_spinlock_guard<'_> {
     /// Unlock the spinlock when the guard is out-of-scope
     fn drop(&mut self) {
-        // Put it before unlock so if it panics we will not unlock twice (once
-        // here in the drop handler, the other in the panic handler triggered
-        // by this function)
-        CleanupEntries::deregister_cleanup(self.cleanup_idx);
+        termination_check!({
+            // Put it before unlock so if it panics we will not unlock twice
+            // (once here in the drop handler, the other in the
+            // panic handler triggered by this function)
+            CleanupEntries::deregister_cleanup(self.cleanup_idx);
 
-        // Unlock
-        unsafe { stub::bpf_spin_unlock(self.lock) };
+            // Unlock
+            unsafe { stub::bpf_spin_unlock(self.lock) };
+        })
     }
 }
 
