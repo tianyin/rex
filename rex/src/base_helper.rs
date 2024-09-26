@@ -471,6 +471,11 @@ macro_rules! base_helper_defs {
         }
 
         #[inline(always)]
+        pub fn bpf_jiffies64(&self) -> u64 {
+            crate::base_helper::bpf_jiffies64()
+        }
+
+        #[inline(always)]
         pub fn bpf_get_numa_node_id(&self) -> i64 {
             crate::base_helper::bpf_get_numa_node_id()
         }
