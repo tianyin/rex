@@ -11,7 +11,7 @@
 #include <librex.h>
 #include <libbpf.h>
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/ktime"
+#define EXE "./target/x86_64-unknown-linux-gnu/release/map_bench"
 
 int main(void)
 {
