@@ -29,8 +29,9 @@ def increase_fd_limit(new_limit):
     if new_limit <= hard_limit:
         # Set the new soft limit
         resource.setrlimit(resource.RLIMIT_NOFILE, (new_limit, hard_limit))
-        soft_limit, _ = resource.getrlimit(resource.RLIMIT_NOFILE)
+        soft_limit, hard_limit = resource.getrlimit(resource.RLIMIT_NOFILE)
         print(f"File descriptor soft_limit increased to { soft_limit }")
+        print(f"File descriptor hard_limit increased to { hard_limit }")
     else:
         print("Requested limit exceeds the hard limit. Cannot increase beyond the hard limit.")
 
@@ -84,7 +85,7 @@ def run_rust(nr_threads):
 def main():
     max_cpu = 8
     rounds = 10
-    increase_fd_limit(102400)
+    increase_fd_limit(202400)
 
     data = {
         'vanilla': [[0 for j in range(rounds)] for i in range(max_cpu)],
