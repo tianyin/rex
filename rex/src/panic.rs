@@ -161,6 +161,14 @@ unsafe fn __rex_handle_stack_overflow() -> ! {
 // This function is called on panic.
 #[panic_handler]
 fn panic(info: &PanicInfo) -> ! {
+    // Set the termination flag
+    unsafe {
+        let termination_flag: *mut u8 = crate::per_cpu::this_cpu_ptr_mut(
+            core::ptr::addr_of_mut!(crate::stub::rex_termination_state) as u64,
+        );
+        *termination_flag = 1;
+    };
+
     unsafe { CleanupEntries::cleanup_all() };
 
     // Print the msg
