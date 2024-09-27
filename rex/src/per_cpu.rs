@@ -13,9 +13,10 @@ impl PerCPURead<u64> for u64 {
         let mut var: u64;
         unsafe {
             core::arch::asm!(
-                "mov {:r}, gs:[rcx]",
+                "mov {0:r}, gs:[{1:r}]",
                 out(reg) var,
-                in("rcx") addr,
+                in(reg) addr,
+                options(readonly, nostack),
             );
         }
         var
@@ -28,9 +29,10 @@ impl PerCPURead<u32> for u32 {
         let mut var: u32;
         unsafe {
             core::arch::asm!(
-                "mov {:e}, gs:[rcx]",
+                "mov {0:e}, gs:[{1:r}]",
                 out(reg) var,
-                in("rcx") addr,
+                in(reg) addr,
+                options(readonly, nostack),
             );
         }
         var
@@ -43,9 +45,10 @@ impl PerCPURead<u16> for u16 {
         let mut var: u16;
         unsafe {
             core::arch::asm!(
-                "mov {:x}, gs:[rcx]",
+                "mov {0:x}, gs:[{1:r}]",
                 out(reg) var,
-                in("rcx") addr,
+                in(reg) addr,
+                options(readonly, nostack),
             );
         }
         var
@@ -58,9 +61,10 @@ impl PerCPURead<u8> for u8 {
         let mut var: u8;
         unsafe {
             core::arch::asm!(
-                "mov {}, gs:[rcx]",
+                "mov {0}, gs:[{1:r}]",
                 out(reg_byte) var,
-                in("rcx") addr,
+                in(reg) addr,
+                options(readonly, nostack),
             );
         }
         var
@@ -73,9 +77,10 @@ impl<T> PerCPURead<*const T> for *const T {
         let mut var: *const T;
         unsafe {
             core::arch::asm!(
-                "mov {:r}, gs:[rcx]",
+                "mov {0:r}, gs:[{1:r}]",
                 out(reg) var,
-                in("rcx") addr,
+                in(reg) addr,
+                options(readonly, nostack),
             );
         }
         var
@@ -89,9 +94,10 @@ impl<T> PerCPURead<*mut T> for *mut T {
         let mut var: *mut T;
         unsafe {
             core::arch::asm!(
-                "mov {:r}, gs:[rcx]",
+                "mov {0:r}, gs:[{1:r}]",
                 out(reg) var,
-                in("rcx") addr,
+                in(reg) addr,
+                options(readonly, nostack),
             );
         }
         var
