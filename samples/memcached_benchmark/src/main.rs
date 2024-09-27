@@ -366,10 +366,12 @@ async fn get_command_benchmark(
     }
     let sockets_pool = Arc::new(sockets_pool);
 
-    let mut client =
-        async_memcached::Client::new(format!("tcp://{}:{}", server_address, port))
-            .await
-            .expect("TCP memcached connection failed");
+    let mut client = async_memcached::Client::new(format!(
+        "tcp://{}:{}",
+        server_address, port
+    ))
+    .await
+    .expect("TCP memcached connection failed");
 
     let tracker = TaskTracker::new();
     let cloned_tracker = tracker.clone();
@@ -697,7 +699,8 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
                         pipeline,
                     )
                     .await
-                    .unwrap()
+                    .unwrap();
+                    println!("Finish gen_command_bench {}", tid);
                 })
             })
             .unwrap();
