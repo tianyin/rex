@@ -126,24 +126,24 @@ impl<'a> CleanupEntries<'a> {
     }
 }
 
-// TODO: manually optimize
 // The best way to deal with this is probably insert it directly in LLVM IR as
 // an inline asm block
 // For now, use inline(always) to hint the compiler for inlining if LTO is on
 #[no_mangle]
 #[inline(always)]
 unsafe fn __rex_check_stack() {
-    // subtract 0x4000 because these 4 pages are either used by the kernel or
-    // panic handling
+    // The program can only use the top 4 pages of the stack, therefore subtract
+    // 0x4000
     unsafe {
         core::arch::asm!(
-            "mov r10, gs:[r10]",
-            "sub r10, 0x4000",
+            "mov {1:r}, gs:[{0:r}]",
+            "sub {1:r}, 0x4000",
             "cmp rsp, r10",
             "ja 2f",
             "call __rex_handle_stack_overflow",
             "2:",
-            in("r10") &stub::rex_stack_ptr as *const u64 as u64,
+            in(reg) &stub::rex_stack_ptr as *const u64 as u64,
+            lateout(reg) _,
         );
     }
 }
