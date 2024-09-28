@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
 ''':' ; exec "$(command -v python)" "$0" "$@"
 '''
