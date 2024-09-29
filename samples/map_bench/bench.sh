@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 
 if [ "$#" -ne 2 ]; then
-	echo "Usage: $0 <rex|bmc> <atomic|hash|array>"
+	echo "Usage: $0 <rex|bpf> <atomic|hash|array>"
 	exit 1
 fi
 
