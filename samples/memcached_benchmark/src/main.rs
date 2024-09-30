@@ -305,9 +305,21 @@ async fn socket_task<'a>(
         let socket_pool_clone = Arc::clone(&sockets_pool);
         cnt += 1;
         tracker.spawn(async move {
+            let send_timeout = tokio::time::Duration::from_millis(500);
+
             // Send
             let socket: &UdpSocket = &socket_pool_clone[counter & 0x1F];
-            let _ = socket.send_to(&buf[..], addr.as_str()).await;
+
+            // Add timeout action
+            match timeout(send_timeout, socket.send_to(&buf[..], addr.as_str()))
+                .await
+            {
+                Err(_) => {
+                    TIMEOUT_COUNTER.fetch_add(1, Ordering::Relaxed);
+                    return;
+                }
+                _ => (),
+            };
 
             // Then receive
             let mut buf = [0; BUFFER_SIZE];
