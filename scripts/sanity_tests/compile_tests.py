@@ -10,7 +10,7 @@ import time
 from pathlib import Path
 from tqdm import tqdm
 
-exclusion_list = ["electrode", "memcached_benchmark"]
+exclusion_list = ["electrode"]
 
 script_path = Path(__file__).resolve()
 repo_path = script_path.parent.parent.parent
