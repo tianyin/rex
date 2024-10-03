@@ -1,6 +1,7 @@
 .vscode*
 .cargo
 !samples/*/.cargo
+!tools/*/.cargo
 samples/*/event-trigger
 samples/*/loader
 samples/*/entry
