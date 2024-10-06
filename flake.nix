@@ -33,10 +33,10 @@
         curl
         diffutils
         xz.dev
-        llvm_18
-        clang_18
-        lld_18
-        clang-tools_18
+        llvm
+        clang
+        lld
+        clang-tools
         zlib.dev
         openssl.dev
         flex
