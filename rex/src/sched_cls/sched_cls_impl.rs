@@ -31,6 +31,11 @@ impl<'a> __sk_buff<'a> {
     }
 
     #[inline(always)]
+    pub fn data_len(&self) -> u32 {
+        self.kptr.data_len
+    }
+
+    #[inline(always)]
     pub fn protocol(&self) -> u16be {
         u16be(unsafe {
             (self.kptr.__bindgen_anon_4.__bindgen_anon_1)
@@ -281,7 +286,9 @@ impl<'a> sched_cls<'a> {
         let kptr: &mut sk_buff = unsafe { &mut *(ctx as *mut sk_buff) };
 
         let data = kptr.data as u32;
-        let data_length = kptr.len as usize;
+
+        // NOTE: not support jumobo frame yet with non-linear sk_buff
+        let data_length = (kptr.len - kptr.data_len) as usize;
 
         let data_slice = unsafe {
             slice::from_raw_parts_mut(kptr.data as *mut c_uchar, data_length)

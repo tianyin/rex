@@ -51,7 +51,7 @@ dependencies = [
 
 [[package]]
 name = "rex"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "paste",
  "rex-macros",
@@ -59,7 +59,7 @@ dependencies = [
 
 [[package]]
 name = "rex-macros"
-version = "0.1.0"
+version = "0.2.0"
 dependencies = [
  "proc-macro-error",
  "proc-macro2",

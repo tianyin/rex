@@ -124,6 +124,7 @@ impl<'a> xdp<'a> {
     fn convert_ctx(&self, ctx: *mut ()) -> xdp_md {
         let kptr: &mut xdp_buff = unsafe { &mut *(ctx as *mut xdp_buff) };
 
+        // NOTE: not support jumobo frame yet with non-linear xdp_buff
         let data_length = kptr.data_end as usize - kptr.data as usize;
 
         let data_slice = unsafe {
