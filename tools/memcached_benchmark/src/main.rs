@@ -481,7 +481,7 @@ fn write_hashmap_to_file<T: Serialize>(
 }
 
 // INFO: May need to update based on key and value distributions
-fn test_entries_statistics(
+fn _test_entries_statistics(
     test_entries: Arc<Vec<(&String, &String, Protocol)>>,
 ) {
     let mut udp_count: usize = 0;
@@ -660,7 +660,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     let test_entries = Arc::new(test_entries);
 
     // analyze test entries statistics
-    test_entries_statistics(test_entries.clone());
+    // _test_entries_statistics(test_entries.clone());
 
     let mut send_commands_vec = Vec::new();
 
