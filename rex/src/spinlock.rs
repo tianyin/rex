@@ -1,5 +1,5 @@
 use crate::base_helper::termination_check;
-use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
+pub use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
 use crate::panic::CleanupEntries;
 use crate::stub;
 
