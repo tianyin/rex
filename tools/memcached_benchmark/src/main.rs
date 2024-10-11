@@ -42,7 +42,7 @@ enum Protocol {
 }
 
 struct TaskData {
-    buf: Vec<u8>,
+    seq: u16,
     addr: Arc<String>,
     key: String,
     test_dict: Arc<HashMap<String, String>>,
@@ -292,7 +292,7 @@ async fn socket_task<'a>(
 ) {
     let mut cnt = 0u64;
     while let Some(TaskData {
-        buf,
+        seq,
         addr,
         key,
         test_dict,
@@ -309,10 +309,13 @@ async fn socket_task<'a>(
 
             // Send
             let socket: &UdpSocket = &socket_pool_clone[counter & 0x1F];
-
+            let packet = wrap_get_command(key.clone(), seq);
             // Add timeout action
-            match timeout(send_timeout, socket.send_to(&buf[..], addr.as_str()))
-                .await
+            match timeout(
+                send_timeout,
+                socket.send_to(&packet[..], addr.as_str()),
+            )
+            .await
             {
                 Err(_) => {
                     TIMEOUT_COUNTER.fetch_add(1, Ordering::Relaxed);
@@ -358,7 +361,7 @@ async fn socket_task<'a>(
 
 async fn get_command_benchmark(
     test_dict: Arc<HashMap<String, String>>,
-    send_commands: Vec<(String, Vec<u8>, Protocol, String)>,
+    send_commands: Vec<(String, u16, Protocol, String)>,
     server_address: String,
     port: String,
     validate: bool,
@@ -398,7 +401,7 @@ async fn get_command_benchmark(
     let mut counter = 0usize;
     let mut handles = vec![];
 
-    for (key, packet, proto, value) in send_commands {
+    for (key, seq, proto, value) in send_commands {
         // if tcp, use set request
         if proto == Protocol::Tcp {
             client
@@ -409,7 +412,7 @@ async fn get_command_benchmark(
         }
         counter = counter.wrapping_add(1);
         let send_result = tx.send(TaskData {
-            buf: packet,
+            seq,
             addr: addr.clone(),
             key,
             test_dict: test_dict.clone(),
@@ -671,11 +674,11 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         for index in 0..nums / threads {
             let (key, value, proto) =
                 test_entries[thread_num * nums / threads + index];
-            let packet = wrap_get_command(key.clone(), seq);
+            // let packet = wrap_get_command(key.clone(), seq);
             seq = seq.wrapping_add(1);
             send_commands.push((
                 key.to_string(),
-                packet,
+                seq,
                 proto,
                 value.to_string(),
             ));
