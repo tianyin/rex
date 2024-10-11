@@ -2,19 +2,14 @@
 #![no_main]
 #![allow(non_camel_case_types)]
 
-extern crate rex;
-
 use core::mem::{size_of, swap};
 
-use rex::bpf_printk;
-use rex::linux::bpf::bpf_spin_lock;
 use rex::map::*;
 use rex::sched_cls::*;
 use rex::spinlock::*;
 use rex::utils::*;
 use rex::xdp::*;
-use rex::FieldTransmute;
-use rex::{rex_map, rex_tc, rex_xdp};
+use rex::{bpf_printk, rex_map, rex_tc, rex_xdp, FieldTransmute};
 
 const BMC_MAX_PACKET_LENGTH: usize = 1500;
 const BMC_CACHE_ENTRY_COUNT: u32 = 3250000;
@@ -26,18 +21,15 @@ const BMC_MAX_CACHE_DATA_SIZE: usize =
 const BMC_MAX_KEY_IN_MULTIGET: u32 = 30;
 const BMC_MAX_KEY_IN_PACKET: u32 = BMC_MAX_KEY_IN_MULTIGET;
 
-// const FNV_OFFSET_BASIS_32: Wrapping<u32> = Wrapping(216613);
 const FNV_OFFSET_BASIS_32: u32 = 2166136261;
 const FNV_PRIME_32: u32 = 16777619;
-// const FNV_PRIME_32: u32 = 5;
 const ETH_ALEN: usize = 6;
 const MEMCACHED_PORT: u16 = 11211;
 
 // TODO: use simple hash function, may need update in the future
 macro_rules! hash_func {
     ($hash:expr, $value:expr) => {
-        $hash ^= $value as u32;
-        $hash = $hash.wrapping_mul(FNV_PRIME_32);
+        $hash = ($hash ^ $value as u32).wrapping_mul(FNV_PRIME_32);
     };
 }
 
@@ -90,7 +82,6 @@ struct parsing_context {
     key_count: u32,
     current_key: u32,
     read_pkt_offset: u8,
-    _write_pkt_offset: u8,
 }
 
 #[rex_map]
@@ -233,12 +224,6 @@ fn write_pkt_reply(
     let _guard = rex_spinlock_guard::new(&mut entry.lock);
 
     if entry.valid == 1 && entry.hash == key.hash {
-        // bpf_printk!(
-        //     obj,
-        //     "memcaced %s, entry %s\n",
-        //     key.data.as_ptr() as u64,
-        //     entry.data[6..6 + key.len].as_ptr() as u64
-        // );
         if key.len >= BMC_MAX_KEY_LENGTH {
             cache_hit = false;
         } else {
@@ -256,25 +241,15 @@ fn write_pkt_reply(
 
     // copy cache data
     if cache_hit {
-        // bpf_printk!(obj, "cache hit\n");
         let _off = 0usize;
         let stats = obj.bpf_map_lookup_elem(&map_stats, &0).ok_or(0i32)?;
         stats.hit_count += 1;
 
-        // bpf_printk!(obj, "length before %d\n", ctx.data_length as u64);
-        // const U64_SIZE: usize = size_of::<u64>();
         // NOTE: data end is determined by slice length limit, may changed in
         // future while off + U64_SIZE < BMC_MAX_CACHE_DATA_SIZE && off
         // + U64_SIZE <= entry.len as usize {}
         let padding =
             (entry.len as i32 - (ctx.data_length() - payload_index) as i32) + 1;
-        // bpf_printk!(
-        //     obj,
-        //     "entry len %d payload_index %d padding %d\n",
-        //     entry.len as u64,
-        //     payload_index as u64,
-        //     padding as u64
-        // );
 
         match obj.bpf_xdp_adjust_tail(ctx, padding) {
             Ok(_) => {}
@@ -283,7 +258,6 @@ fn write_pkt_reply(
                 return Ok(XDP_DROP as i32);
             }
         }
-        // bpf_printk!(obj, "length after %d\n", ctx.data_length as u64);
 
         // INFO: currently only support single key
 
@@ -360,13 +334,6 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
             .ok_or(0i32)?;
         if entry.valid == 1 {
             stats.invalidation_count += 1;
-            // bpf_printk!(
-            //     obj,
-            //     "cache_idx %d, hash %x, key %s",
-            //     cache_idx as u64,
-            //     hash as u64,
-            //     payload[0..16].as_ptr() as u64
-            // );
             let _guard = rex_spinlock_guard::new(&mut entry.lock);
             entry.valid = 0;
         }
@@ -422,10 +389,8 @@ fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {
                 key_count: 0,
                 current_key: 0,
                 read_pkt_offset: off as u8,
-                _write_pkt_offset: 0,
             };
 
-            // bpf_printk!(obj, "offset is %d\n", off as u64);
             // TODO: not sure if there is a better way
             return hash_key(obj, ctx, &mut pctx, off, stats);
         }
@@ -452,18 +417,14 @@ fn bmc_update_cache(
         payload[off] != b' '
     {
         hash_func!(hash, payload[off]);
-        // bpf_printk!(obj, "current tx hash %d payload %d\n", hash as u64,
-        // payload[off] as u64);
         off += 1;
     }
     let cache_idx: u32 = hash % BMC_CACHE_ENTRY_COUNT;
-    // bpf_printk!(obj, "tx key cache idx %d\n", cache_idx as u64);
 
     let entry = obj
         // return TC_ACT_OK if the cache is not found or map error
         .bpf_map_lookup_elem(&map_kcache, &cache_idx)
         .ok_or(TC_ACT_OK as i32)?;
-    // bpf_printk!(obj, "key hash function\n");
 
     let _guard = rex_spinlock_guard::new(&mut entry.lock);
 
@@ -484,7 +445,6 @@ fn bmc_update_cache(
 
         // cache is up-to-date, no need to update
         if diff == 0 {
-            // bpf_printk!(obj, "cache is up-to-date\n");
             return Ok(TC_ACT_OK as i32);
         }
     }
@@ -492,7 +452,6 @@ fn bmc_update_cache(
     // cache is not up-to-date, update it
     let (mut count, mut i) = (0usize, 0usize);
     entry.len = 0;
-    // bpf_printk!(obj, "update_cace\n");
     while i < BMC_MAX_CACHE_DATA_SIZE &&
         header_len + i < skb.len() as usize &&
         count < 2
@@ -507,11 +466,6 @@ fn bmc_update_cache(
 
     // finished copying
     if count == 2 {
-        // bpf_printk!(
-        //     obj,
-        //     "copying key success with data length %d\n",
-        //     entry.len as u64
-        // );
         entry.valid = 1;
         entry.hash = hash;
         stats.update_count += 1;
