@@ -18,20 +18,12 @@ const BMC_MAX_VAL_LENGTH: usize = 1000;
 const BMC_MAX_ADDITIONAL_PAYLOAD_BYTES: usize = 53;
 const BMC_MAX_CACHE_DATA_SIZE: usize =
     BMC_MAX_KEY_LENGTH + BMC_MAX_VAL_LENGTH + BMC_MAX_ADDITIONAL_PAYLOAD_BYTES;
-const BMC_MAX_KEY_IN_MULTIGET: u32 = 30;
-const BMC_MAX_KEY_IN_PACKET: u32 = BMC_MAX_KEY_IN_MULTIGET;
+const BMC_MAX_KEY_IN_PACKET: u32 = 30;
 
 const FNV_OFFSET_BASIS_32: u32 = 2166136261;
 const FNV_PRIME_32: u32 = 16777619;
 const ETH_ALEN: usize = 6;
 const MEMCACHED_PORT: u16 = 11211;
-
-// TODO: use simple hash function, may need update in the future
-macro_rules! hash_func {
-    ($hash:expr, $value:expr) => {
-        $hash = ($hash ^ $value as u32).wrapping_mul(FNV_PRIME_32);
-    };
-}
 
 #[derive(FieldTransmute)]
 #[repr(C, packed)]
@@ -95,6 +87,21 @@ static map_keys: RexPerCPUArrayMap<memcached_key> =
 #[rex_map]
 static map_stats: RexPerCPUArrayMap<bmc_stats> = RexPerCPUArrayMap::new(1, 0);
 
+// TODO: use simple hash function, may need update in the future
+macro_rules! hash_func {
+    ($hash:expr, $value:expr) => {
+        $hash = ($hash ^ $value as u32).wrapping_mul(FNV_PRIME_32);
+    };
+}
+
+macro_rules! swap_field {
+    ($field1:expr, $field2:expr, $size:ident) => {
+        for i in 0..$size {
+            swap(&mut $field1[i], &mut $field2[i])
+        }
+    };
+}
+
 // payload after header and 'get '
 #[inline(always)]
 fn hash_key(
@@ -104,8 +111,8 @@ fn hash_key(
     payload_index: usize,
     stats: &mut bmc_stats,
 ) -> Result {
-    let (mut off, mut done_parsing) = (0usize, false);
     let payload = &ctx.data_slice[payload_index..];
+    let mut done_parsing = false;
 
     while !done_parsing {
         let key = obj
@@ -146,7 +153,6 @@ fn hash_key(
 
         // potential cache hit
         if entry_valid {
-            // bpf_printk!(obj, "potential cache hit\n");
             key.data[0..key_len].clone_from_slice(&payload[0..key_len]);
             key.len = key_len;
             pctx.key_count += 1;
@@ -155,50 +161,26 @@ fn hash_key(
             stats.miss_count += 1;
         }
 
-        if done_parsing {
-            if pctx.key_count > 0 {
-                return prepare_packet(obj, ctx, payload_index, pctx, stats);
-            }
-        } else {
-            // process more keys
-            off += 1;
-            pctx.read_pkt_offset += off as u8;
+        if done_parsing && pctx.key_count > 0 {
+            let eth_header = obj.eth_header(ctx);
+            // exchange src and dst ip and mac
+            swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
+
+            let ip_header_mut = obj.ip_header(ctx);
+            let temp: u32 = *ip_header_mut.saddr();
+            *ip_header_mut.saddr() = *ip_header_mut.daddr();
+            *ip_header_mut.daddr() = temp;
+
+            let udp_header = obj.udp_header(ctx);
+            swap(&mut udp_header.source, &mut udp_header.dest);
+
+            return write_pkt_reply(obj, ctx, payload_index, pctx, stats);
         }
+        // process more keys
+        pctx.read_pkt_offset += key_len as u8 + 1;
     }
 
     Ok(XDP_PASS as i32)
-}
-
-macro_rules! swap_field {
-    ($field1:expr, $field2:expr, $size:ident) => {
-        for i in 0..$size {
-            swap(&mut $field1[i], &mut $field2[i])
-        }
-    };
-}
-
-// payload after header and 'get '
-#[inline(always)]
-fn prepare_packet(
-    obj: &xdp,
-    ctx: &mut xdp_md,
-    payload_index: usize,
-    pctx: &mut parsing_context,
-    stats: &mut bmc_stats,
-) -> Result {
-    let eth_header = obj.eth_header(ctx);
-    // exchange src and dst ip and mac
-    swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
-
-    let ip_header_mut = obj.ip_header(ctx);
-    let temp: u32 = *ip_header_mut.saddr();
-    *ip_header_mut.saddr() = *ip_header_mut.daddr();
-    *ip_header_mut.daddr() = temp;
-
-    let udp_header = obj.udp_header(ctx);
-    swap(&mut udp_header.source, &mut udp_header.dest);
-
-    write_pkt_reply(obj, ctx, payload_index, pctx, stats)
 }
 
 // payload after headers and 'get '
@@ -344,9 +326,7 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
 #[rex_xdp]
 fn xdp_rx_filter(obj: &xdp, ctx: &mut xdp_md) -> Result {
-    let ip_header_mut = obj.ip_header(ctx);
-
-    match u8::from_be(ip_header_mut.protocol) as u32 {
+    match u8::from_be(obj.ip_header(ctx).protocol) as u32 {
         IPPROTO_TCP => {
             return bmc_invalidate_cache(obj, ctx);
         }
@@ -450,18 +430,17 @@ fn bmc_update_cache(
     }
 
     // cache is not up-to-date, update it
-    let (mut count, mut i) = (0usize, 0usize);
     entry.len = 0;
-    while i < BMC_MAX_CACHE_DATA_SIZE &&
-        header_len + i < skb.len() as usize &&
-        count < 2
-    {
+    let mut count = 0;
+    for i in 0..BMC_MAX_CACHE_DATA_SIZE {
+        if header_len + i >= skb.len() as usize || count >= 2 {
+            break;
+        }
         entry.data[i] = payload[i];
         entry.len += 1;
         if payload[i] == b'\n' {
             count += 1;
         }
-        i += 1;
     }
 
     // finished copying
@@ -481,34 +460,20 @@ fn xdp_tx_filter(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
         size_of::<udphdr>() +
         size_of::<memcached_udp_header>();
 
-    // check if the packet is long enough
-    if skb.len() as usize <= header_len {
+    if skb.len() as usize <= header_len ||
+        u8::from_be(obj.ip_header(skb).protocol) as u32 != IPPROTO_UDP ||
+        u16::from_be(obj.udp_header(skb).source) != MEMCACHED_PORT ||
+        skb.data_slice.len() < header_len + 6 ||
+        !skb.data_slice[header_len..].starts_with(b"VALUE ")
+    {
         return Ok(TC_ACT_OK as i32);
     }
+    let stats = obj.bpf_map_lookup_elem(&map_stats, &0).ok_or(0i32)?;
+    stats.get_resp_count += 1;
 
-    let ip_header = obj.ip_header(skb);
-
-    if u8::from_be(ip_header.protocol) as u32 == IPPROTO_UDP {
-        let udp_header = obj.udp_header(skb);
-        let src_port = u16::from_be(udp_header.source);
-        let payload = &skb.data_slice[header_len..];
-
-        // confirm if using the memcached port
-        if src_port != MEMCACHED_PORT && payload.len() < 6 {
-            return Ok(TC_ACT_OK as i32);
-        }
-
-        // check if a VALUE command
-        if !payload.starts_with(b"VALUE ") {
-            return Ok(TC_ACT_OK as i32);
-        }
-
-        let stats = obj.bpf_map_lookup_elem(&map_stats, &0).ok_or(0i32)?;
-        stats.get_resp_count += 1;
-
-        // update cache map based on the packet
-        bmc_update_cache(obj, skb, payload, header_len, stats)?;
-    }
+    // update cache map based on the packet
+    let payload = &skb.data_slice[header_len..];
+    bmc_update_cache(obj, skb, payload, header_len, stats)?;
 
     Ok(TC_ACT_OK as i32)
 }
