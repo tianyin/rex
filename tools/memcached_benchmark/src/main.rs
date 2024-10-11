@@ -95,7 +95,7 @@ enum Commands {
         protocol: Protocol,
 
         /// number of dict entries to generate
-        #[arg(short, long, default_value = "1000000")]
+        #[arg(short, long, default_value = "50000000")]
         dict_entries: usize,
 
         /// load the prepared test_entries from disk
