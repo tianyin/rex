@@ -25,3 +25,4 @@ rand_chacha = "0"
 lto = "thin"
 opt-level = 3
 debug = false
+codegen-units = 1
