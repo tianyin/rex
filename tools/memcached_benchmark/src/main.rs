@@ -23,6 +23,7 @@ use tokio::sync::mpsc;
 use tokio::time::timeout;
 
 // use tokio::runtime::Handle;
+use log::{debug, info, LevelFilter};
 use std::sync::atomic::*;
 use tokio::task::JoinSet;
 use tokio_util::task::TaskTracker;
@@ -180,10 +181,10 @@ fn generate_test_dict_write_to_disk(
     dict_path: &str,
 ) -> Result<HashMap<String, String>, std::io::Error> {
     let test_dict = generate_memcached_test_dict(key_size, value_size, nums);
-    println!("test dict len: {}", test_dict.len());
+    debug!("test dict len: {}", test_dict.len());
     if let Some((key, value)) = test_dict.iter().next() {
-        println!("test dict key size: {}", size_of_val(key.as_str()));
-        println!("test dict value size: {}", size_of_val(value.as_str()));
+        debug!("test dict key size: {}", size_of_val(key.as_str()));
+        debug!("test dict value size: {}", size_of_val(value.as_str()));
     } else {
         Err(std::io::Error::new(
             std::io::ErrorKind::Other,
@@ -191,7 +192,7 @@ fn generate_test_dict_write_to_disk(
         ))?;
     }
     write_hashmap_to_file(&test_dict, dict_path)?;
-    println!("write test dict to path {}", dict_path);
+    info!("write test dict to path {}", dict_path);
     Ok(test_dict)
 }
 
@@ -237,41 +238,8 @@ async fn set_memcached_value<'a>(
         set.join_next().await;
     }
 
-    println!("Done set memcached value");
+    info!("Done set memcached value");
 
-    Ok(())
-}
-
-fn _validate_server(
-    server: &memcache::Client,
-) -> std::result::Result<(), MemcacheError> {
-    // set a string value:
-    server.set("foo", "bar", 0)?;
-
-    // retrieve from memcached:
-    let value: Option<String> = server.get("foo")?;
-    assert_eq!(value, Some(String::from("bar")));
-    assert_eq!(value.unwrap(), "bar");
-
-    // prepend, append:
-    server.prepend("foo", "foo")?;
-    server.append("foo", "baz")?;
-    let value: String = server.get("foo")?.unwrap();
-    assert_eq!(value, "foobarbaz");
-
-    // delete value:
-    server.delete("foo").unwrap();
-
-    // using counter:
-    server.set("counter", 40, 0).unwrap();
-    server.increment("counter", 2).unwrap();
-    let answer: i32 = server.get("counter")?.unwrap();
-    assert_eq!(answer, 42);
-
-    // flush the database:
-    server.flush()?;
-
-    println!("memcached server works!");
     Ok(())
 }
 
@@ -281,7 +249,7 @@ fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
     let mut seq_bytes = seq.to_be_bytes().to_vec();
     seq_bytes.append(&mut bytes);
     seq_bytes.append(&mut command);
-    // println!("bytes: {:?}", seq_bytes);
+    // info!("bytes: {:?}", seq_bytes);
     seq_bytes
 }
 
@@ -343,7 +311,7 @@ async fn socket_task<'a>(
                         .to_string();
 
                     if received != *value.to_string() {
-                        println!(
+                        info!(
                             "response not match key {} buf: {} , value: {}",
                             key, received, value
                         );
@@ -356,7 +324,7 @@ async fn socket_task<'a>(
         });
     }
 
-    println!("processed tasks: {}", cnt);
+    info!("processed tasks: {}", cnt);
 }
 
 async fn get_command_benchmark(
@@ -436,7 +404,7 @@ async fn get_command_benchmark(
     tracker.wait().await;
 
     let duration = start.elapsed();
-    println!("Time elapsed in get_command_benchmark() is: {:?}", duration);
+    info!("Time elapsed in get_command_benchmark() is: {:?}", duration);
 
     Ok(())
 }
@@ -509,10 +477,10 @@ fn _test_entries_statistics(
         if *count < key_frequency.len() / 1000 {
             continue;
         }
-        println!("{}: {}", key, count);
+        info!("{}: {}", key, count);
     }
 
-    println!("tcp count: {}, udp count: {}", tcp_count, udp_count);
+    info!("tcp count: {}, udp count: {}", tcp_count, udp_count);
 }
 
 fn load_bench_entries_from_disk() -> Vec<(String, String, Protocol)> {
@@ -553,7 +521,7 @@ fn load_test_dict(
     test_dict_path: &std::path::Path,
 ) -> Result<HashMap<String, String>, Box<dyn Error>> {
     // load dict from file if dict_path is not empty
-    println!("load dict from path {:?}", test_dict_path);
+    info!("load dict from path {:?}", test_dict_path);
     let file = File::open(test_dict_path)?;
     let decoder = zstd::stream::read::Decoder::new(file)?;
     let reader = BufReader::new(decoder);
@@ -570,12 +538,12 @@ fn load_test_dict(
         test_dict.extend(deserialized_map);
     });
 
-    println!("test dict len: {}", test_dict.len());
-    println!(
+    info!("test dict len: {}", test_dict.len());
+    info!(
         "test dict key size: {}",
         test_dict.keys().next().unwrap().len()
     );
-    println!(
+    info!(
         "test dict value size: {}",
         test_dict.values().next().unwrap().len()
     );
@@ -664,7 +632,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
 
     let mut send_commands_vec = Vec::new();
 
-    // First generate get commands for each thread
+    info!("Start to generate get commands for each thread");
     for thread_num in 0..threads {
         let mut seq: u16 = 0;
         let mut send_commands = vec![];
@@ -689,6 +657,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
 
     // let rt = Builder::new_multi_thread().enable_all().build()?;
     let mut handles = vec![];
+    info!("Start benchmark");
 
     for tid in 0..threads {
         let test_dict = Arc::clone(&test_dict);
@@ -713,7 +682,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
                     )
                     .await
                     .unwrap();
-                    println!("Finish gen_command_bench {}", tid);
+                    info!("Finish gen_command_bench {}", tid);
                 })
             })
             .unwrap();
@@ -725,13 +694,13 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     }
 
     // wait for all tasks to complete
-    println!("wait for all tasks to complete");
+    info!("wait for all tasks to complete");
 
     let elapsed_time = start_time.elapsed()?.as_secs_f64();
-    println!("Timeout counter {}", TIMEOUT_COUNTER.load(Ordering::SeqCst));
+    info!("Timeout counter {}", TIMEOUT_COUNTER.load(Ordering::SeqCst));
     let throughput =
         (nums - TIMEOUT_COUNTER.load(Ordering::SeqCst)) as f64 / elapsed_time;
-    println!(
+    info!(
         "Throughput across all threads: {:.2} reqs/sec, elapsed_time {}",
         throughput, elapsed_time
     );
@@ -761,12 +730,17 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         "total_items"
     );
     let obj = json!(output);
-    println!("{}", serde_json::to_string_pretty(&obj).unwrap());
+    info!("{}", serde_json::to_string_pretty(&obj).unwrap());
     Ok(())
 }
 
 fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
+
+    env_logger::Builder::new()
+        .filter_level(LevelFilter::max())
+        .init();
+
     match args.command {
         Commands::Bench { .. } => {
             run_bench()?;

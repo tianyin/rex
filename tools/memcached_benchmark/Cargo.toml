@@ -6,7 +6,7 @@ authors = ["Ruowen Qin ruowenq2@illinois.edu"]
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-memcache = "0.17"
+memcache = "0.18"
 rand = "0.8"
 zipf = "7"
 clap = { version = "4", features = ["derive"] }
@@ -19,6 +19,8 @@ serde_json = "1"
 async-memcached = "0"
 tokio-util = { version = "0.7", features = ["rt"] }
 rand_chacha = "0"
+log = "0"
+env_logger = { version = "0" }
 
 
 [profile.release]
