@@ -96,7 +96,7 @@ enum Commands {
         protocol: Protocol,
 
         /// number of dict entries to generate
-        #[arg(short, long, default_value = "100000000")]
+        #[arg(short, long, default_value = "1000000")]
         dict_entries: usize,
 
         /// load the prepared test_entries from disk
@@ -132,7 +132,7 @@ enum Commands {
         value_size: usize,
 
         /// number of dict entries to generate
-        #[arg(short, long, default_value = "100000000")]
+        #[arg(short, long, default_value = "1000000")]
         dict_entries: usize,
 
         /// dict path to store
