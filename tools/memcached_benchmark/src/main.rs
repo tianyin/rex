@@ -23,6 +23,7 @@ use tokio::sync::{mpsc, Semaphore};
 use tokio::time::timeout;
 
 // use tokio::runtime::Handle;
+use env_logger::Target;
 use log::{debug, info, LevelFilter};
 use std::sync::{atomic::*, Arc};
 use tokio::task::JoinSet;
@@ -755,6 +756,7 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
 
     env_logger::Builder::new()
+        .target(Target::Stdout)
         .filter_level(LevelFilter::Info)
         .init();
 
