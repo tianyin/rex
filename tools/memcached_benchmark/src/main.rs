@@ -203,9 +203,9 @@ async fn set_memcached_value<'a>(
     port: String,
 ) -> Result<(), MemcacheError> {
     info!("Start set memcached value");
-    let addr = format!("{}:{}", server_address, port);
+    let addr = format!("tcp://{}:{}", server_address, port);
     let mut sockets_pool = vec![];
-    let concurrency_limit = 512;
+    let concurrency_limit = 64;
 
     for _ in 0..concurrency_limit {
         let client = async_memcached::Client::new(addr.as_str())
@@ -341,7 +341,7 @@ async fn get_command_benchmark(
     pipeline: usize,
 ) -> Result<(), Box<dyn Error>> {
     // assign client address
-    let addr = Arc::new(format!("{}:{}", server_address, port));
+    let addr = Arc::new(format!("tcp://{}:{}", server_address, port));
 
     let mut sockets_pool = vec![];
     for _ in 0..32 {
@@ -353,7 +353,7 @@ async fn get_command_benchmark(
     let sockets_pool = Arc::new(sockets_pool);
 
     let mut client =
-        async_memcached::Client::new(format!("{}:{}", server_address, port))
+        async_memcached::Client::new(format!("tcp://{}:{}", server_address, port))
             .await
             .expect("TCP memcached connection failed");
 
