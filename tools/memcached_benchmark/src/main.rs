@@ -5,13 +5,13 @@ use rand::distributions::{Alphanumeric, DistString, Distribution};
 use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
 use serde_json::json;
 
+use std::collections::HashMap;
 use std::error::Error;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Write};
 use std::mem::size_of_val;
 use std::result::Result;
 use std::vec;
-use std::{collections::HashMap, sync::Arc};
 
 use rayon::prelude::*;
 use tokio::net::UdpSocket;
@@ -24,7 +24,7 @@ use tokio::time::timeout;
 
 // use tokio::runtime::Handle;
 use log::{debug, info, LevelFilter};
-use std::sync::atomic::*;
+use std::sync::{atomic::*, Arc};
 use tokio::task::JoinSet;
 use tokio_util::task::TaskTracker;
 
@@ -45,8 +45,8 @@ enum Protocol {
 struct TaskData {
     seq: u16,
     addr: Arc<String>,
-    key: String,
-    test_dict: Arc<HashMap<String, String>>,
+    key: Arc<String>,
+    test_dict: Arc<HashMap<Arc<String>, Arc<String>>>,
     validate: bool,
     key_size: usize,
     value_size: usize,
@@ -96,7 +96,7 @@ enum Commands {
         protocol: Protocol,
 
         /// number of dict entries to generate
-        #[arg(short, long, default_value = "50000000")]
+        #[arg(short, long, default_value = "100000000")]
         dict_entries: usize,
 
         /// load the prepared test_entries from disk
@@ -132,7 +132,7 @@ enum Commands {
         value_size: usize,
 
         /// number of dict entries to generate
-        #[arg(short, long, default_value = "1000000")]
+        #[arg(short, long, default_value = "100000000")]
         dict_entries: usize,
 
         /// dict path to store
@@ -197,10 +197,11 @@ fn generate_test_dict_write_to_disk(
 }
 
 async fn set_memcached_value<'a>(
-    test_dict: Arc<HashMap<String, String>>,
+    test_dict: Arc<HashMap<Arc<String>, Arc<String>>>,
     server_address: String,
     port: String,
 ) -> Result<(), MemcacheError> {
+    info!("Start set memcached value");
     let addr = format!("{}:{}", server_address, port);
     let mut sockets_pool = vec![];
     for _ in 0..64 {
@@ -221,12 +222,12 @@ async fn set_memcached_value<'a>(
             let mut socket = sockets_pool_clone[count & 0x3F].lock().await;
 
             socket
-                .set(&key_clone, value_clone.as_bytes(), None, None)
+                .set(&*key_clone, &*value_clone, None, None)
                 .await
                 .expect("memcached set command failed");
 
             let ret = socket
-                .get(&key_clone)
+                .get(&*key_clone)
                 .await
                 .expect("memcached get command failed");
 
@@ -243,7 +244,7 @@ async fn set_memcached_value<'a>(
     Ok(())
 }
 
-fn wrap_get_command(key: String, seq: u16) -> Vec<u8> {
+fn wrap_get_command(key: Arc<String>, seq: u16) -> Vec<u8> {
     let mut bytes: Vec<u8> = vec![0, 0, 0, 1, 0, 0];
     let mut command = format!("get {}\r\n", key).into_bytes();
     let mut seq_bytes = seq.to_be_bytes().to_vec();
@@ -279,17 +280,15 @@ async fn socket_task<'a>(
             let socket: &UdpSocket = &socket_pool_clone[counter & 0x1F];
             let packet = wrap_get_command(key.clone(), seq);
             // Add timeout action
-            match timeout(
+            if (timeout(
                 send_timeout,
                 socket.send_to(&packet[..], addr.as_str()),
             )
-            .await
+            .await)
+                .is_err()
             {
-                Err(_) => {
-                    TIMEOUT_COUNTER.fetch_add(1, Ordering::Relaxed);
-                    return;
-                }
-                _ => (),
+                TIMEOUT_COUNTER.fetch_add(1, Ordering::Relaxed);
+                return;
             };
 
             // Then receive
@@ -302,7 +301,7 @@ async fn socket_task<'a>(
                 if !validate {
                     return;
                 }
-                if let Some(value) = test_dict.get(&key) {
+                if let Some(value) = test_dict.get(&*key) {
                     let received = String::from_utf8_lossy(&buf[..amt])
                         .split("VALUE ")
                         .nth(1)
@@ -328,8 +327,8 @@ async fn socket_task<'a>(
 }
 
 async fn get_command_benchmark(
-    test_dict: Arc<HashMap<String, String>>,
-    send_commands: Vec<(String, u16, Protocol, String)>,
+    test_dict: Arc<HashMap<Arc<String>, Arc<String>>>,
+    send_commands: Vec<(Arc<String>, u16, Protocol, Arc<String>)>,
     server_address: String,
     port: String,
     validate: bool,
@@ -371,7 +370,7 @@ async fn get_command_benchmark(
         // if tcp, use set request
         if proto == Protocol::Tcp {
             client
-                .set(&key, value.as_bytes(), None, None)
+                .set(&*key, &*value, None, None)
                 .await
                 .expect("memcached set command failed");
             continue;
@@ -493,17 +492,17 @@ fn load_bench_entries_from_disk() -> Vec<(String, String, Protocol)> {
 }
 
 fn generate_test_entries(
-    test_dict: &Arc<HashMap<String, String>>,
+    test_dict: Arc<HashMap<Arc<String>, Arc<String>>>,
     nums: usize,
-) -> Vec<(&String, &String, Protocol)> {
+) -> Vec<(Arc<String>, Arc<String>, Protocol)> {
     let mut rng = ChaCha8Rng::seed_from_u64(SEED);
     let zipf = zipf::ZipfDistribution::new(test_dict.len() - 1, 0.99).unwrap();
 
     let mut counter: usize = 0;
-    let keys: Vec<&String> = test_dict.keys().collect();
+    let keys: Vec<Arc<String>> = test_dict.keys().cloned().collect();
     (0..nums)
         .map(|_| {
-            let key = keys[zipf.sample(&mut rng)];
+            let key = &keys[zipf.sample(&mut rng)];
             let value = test_dict.get(key).unwrap();
             // every 31 element is tcp. udp:tcp = 30:1
             let protocol = if counter % 31 == 30 {
@@ -512,7 +511,7 @@ fn generate_test_entries(
                 Protocol::Udp
             };
             counter += 1;
-            (key, value, protocol)
+            (key.clone(), value.clone(), protocol)
         })
         .collect()
 }
@@ -521,7 +520,7 @@ fn load_test_dict(
     test_dict_path: &std::path::Path,
 ) -> Result<HashMap<String, String>, Box<dyn Error>> {
     // load dict from file if dict_path is not empty
-    info!("load dict from path {:?}", test_dict_path);
+    info!("loading dict from path {:?}", test_dict_path);
     let file = File::open(test_dict_path)?;
     let decoder = zstd::stream::read::Decoder::new(file)?;
     let reader = BufReader::new(decoder);
@@ -538,12 +537,12 @@ fn load_test_dict(
         test_dict.extend(deserialized_map);
     });
 
-    info!("test dict len: {}", test_dict.len());
-    info!(
+    debug!("test dict len: {}", test_dict.len());
+    debug!(
         "test dict key size: {}",
         test_dict.keys().next().unwrap().len()
     );
-    info!(
+    debug!(
         "test dict value size: {}",
         test_dict.values().next().unwrap().len()
     );
@@ -585,13 +584,18 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     } else {
         load_test_dict(test_dict_path)?
     };
-    let test_dict = Arc::new(test_dict);
+    let test_dict: Arc<HashMap<Arc<String>, Arc<String>>> = Arc::new(
+        test_dict
+            .into_iter()
+            .map(|(k, v)| (Arc::new(k), Arc::new(v)))
+            .collect(),
+    );
 
     // if memcached server is already imported, skip set memcached value
     if !skip_set {
         let rt = Builder::new_multi_thread()
             .enable_all()
-            .worker_threads(512)
+            .thread_name("memcached-set")
             .event_interval(31)
             .build()?;
 
@@ -612,42 +616,52 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         vec![]
     };
 
-    let test_entries = if test_entries_tmp.is_empty() {
-        let test_entries = generate_test_entries(&test_dict, nums);
+    info!("Start to generate get commands for each thread");
+    let benchmark_entries = if test_entries_tmp.is_empty() {
+        let test_entries = generate_test_entries(test_dict.clone(), nums);
         if load_bench_entries {
-            write_hashmap_to_file(&test_entries, BENCH_ENTRIES_PATH)?;
+            let test_entries_write: Vec<(String, String, Protocol)> =
+                test_entries
+                    .clone()
+                    .into_iter() // Iterate over the original vector
+                    .map(|(a, b, c)| {
+                        (
+                            Arc::try_unwrap(a).unwrap_or_else(|a| (*a).clone()),
+                            Arc::try_unwrap(b).unwrap_or_else(|b| (*b).clone()),
+                            c,
+                        )
+                    })
+                    .collect();
+
+            write_hashmap_to_file(&test_entries_write, BENCH_ENTRIES_PATH)?;
         }
         test_entries
     } else {
-        // convert to Vec<(&String, &String, Protocol)>
+        // convert to Vec<(Arc<String>, Arc<String>, Protocol)>
         test_entries_tmp
             .iter()
-            .map(|(key, value, proto)| (key, value, *proto))
+            .map(|(key, value, proto)| {
+                (Arc::new(key.clone()), Arc::new(value.clone()), *proto)
+            })
             .collect()
     };
-    let test_entries = Arc::new(test_entries);
+    let benchmark_entries = Arc::new(benchmark_entries);
 
     // analyze test entries statistics
     // _test_entries_statistics(test_entries.clone());
 
     let mut send_commands_vec = Vec::new();
 
-    info!("Start to generate get commands for each thread");
     for thread_num in 0..threads {
         let mut seq: u16 = 0;
         let mut send_commands = vec![];
 
         for index in 0..nums / threads {
             let (key, value, proto) =
-                test_entries[thread_num * nums / threads + index];
+                &benchmark_entries[thread_num * nums / threads + index];
             // let packet = wrap_get_command(key.clone(), seq);
             seq = seq.wrapping_add(1);
-            send_commands.push((
-                key.to_string(),
-                seq,
-                proto,
-                value.to_string(),
-            ));
+            send_commands.push((key.clone(), seq, *proto, value.clone()));
         }
 
         send_commands_vec.push(send_commands);
@@ -660,7 +674,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     info!("Start benchmark");
 
     for tid in 0..threads {
-        let test_dict = Arc::clone(&test_dict);
+        let test_dict = test_dict.clone();
         let server_address = server_address.clone();
         let port = port.clone();
         let send_commands = send_commands_vec.pop().unwrap();
@@ -738,7 +752,7 @@ fn main() -> std::result::Result<(), Box<dyn Error>> {
     let args = Cli::parse();
 
     env_logger::Builder::new()
-        .filter_level(LevelFilter::max())
+        .filter_level(LevelFilter::Info)
         .init();
 
     match args.command {
