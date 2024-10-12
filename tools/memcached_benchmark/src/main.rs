@@ -19,7 +19,7 @@ use tokio::runtime::Builder;
 // use tokio::runtime::Runtime;
 
 use serde::{Deserialize, Serialize};
-use tokio::sync::mpsc;
+use tokio::sync::{mpsc, Semaphore};
 use tokio::time::timeout;
 
 // use tokio::runtime::Handle;
@@ -204,7 +204,9 @@ async fn set_memcached_value<'a>(
     info!("Start set memcached value");
     let addr = format!("{}:{}", server_address, port);
     let mut sockets_pool = vec![];
-    for _ in 0..64 {
+    let concurrency_limit = 512;
+
+    for _ in 0..concurrency_limit {
         let client = async_memcached::Client::new(addr.as_str())
             .await
             .expect("TCP memcached connection failed");
@@ -213,14 +215,16 @@ async fn set_memcached_value<'a>(
     let sockets_pool = Arc::new(sockets_pool);
 
     let mut set = JoinSet::new();
+    let sem = Arc::new(Semaphore::new(concurrency_limit));
 
     for (count, (key, value)) in test_dict.iter().enumerate() {
         let sockets_pool_clone = sockets_pool.clone();
         let key_clone = key.clone();
         let value_clone = value.clone();
+        let permit = Arc::clone(&sem).acquire_owned().await;
         set.spawn(async move {
+            let _permit = permit;
             let mut socket = sockets_pool_clone[count & 0x3F].lock().await;
-
             socket
                 .set(&*key_clone, &*value_clone, None, None)
                 .await
@@ -235,9 +239,8 @@ async fn set_memcached_value<'a>(
             assert_eq!(get_value.data, value_clone.as_bytes());
         });
     }
-    while !set.is_empty() {
-        set.join_next().await;
-    }
+
+    while set.join_next().await.is_some() {}
 
     info!("Done set memcached value");
 
