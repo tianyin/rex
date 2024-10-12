@@ -73,7 +73,7 @@
       ];
 
       fhs = pkgs.buildFHSUserEnv {
-        name = "simple-rust-env";
+        name = "rex-env";
         targetPkgs = pkgs: rexPackages;
         runScript = "./scripts/start.sh";
       };
@@ -84,7 +84,7 @@
         rex = pkgs.mkShell {
           buildInputs = rexPackages;
           shellHook = ''
-            echo "Running ./scripts/start.sh..."
+            echo "loading rex env"
             source ./scripts/env.sh
           '';
         };
