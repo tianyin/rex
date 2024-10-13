@@ -28,7 +28,7 @@
         # build deps
         cmake
         ninja # rust build
-        (hiPrio gcc14)
+        (hiPrio gcc)
         libgcc
         curl
         diffutils
@@ -81,8 +81,12 @@
     {
       devShells."${system}" = {
         default = fhs.env;
+
         rex = pkgs.mkShell {
+          inputsFrom = [ pkgs.linux_latest ];
           buildInputs = rexPackages;
+          hardeningDisable = [ "strictoverflow" ];
+
           shellHook = ''
             echo "loading rex env"
             source ./scripts/env.sh
