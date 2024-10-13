@@ -42,6 +42,7 @@ struct bmc_stats {
 	unsigned int update_count; // Number of kernel cache updates
 	unsigned int
 		invalidation_count; // Number of kernel cache entry invalidated
+	unsigned int debug_count;
 };
 
 static struct bpf_progs_desc progs[] = {
@@ -88,6 +89,7 @@ int write_stats_to_file(char *filename, int map_fd)
 		aggregate_stats.update_count += stats[i].update_count;
 		aggregate_stats.invalidation_count +=
 			stats[i].invalidation_count;
+		aggregate_stats.debug_count += stats[i].debug_count;
 	}
 
 	fp = fopen(STATS_PATH, "w+");
@@ -107,7 +109,7 @@ int write_stats_to_file(char *filename, int map_fd)
 	fprintf(fp, "STAT update_count %u\n", aggregate_stats.update_count);
 	fprintf(fp, "STAT invalidation_count %u\n",
 		aggregate_stats.invalidation_count);
-
+	fprintf(fp, "STAT debug_count %u\n", aggregate_stats.debug_count);
 	fclose(fp);
 	return 0;
 }

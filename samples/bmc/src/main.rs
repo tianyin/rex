@@ -68,6 +68,7 @@ pub struct bmc_stats {
     miss_count: u32,
     update_count: u32,
     invalidation_count: u32,
+    debug_count: u32,
 }
 
 struct parsing_context {
