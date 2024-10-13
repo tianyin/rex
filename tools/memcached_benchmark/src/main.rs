@@ -205,7 +205,7 @@ async fn set_memcached_value<'a>(
     info!("Start set memcached value");
     let addr = format!("{}:{}", server_address, port);
     let mut sockets_pool = vec![];
-    let concurrency_limit = 512;
+    let concurrency_limit = 64;
 
     for _ in 0..concurrency_limit {
         let client = async_memcached::Client::new(addr.as_str())
