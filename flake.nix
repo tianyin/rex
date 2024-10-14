@@ -85,7 +85,7 @@
         rex = pkgs.mkShell {
           inputsFrom = [ pkgs.linux_latest ];
           buildInputs = rexPackages;
-          hardeningDisable = [ "strictoverflow" ];
+          hardeningDisable = [ "strictoverflow" "zerocallusedregs" ];
 
           shellHook = ''
             echo "loading rex env"
