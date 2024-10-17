@@ -138,7 +138,7 @@ unsafe fn __rex_check_stack() {
         core::arch::asm!(
             "mov {1:r}, gs:[{0:r}]",
             "sub {1:r}, 0x4000",
-            "cmp rsp, r10",
+            "cmp rsp, {1:r}",
             "ja 2f",
             "call __rex_handle_stack_overflow",
             "2:",
