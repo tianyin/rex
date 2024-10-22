@@ -125,15 +125,9 @@ impl RexRingBuf {
         if data.is_null() {
             None
         } else {
-            unsafe {
-                data.write(value);
-            };
+            unsafe { data.write(value) };
             Some(RexRingBufEntry {
-                data: unsafe {
-                    {
-                        &mut *data
-                    }
-                },
+                data: unsafe { &mut *data },
                 submit_by_default,
                 has_used: false,
             })

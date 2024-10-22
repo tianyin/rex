@@ -26,9 +26,7 @@ impl<'a> rex_spinlock_guard<'a> {
             );
 
             // Lock
-            unsafe {
-                stub::bpf_spin_lock(lock);
-            }
+            unsafe { stub::bpf_spin_lock(lock) };
 
             Self { lock, cleanup_idx }
         })

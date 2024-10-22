@@ -536,46 +536,6 @@ macro_rules! base_helper_defs {
         pub fn bpf_ringbuf_submit<T>(&self, data: &mut T, flags: u64) {
             crate::base_helper::bpf_ringbuf_submit(data, flags)
         }
-
-        // NOTE: test only
-        #[inline(always)]
-        pub fn dummy_long_running_helper(&self) -> u32 {
-            unsafe {
-                let termination_flag: *mut u8 =
-                    crate::per_cpu::this_cpu_ptr_mut(core::ptr::addr_of_mut!(
-                        crate::stub::rex_termination_state
-                    ) as u64);
-
-                *termination_flag = 1;
-                // simulate long runtime
-                for _ in 0..10000 {
-                    crate::base_helper::bpf_trace_printk(
-                        c"Inside loop of helper",
-                        0,
-                        0,
-                        0,
-                    );
-                }
-                crate::base_helper::bpf_trace_printk(
-                    c"Exit loop of helper. ",
-                    0,
-                    0,
-                    0,
-                );
-                if *termination_flag == 2 {
-                    crate::base_helper::bpf_trace_printk(
-                        c"Helper finds termination flag set. Calling panic! ",
-                        0,
-                        0,
-                        0,
-                    );
-                    crate::panic::__rex_handle_timeout();
-                } else {
-                    *termination_flag = 0; // exiting
-                }
-                0
-            }
-        }
     };
 }
 
