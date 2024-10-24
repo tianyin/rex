@@ -164,7 +164,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Set the termination flag
     unsafe {
         let termination_flag: *mut u8 = crate::per_cpu::this_cpu_ptr_mut(
-            core::ptr::addr_of_mut!(crate::stub::rex_termination_state) as u64,
+            &raw mut crate::stub::rex_termination_state as u64,
         );
         *termination_flag = 1;
     };

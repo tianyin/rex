@@ -20,8 +20,7 @@ macro_rules! termination_check {
         let mut termination_flag: *mut u8;
         unsafe {
             termination_flag = crate::per_cpu::this_cpu_ptr_mut(
-                core::ptr::addr_of_mut!(crate::stub::rex_termination_state)
-                    as u64,
+                &raw mut crate::stub::rex_termination_state as u64,
             );
 
             // Set the termination flag
