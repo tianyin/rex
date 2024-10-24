@@ -52,6 +52,7 @@
         pahole
         strace
         zstd
+        eza
 
         bear # generate compile commands
         rsync # for make headers_install
