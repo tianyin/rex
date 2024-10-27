@@ -20,7 +20,7 @@ macro_rules! termination_check {
         let mut termination_flag: *mut u8;
         unsafe {
             termination_flag = crate::per_cpu::this_cpu_ptr_mut(
-                &raw mut crate::stub::rex_termination_state as u64,
+                &raw mut crate::stub::rex_termination_state,
             );
 
             // Set the termination flag
@@ -45,8 +45,8 @@ macro_rules! termination_check {
     }};
 }
 
-pub(crate) fn bpf_get_smp_processor_id() -> u32 {
-    unsafe { this_cpu_read(cpu_number() as *const i32 as u64) }
+pub(crate) fn bpf_get_smp_processor_id() -> i32 {
+    unsafe { this_cpu_read(cpu_number()) }
 }
 
 pub(crate) fn bpf_trace_printk(
@@ -280,10 +280,8 @@ pub(crate) fn bpf_jiffies64() -> u64 {
 }
 
 /// Assumes `CONFIG_USE_PERCPU_NUMA_NODE_ID`
-pub(crate) fn bpf_get_numa_node_id() -> i64 {
-    let id =
-        unsafe { this_cpu_read::<u64>(&stub::numa_node as *const i32 as u64) };
-    id as i64
+pub(crate) fn bpf_get_numa_node_id() -> i32 {
+    unsafe { this_cpu_read(&raw const stub::numa_node) }
 }
 
 // This two functions call the original helper directly, so that confirm the
@@ -389,7 +387,7 @@ pub(crate) fn bpf_ringbuf_query(
 macro_rules! base_helper_defs {
     () => {
         #[inline(always)]
-        pub fn bpf_get_smp_processor_id(&self) -> u32 {
+        pub fn bpf_get_smp_processor_id(&self) -> i32 {
             crate::base_helper::bpf_get_smp_processor_id()
         }
 
@@ -475,7 +473,7 @@ macro_rules! base_helper_defs {
         }
 
         #[inline(always)]
-        pub fn bpf_get_numa_node_id(&self) -> i64 {
+        pub fn bpf_get_numa_node_id(&self) -> i32 {
             crate::base_helper::bpf_get_numa_node_id()
         }
 

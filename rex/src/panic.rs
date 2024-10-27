@@ -6,7 +6,7 @@ use crate::per_cpu::this_cpu_ptr_mut;
 use crate::stub;
 
 /// Needs to match the kernel side per-cpu definition
-const ENTRIES_SIZE: usize = 64;
+pub(crate) const ENTRIES_SIZE: usize = 64;
 
 pub(crate) type CleanupFn = unsafe fn(*mut ()) -> ();
 
@@ -71,9 +71,8 @@ impl<'a> CleanupEntries<'a> {
     fn this_cpu_cleanup_entries() -> CleanupEntries<'a> {
         let entries: &mut [CleanupEntry];
         unsafe {
-            let entries_ptr: *mut CleanupEntry = this_cpu_ptr_mut(
-                &stub::rex_cleanup_entries as *const *mut () as u64,
-            );
+            let entries_ptr: *mut CleanupEntry =
+                this_cpu_ptr_mut(stub::rex_cleanup_entries.as_mut_ptr());
             entries =
                 core::slice::from_raw_parts_mut(entries_ptr, ENTRIES_SIZE);
         }
@@ -164,7 +163,7 @@ fn panic(info: &PanicInfo) -> ! {
     // Set the termination flag
     unsafe {
         let termination_flag: *mut u8 = crate::per_cpu::this_cpu_ptr_mut(
-            &raw mut crate::stub::rex_termination_state as u64,
+            &raw mut crate::stub::rex_termination_state,
         );
         *termination_flag = 1;
     };

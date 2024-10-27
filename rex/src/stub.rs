@@ -5,6 +5,7 @@ use crate::bindings::linux::kernel::{
     bpf_perf_event_data_kern, pcpu_hot, sk_buff, xdp_buff,
 };
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
+use crate::panic::{CleanupEntry, ENTRIES_SIZE};
 
 /// Functions
 extern "C" {
@@ -200,7 +201,10 @@ extern "C" {
     ///
     /// Pointee type omitted since this per-cpu variable will never be directly
     /// dereferenced, it is always used for per-cpu address calculation
-    pub(crate) static rex_cleanup_entries: *mut ();
+    ///
+    /// Allow the use of rust fn ptr as the function is only called in Rust
+    #[allow(improper_ctypes)]
+    pub(crate) static mut rex_cleanup_entries: [CleanupEntry; ENTRIES_SIZE];
 
     /// `DEFINE_PER_CPU(void *, rex_stack_ptr);`
     ///
