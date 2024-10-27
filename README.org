@@ -178,20 +178,3 @@ The following output should be printed out:
 #+BEGIN_EXAMPLE
 <...>-245     [002] d...1    18.417331: bpf_trace_printk: Rust triggered from PID 245.
 #+END_EXAMPLE
-
-** Debugging kernrel problems with gdb
-#+BEGIN_SRC bash
-# prepare with remote gdb (default port is 1234)
-gdb linux/vmlinux -ex "target remote localhost:1234"
-# start qemu with gdb port mapping
-make qemu-run-gdb 
-
-# The boot process will halt and the below output is expected. 
-Reading symbols from linux/vmlinux...
-Remote debugging using localhost:1234
-0x00000000000ea0b6 in ?? ()
-# Type `c` to continue
-(gdb) c
-Continuing.
-#+END_SRC
-
