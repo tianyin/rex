@@ -171,6 +171,14 @@ public:
         .name = name.data(),
         .fd = map_fd.value(),
         .inner_map_fd = -1,
+        .def =
+            {
+                .type = def.map_type,
+                .key_size = def.key_size,
+                .value_size = def.val_size,
+                .max_entries = def.max_size,
+                .map_flags = def.map_flag,
+            },
         .libbpf_type = LIBBPF_MAP_UNSPEC,
     };
   }
