@@ -48,8 +48,6 @@ impl kprobe {
     }
 
     #[cfg(CONFIG_BPF_KPROBE_OVERRIDE = "y")]
-    // Not usable for now, this function requires a mutation ref, which is
-    // not safe to expose to the user progs
     pub fn bpf_override_return(&self, regs: &mut PtRegs, rc: u64) -> i32 {
         regs.regs.ax = rc;
         regs.regs.ip = unsafe { stub::just_return_func as *const () as u64 };

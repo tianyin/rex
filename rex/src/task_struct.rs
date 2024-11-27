@@ -23,7 +23,6 @@ impl TaskStruct {
         Self { kptr: kp }
     }
 
-    /// Currently returns u64 until `task_struct` binding is generated
     pub(crate) fn get_current_task() -> Option<Self> {
         let current: *const task_struct =
             unsafe { this_cpu_read(current_task()) };
