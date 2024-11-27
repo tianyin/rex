@@ -14,21 +14,21 @@ use crate::Result;
 //
 // prog_fn should have &Self as its first argument
 //
-// name is a &str
+// name is a &'static str
 #[repr(C)]
-pub struct kprobe<'a> {
+pub struct kprobe {
     rtti: u64,
     prog: fn(&Self, &mut PtRegs) -> Result,
-    name: &'a str,
+    name: &'static str,
 }
 
-impl<'a> kprobe<'a> {
+impl kprobe {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&kprobe<'a>, &mut PtRegs) -> Result,
-        nm: &'a str,
-    ) -> kprobe<'a> {
+        f: fn(&kprobe, &mut PtRegs) -> Result,
+        nm: &'static str,
+    ) -> kprobe {
         Self {
             rtti: BPF_PROG_TYPE_KPROBE as u64,
             prog: f,
@@ -61,7 +61,7 @@ impl<'a> kprobe<'a> {
     }
 }
 
-impl rex_prog for kprobe<'_> {
+impl rex_prog for kprobe {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
         ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32

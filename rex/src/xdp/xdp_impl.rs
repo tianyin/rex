@@ -93,22 +93,22 @@ impl<'a> xdp_md<'a> {
 //
 // prog_fn should have &Self as its first argument
 //
-// name is a &str
+// name is a &'static str
 #[repr(C)]
-pub struct xdp<'a> {
+pub struct xdp {
     rtti: u64,
     prog: fn(&Self, &mut xdp_md) -> Result,
-    name: &'a str,
+    name: &'static str,
 }
 
-impl<'a> xdp<'a> {
+impl xdp {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&xdp<'a>, &mut xdp_md) -> Result,
-        nm: &'a str,
+        f: fn(&xdp, &mut xdp_md) -> Result,
+        nm: &'static str,
         rtti: u64,
-    ) -> xdp<'a> {
+    ) -> xdp {
         Self {
             rtti,
             prog: f,
@@ -210,7 +210,7 @@ impl<'a> xdp<'a> {
         Ok(0)
     }
 }
-impl rex_prog for xdp<'_> {
+impl rex_prog for xdp {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // Return XDP_PASS if Err, i.e. discard event

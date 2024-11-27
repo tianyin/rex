@@ -49,21 +49,21 @@ impl bpf_perf_event_data {
 //
 // prog_fn should have &Self as its first argument
 //
-// name is a &str
+// name is a &'static str
 #[repr(C)]
-pub struct perf_event<'a> {
+pub struct perf_event {
     rtti: u64,
     prog: fn(&Self, &bpf_perf_event_data) -> Result,
-    name: &'a str,
+    name: &'static str,
 }
 
-impl<'a> perf_event<'a> {
+impl perf_event {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&perf_event<'a>, &bpf_perf_event_data) -> Result,
-        nm: &'a str,
-    ) -> perf_event<'a> {
+        f: fn(&perf_event, &bpf_perf_event_data) -> Result,
+        nm: &'static str,
+    ) -> perf_event {
         Self {
             rtti: BPF_PROG_TYPE_PERF_EVENT as u64,
             prog: f,
@@ -113,7 +113,7 @@ impl<'a> perf_event<'a> {
     }
 }
 
-impl rex_prog for perf_event<'_> {
+impl rex_prog for perf_event {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32

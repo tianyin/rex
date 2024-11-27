@@ -27,23 +27,23 @@ pub enum tp_ctx<'a> {
 //
 // prog_fn should have &Self as its first argument
 //
-// name is a &str
+// name is a &'static str
 #[repr(C)]
-pub struct tracepoint<'a> {
+pub struct tracepoint {
     rtti: u64,
     prog: fn(&Self, tp_ctx) -> Result,
-    name: &'a str,
+    name: &'static str,
     tp_type: tp_type,
 }
 
-impl<'a> tracepoint<'a> {
+impl tracepoint {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&tracepoint<'a>, tp_ctx) -> Result,
-        nm: &'a str,
+        f: fn(&tracepoint, tp_ctx) -> Result,
+        nm: &'static str,
         tp_ty: tp_type,
-    ) -> tracepoint<'a> {
+    ) -> tracepoint {
         Self {
             rtti: BPF_PROG_TYPE_TRACEPOINT as u64,
             prog: f,
@@ -69,7 +69,7 @@ impl<'a> tracepoint<'a> {
     }
 }
 
-impl rex_prog for tracepoint<'_> {
+impl rex_prog for tracepoint {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
 

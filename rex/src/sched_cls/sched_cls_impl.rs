@@ -178,23 +178,23 @@ impl<'a> __sk_buff<'a> {
 //
 // prog_fn should have &Self as its first argument
 //
-// name is a &str
+// name is a &'static str
 #[repr(C)]
-pub struct sched_cls<'a> {
+pub struct sched_cls {
     rtti: u64,
     prog: fn(&Self, &mut __sk_buff) -> Result,
-    name: &'a str,
+    name: &'static str,
 }
 
-impl<'a> sched_cls<'a> {
+impl sched_cls {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
         // TODO update based on signature
-        f: fn(&sched_cls<'a>, &mut __sk_buff) -> Result,
-        nm: &'a str,
+        f: fn(&sched_cls, &mut __sk_buff) -> Result,
+        nm: &'static str,
         rtti: u64,
-    ) -> sched_cls<'a> {
+    ) -> sched_cls {
         Self {
             rtti,
             prog: f,
@@ -298,7 +298,7 @@ impl<'a> sched_cls<'a> {
     }
 }
 
-impl rex_prog for sched_cls<'_> {
+impl rex_prog for sched_cls {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // return TC_ACT_OK if error
