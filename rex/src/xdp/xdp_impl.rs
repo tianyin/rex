@@ -107,10 +107,9 @@ impl xdp {
     pub const fn new(
         f: fn(&xdp, &mut xdp_md) -> Result,
         nm: &'static str,
-        rtti: u64,
     ) -> xdp {
         Self {
-            rtti,
+            rtti: BPF_PROG_TYPE_XDP as u64,
             prog: f,
             name: nm,
         }

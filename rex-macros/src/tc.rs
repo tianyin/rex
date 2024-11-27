@@ -35,8 +35,7 @@ impl SchedCls {
             #[used]
             #[link_section = "rex/tc"]
             static #prog_ident: sched_cls =
-                sched_cls::new(#fn_name, #function_name,
-                BPF_PROG_TYPE_SCHED_CLS as u64);
+                sched_cls::new(#fn_name, #function_name);
         };
         Ok(function_body_tokens)
     }

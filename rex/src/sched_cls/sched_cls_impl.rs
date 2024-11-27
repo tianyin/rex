@@ -193,10 +193,9 @@ impl sched_cls {
         // TODO update based on signature
         f: fn(&sched_cls, &mut __sk_buff) -> Result,
         nm: &'static str,
-        rtti: u64,
     ) -> sched_cls {
         Self {
-            rtti,
+            rtti: BPF_PROG_TYPE_SCHED_CLS as u64,
             prog: f,
             name: nm,
         }

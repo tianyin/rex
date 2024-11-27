@@ -32,7 +32,7 @@ impl Xdp {
             #[used]
             #[link_section = "rex/xdp"]
             static #prog_ident: xdp =
-                xdp::new(#fn_name, #function_name, BPF_PROG_TYPE_XDP as u64);
+                xdp::new(#fn_name, #function_name);
         };
         Ok(function_body_tokens)
     }
