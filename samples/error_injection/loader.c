@@ -16,10 +16,10 @@ int main(int argc, char *argv[])
 	struct bpf_object *obj;
 	struct bpf_program *prog;
 	struct bpf_link *link = NULL;
-	struct bpf_map *errno_map, *pid_map;
+	struct bpf_map *pid_to_errno;
 	struct rex_obj *rex_obj;
 	unsigned long errno_to_inject;
-	int pid, key = 0;
+	int pid;
 	LIBBPF_OPTS(bpf_ksyscall_opts, opts);
 
 	if (argc < 3) {
@@ -57,20 +57,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
-	errno_map = bpf_object__find_map_by_name(obj, "errno_map");
-	if (libbpf_get_error(errno_map)) {
-		fprintf(stderr, "ERROR: Could not find map: errno_map\n");
-		goto cleanup;
-	}
-
-	if (bpf_map__update_elem(errno_map, &key, sizeof(key), &errno_to_inject,
-				 sizeof(errno_to_inject), BPF_ANY) < 0) {
-		fprintf(stderr, "ERROR: updating errno_map failed\n");
-		goto cleanup;
-	}
-
-	pid_map = bpf_object__find_map_by_name(obj, "pid_map");
-	if (libbpf_get_error(pid_map)) {
+	pid_to_errno = bpf_object__find_map_by_name(obj, "pid_to_errno");
+	if (libbpf_get_error(pid_to_errno)) {
 		fprintf(stderr, "ERROR: Could not find map: pid_map\n");
 		goto cleanup;
 	}
@@ -81,8 +69,8 @@ int main(int argc, char *argv[])
 		perror("fork");
 	} else if (!pid) {
 		pid = getpid();
-		if (bpf_map__update_elem(pid_map, &key, sizeof(key), &pid,
-					 sizeof(pid), BPF_ANY) < 0) {
+		if (bpf_map__update_elem(pid_to_errno, &pid, sizeof(pid), &errno_to_inject,
+					 sizeof(errno_to_inject), BPF_ANY) < 0) {
 			fprintf(stderr, "ERROR: updating pid_map failed\n");
 		}
 
