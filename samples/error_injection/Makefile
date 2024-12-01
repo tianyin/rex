@@ -43,10 +43,10 @@ target/x86_64-unknown-linux-gnu/release/error_injection: Cargo.toml ./src/*.rs
 loader: loader.c
 	${CC} ${LOADER_INC} ${CFLAGS} ${LDFLAGS} -o $@ $< ${LOADER_LDFLAGS}
 
-event-trigger: event-trigger.c
+userapp: userapp.c
 	${CC} -I${LINUX_INC} ${CFLAGS} ${LDFLAGS} -o $@ $<
 
 clean:
-	rm -rf loader event-trigger ./src/linux ./src/stub.rs
+	rm -rf loader userapp ./src/linux ./src/stub.rs
 	cargo clean
 
