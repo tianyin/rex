@@ -213,8 +213,6 @@ impl rex_prog for xdp {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // Return XDP_PASS if Err, i.e. discard event
-        // FIX:map the error as XDP_PASS or err code
-        ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| XDP_PASS as i32)
-            as u32
+        ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| e) as u32
     }
 }

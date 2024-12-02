@@ -32,12 +32,12 @@ impl bpf_perf_event_data {
 
     #[inline(always)]
     pub fn sample_period(&self) -> u64 {
-        unsafe { (&*self.kdata.data).period }
+        unsafe { (*self.kdata.data).period }
     }
 
     #[inline(always)]
     pub fn addr(&self) -> u64 {
-        unsafe { (&*self.kdata.data).addr }
+        unsafe { (*self.kdata.data).addr }
     }
 }
 
@@ -116,6 +116,6 @@ impl perf_event {
 impl rex_prog for perf_event {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
-        ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32
+        ((self.prog)(self, newctx)).unwrap_or_else(|e| e) as u32
     }
 }

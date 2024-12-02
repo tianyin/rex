@@ -62,7 +62,7 @@ impl<'a> __sk_buff<'a> {
     #[inline(always)]
     pub fn ifindex(&self) -> u32 {
         unsafe {
-            (&*self
+            (*self
                 .kptr
                 .__bindgen_anon_1
                 .__bindgen_anon_1
@@ -301,7 +301,6 @@ impl rex_prog for sched_cls {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let mut newctx = self.convert_ctx(ctx);
         // return TC_ACT_OK if error
-        ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| TC_ACT_OK as i32)
-            as u32
+        ((self.prog)(self, &mut newctx)).unwrap_or_else(|e| e) as u32
     }
 }

@@ -51,7 +51,7 @@ impl kprobe {
     pub fn bpf_override_return(&self, regs: &mut PtRegs, rc: u64) -> i32 {
         regs.regs.ax = rc;
         regs.regs.ip = unsafe { stub::just_return_func as *const () as u64 };
-        return 0;
+        0
     }
 
     pub fn bpf_get_current_task(&self) -> Option<TaskStruct> {
@@ -62,6 +62,6 @@ impl kprobe {
 impl rex_prog for kprobe {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
-        ((self.prog)(self, newctx)).unwrap_or_else(|_| 0) as u32
+        ((self.prog)(self, newctx)).unwrap_or_else(|e| e) as u32
     }
 }
