@@ -72,37 +72,37 @@ unsafe impl Sync for RexRingBuf {}
 
 impl<'a, K, V> RexHashMap<K, V> {
     pub fn insert(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(&self, key, value, BPF_ANY as u64)
+        bpf_map_update_elem(self, key, value, BPF_ANY as u64)
     }
 
     pub fn insert_new(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(&self, key, value, BPF_NOEXIST as u64)
+        bpf_map_update_elem(self, key, value, BPF_NOEXIST as u64)
     }
 
     pub fn update(&'static self, key: &K, value: &V) -> Result {
-        bpf_map_update_elem(&self, key, value, BPF_EXIST as u64)
+        bpf_map_update_elem(self, key, value, BPF_EXIST as u64)
     }
 
     pub fn get_mut(&'static self, key: &'a K) -> Option<&'a mut V> {
-        bpf_map_lookup_elem(&self, key)
+        bpf_map_lookup_elem(self, key)
     }
 
     pub fn delete(&'static self, key: &K) -> Result {
-        bpf_map_delete_elem(&self, key)
+        bpf_map_delete_elem(self, key)
     }
 }
 
 impl<'a, V> RexArrayMap<V> {
     pub fn insert(&'static self, key: &u32, value: &V) -> Result {
-        bpf_map_update_elem(&self, key, value, BPF_ANY as u64)
+        bpf_map_update_elem(self, key, value, BPF_ANY as u64)
     }
 
     pub fn get_mut(&'static self, key: &'a u32) -> Option<&'a mut V> {
-        bpf_map_lookup_elem(&self, key)
+        bpf_map_lookup_elem(self, key)
     }
 
     pub fn delete(&'static self, key: &u32) -> Result {
-        bpf_map_delete_elem(&self, key)
+        bpf_map_delete_elem(self, key)
     }
 }
 
@@ -121,7 +121,7 @@ impl RexRingBuf {
         submit_by_default: bool,
         value: T,
     ) -> Option<RexRingBufEntry<T>> {
-        let data: *mut T = bpf_ringbuf_reserve::<T>(&self, 0);
+        let data: *mut T = bpf_ringbuf_reserve::<T>(self, 0);
         if data.is_null() {
             None
         } else {
@@ -135,55 +135,55 @@ impl RexRingBuf {
     }
 
     pub fn available_bytes(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self, BPF_RB_AVAIL_DATA as u64)
+        bpf_ringbuf_query(self, BPF_RB_AVAIL_DATA as u64)
     }
 
     pub fn size(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self, BPF_RB_RING_SIZE as u64)
+        bpf_ringbuf_query(self, BPF_RB_RING_SIZE as u64)
     }
 
     pub fn consumer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self, BPF_RB_CONS_POS as u64)
+        bpf_ringbuf_query(self, BPF_RB_CONS_POS as u64)
     }
 
     pub fn producer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(&self, BPF_RB_PROD_POS as u64)
+        bpf_ringbuf_query(self, BPF_RB_PROD_POS as u64)
     }
 }
 
 impl<V> RexStack<V> {
     pub fn push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self, value, BPF_ANY as u64)
+        bpf_map_push_elem(self, value, BPF_ANY as u64)
     }
 
     pub fn force_push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self, value, BPF_EXIST as u64)
+        bpf_map_push_elem(self, value, BPF_EXIST as u64)
     }
 
     pub fn pop(&'static self) -> Option<V> {
-        bpf_map_pop_elem(&self)
+        bpf_map_pop_elem(self)
     }
 
     pub fn peek(&'static self) -> Option<V> {
-        bpf_map_peek_elem(&self)
+        bpf_map_peek_elem(self)
     }
 }
 
 impl<V> RexQueue<V> {
     pub fn push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self, value, BPF_ANY as u64)
+        bpf_map_push_elem(self, value, BPF_ANY as u64)
     }
 
     pub fn force_push(&'static self, value: &V) -> Result {
-        bpf_map_push_elem(&self, value, BPF_EXIST as u64)
+        bpf_map_push_elem(self, value, BPF_EXIST as u64)
     }
 
     pub fn pop(&'static self) -> Option<V> {
-        bpf_map_pop_elem(&self)
+        bpf_map_pop_elem(self)
     }
 
     pub fn peek(&'static self) -> Option<V> {
-        bpf_map_peek_elem(&self)
+        bpf_map_peek_elem(self)
     }
 }
 

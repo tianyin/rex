@@ -63,14 +63,14 @@ impl ReadOnce<i64> for i64 {
 impl<T> ReadOnce<*const T> for *const T {
     #[inline(always)]
     fn read_once(var_addr: &*const T) -> *const T {
-        unsafe { core::ptr::read_volatile(var_addr) as *const T }
+        unsafe { core::ptr::read_volatile(var_addr) }
     }
 }
 
 impl<T> ReadOnce<*mut T> for *mut T {
     #[inline(always)]
     fn read_once(var_addr: &*mut T) -> *mut T {
-        unsafe { core::ptr::read_volatile(var_addr) as *mut T }
+        unsafe { core::ptr::read_volatile(var_addr) }
     }
 }
 
