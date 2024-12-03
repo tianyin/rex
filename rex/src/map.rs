@@ -116,11 +116,11 @@ impl RexRingBuf {
         }
     }
 
-    pub fn reserve<T>(
+    pub fn reserve<'a, T>(
         &'static self,
         submit_by_default: bool,
         value: T,
-    ) -> Option<RexRingBufEntry<T>> {
+    ) -> Option<RexRingBufEntry<'a, T>> {
         let data: *mut T = bpf_ringbuf_reserve::<T>(self, 0);
         if data.is_null() {
             None
