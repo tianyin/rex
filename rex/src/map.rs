@@ -50,9 +50,6 @@ impl<const MT: bpf_map_type, K, V> RexMapHandle<MT, K, V> {
 
 unsafe impl<const MT: bpf_map_type, K, V> Sync for RexMapHandle<MT, K, V> {}
 
-//pub type IUArrayMap<V> = IUMap<BPF_MAP_TYPE_ARRAY, u32, V>;
-//pub type IUHashMap<K, V> = IUMap<BPF_MAP_TYPE_HASH, K, V>;
-//pub type IURingBuf = IUMap<BPF_MAP_TYPE_RINGBUF, (), ()>;
 pub type RexStackTrace<K, V> = RexMapHandle<BPF_MAP_TYPE_STACK_TRACE, K, V>;
 pub type RexPerCPUArrayMap<V> = RexMapHandle<BPF_MAP_TYPE_PERCPU_ARRAY, u32, V>;
 pub type RexArrayMap<V> = RexMapHandle<BPF_MAP_TYPE_ARRAY, u32, V>;
