@@ -71,8 +71,9 @@ impl<'a> CleanupEntries<'a> {
     fn this_cpu_cleanup_entries() -> CleanupEntries<'a> {
         let entries: &mut [CleanupEntry];
         unsafe {
-            entries = &mut *this_cpu_ptr_mut(&raw mut stub::rex_cleanup_entries)
-                .as_mut_slice();
+            entries =
+                &mut *this_cpu_ptr_mut(&raw mut stub::rex_cleanup_entries)
+                    .as_mut_slice();
         }
         Self { entries }
     }
