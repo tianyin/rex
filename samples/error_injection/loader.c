@@ -69,8 +69,9 @@ int main(int argc, char *argv[])
 		perror("fork");
 	} else if (!pid) {
 		pid = getpid();
-		if (bpf_map__update_elem(pid_to_errno, &pid, sizeof(pid), &errno_to_inject,
-					 sizeof(errno_to_inject), BPF_ANY) < 0) {
+		if (bpf_map__update_elem(
+			    pid_to_errno, &pid, sizeof(pid), &errno_to_inject,
+			    sizeof(errno_to_inject), BPF_ANY) < 0) {
 			fprintf(stderr, "ERROR: updating pid_map failed\n");
 		}
 
