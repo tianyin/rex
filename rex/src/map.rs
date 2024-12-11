@@ -60,6 +60,8 @@ pub type RexQueue<V> = RexMapHandle<BPF_MAP_TYPE_QUEUE, (), V>;
 #[repr(C)]
 pub struct RexRingBuf {
     map_type: u32,
+    key_size: u32,
+    val_size: u32,
     max_size: u32,
     map_flag: u32,
     pub(crate) kptr: *mut (),
@@ -107,6 +109,8 @@ impl RexRingBuf {
     pub const fn new(ms: u32, mf: u32) -> RexRingBuf {
         RexRingBuf {
             map_type: BPF_MAP_TYPE_RINGBUF,
+            key_size: 0,
+            val_size: 0,
             max_size: ms,
             map_flag: mf,
             kptr: ptr::null_mut(),
