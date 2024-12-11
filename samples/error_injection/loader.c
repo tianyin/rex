@@ -9,7 +9,7 @@
 
 #define EXE "./target/x86_64-unknown-linux-gnu/release/error_injection"
 
-#define USAGE "./loader <syscall> <errno>"
+#define USAGE "./loader <syscall> <errno>\n"
 
 int main(int argc, char *argv[])
 {
