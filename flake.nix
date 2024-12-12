@@ -33,9 +33,9 @@
         curl
         diffutils
         xz.dev
-        llvm
-        clang
-        lld
+        llvm_19
+        clang_19
+        lld_19
         clang-tools
         zlib.dev
         openssl.dev
