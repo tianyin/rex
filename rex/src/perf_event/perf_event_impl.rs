@@ -41,15 +41,15 @@ impl bpf_perf_event_data {
     }
 }
 
-// First 3 fields should always be rtti, prog_fn, and name
-//
-// rtti should be u64, therefore after compiling the
-// packed struct type rustc generates for LLVM does
-// not additional padding after rtti
-//
-// prog_fn should have &Self as its first argument
-//
-// name is a &'static str
+/// First 3 fields should always be rtti, prog_fn, and name
+///
+/// rtti should be u64, therefore after compiling the
+/// packed struct type rustc generates for LLVM does
+/// not additional padding after rtti
+///
+/// prog_fn should have &Self as its first argument
+///
+/// name is a &'static str
 #[repr(C)]
 pub struct perf_event {
     rtti: u64,
