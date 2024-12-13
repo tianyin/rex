@@ -78,7 +78,7 @@
         targetPkgs = pkgs: rexPackages;
         runScript = "./scripts/start.sh";
         profile = ''
-          export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib/libclang.so"
+          export LIBCLANG_PATH="${pkgs.llvmPackages_19.libclang.lib}/lib/libclang.so"
         '';
       };
     in
@@ -94,7 +94,7 @@
           shellHook = ''
             echo "loading rex env"
             source ./scripts/env.sh
-            export LIBCLANG_PATH="${pkgs.llvmPackages.libclang.lib}/lib/libclang.so"
+            export LIBCLANG_PATH="${pkgs.llvmPackages_19.libclang.lib}/lib/libclang.so"
           '';
         };
       };
