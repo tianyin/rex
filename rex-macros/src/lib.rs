@@ -4,20 +4,18 @@ mod kprobe;
 mod perf_event;
 mod tc;
 mod tracepoint;
-mod type_check;
 mod xdp;
 
 use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::quote;
 use std::borrow::Cow;
-use syn::{parse_macro_input, Data, DeriveInput, Fields, ItemStatic};
+use syn::{parse_macro_input, Data, DeriveInput, ItemStatic};
 
 use kprobe::KProbe;
 use perf_event::PerfEvent;
 use tc::SchedCls;
 use tracepoint::TracePoint;
-use type_check::field_type_check;
 use xdp::Xdp;
 
 #[proc_macro_error]
@@ -97,21 +95,8 @@ pub fn rex_map(_: TokenStream, item: TokenStream) -> TokenStream {
 
 #[proc_macro_derive(FieldTransmute)]
 pub fn ensure_numeric(input: TokenStream) -> TokenStream {
-    let input_copy = input.clone();
     let ast: DeriveInput = parse_macro_input!(input as DeriveInput);
     let struct_name = ast.ident;
-
-    if let Data::Struct(s) = ast.data {
-        if let Fields::Named(fields) = s.fields {
-            for field in fields.named {
-                if let Err(err) = field_type_check(field.ty) {
-                    return err;
-                }
-            }
-        }
-    }
-
-    let ast: DeriveInput = parse_macro_input!(input_copy as DeriveInput);
     let mut fields_token = vec![];
 
     if let Data::Struct(s) = ast.data {
