@@ -32,11 +32,7 @@ pub(crate) fn field_type_check(ty: Type) -> Result<(), TokenStream> {
     } else if let Type::Array(type_array) = ty {
         // convert [T; N] to T
         return field_type_check(*type_array.elem);
-    } else if let Type::Reference(type_ref) = ty {
-        // convert &'a T to T
-        return field_type_check(*type_ref.elem);
     } else {
-        // TODO: add more detailed type hints
         return Err(syn::Error::new_spanned(
             &ty,
             "All fields must be validate type",
