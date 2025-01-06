@@ -1,0 +1,3 @@
+disallowed-methods = [
+	"core::mem::forget",
+]

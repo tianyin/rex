@@ -4,7 +4,7 @@ LINUX_INC = ${LINUX}/usr/include
 LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
 LIBREX_DIR := $(shell if [ -d "/rex-kernel/librex" ]; then echo "/rex-kernel/librex"; else echo `realpath ../../librex`; fi)
 
-RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Cenable_rex
+RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Clink-arg=-nostartfiles -Cenable_rex
 CARGO_FLAGS =
 
 CC = gcc
@@ -26,9 +26,14 @@ ifeq ($(V),2)
 CARGO_FLAGS += -vv
 endif
 
+.PHONY: clean clippy
+
 all: target/x86_64-unknown-linux-gnu/release/hello loader event-trigger
 
-target/x86_64-unknown-linux-gnu/debug/hello: Cargo.toml ./src/*.rs
+clippy: Cargo.toml clippy.toml ./src/*.rs
+	cargo clippy -r -- -Fclippy::disallowed-methods
+
+target/x86_64-unknown-linux-gnu/debug/hello: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
 mir:
@@ -37,7 +42,7 @@ mir:
 llvm-ir:
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
 
-target/x86_64-unknown-linux-gnu/release/hello: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/release/hello: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 loader: loader.c
