@@ -31,7 +31,7 @@ endif
 all: target/x86_64-unknown-linux-gnu/release/hello loader event-trigger
 
 clippy: Cargo.toml clippy.toml ./src/*.rs
-	cargo clippy -r -- -Fclippy::disallowed-methods
+	cargo clippy -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
 
 target/x86_64-unknown-linux-gnu/debug/hello: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
