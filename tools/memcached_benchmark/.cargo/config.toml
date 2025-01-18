@@ -1,2 +1,6 @@
 [build]
-rustflags = ["-C", "target-cpu=native", "-C", "link-arg=-fuse-ld=mold"]
+rustflags = [
+	"-Zthreads=8",
+	"-Ctarget-cpu=native",
+	"-Clink-args=-fuse-ld=mold -Wl,-O1 -Wl,--as-needed -Wl,--gc-sections"
+]
