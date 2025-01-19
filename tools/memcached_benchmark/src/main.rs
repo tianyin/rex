@@ -1,32 +1,32 @@
-// use async_memcached::*;
+#![allow(clippy::too_many_arguments)]
+
+use std::{
+    collections::HashMap,
+    error::Error,
+    fs::File,
+    io::{BufRead, BufReader, Write},
+    mem::size_of_val,
+    result::Result,
+    sync::{atomic::*, Arc},
+    vec,
+};
+
 use clap::{Parser, Subcommand, ValueEnum};
+use env_logger::Target;
+use log::{debug, info, LevelFilter};
 use memcache::MemcacheError;
 use rand::distributions::{Alphanumeric, DistString, Distribution};
 use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
-use serde_json::json;
-
-use std::collections::HashMap;
-use std::error::Error;
-use std::fs::File;
-use std::io::{BufRead, BufReader, Write};
-use std::mem::size_of_val;
-use std::result::Result;
-use std::vec;
-
 use rayon::prelude::*;
-use tokio::net::UdpSocket;
-use tokio::runtime::Builder;
-// use tokio::runtime::Runtime;
-
 use serde::{Deserialize, Serialize};
-use tokio::sync::{mpsc, Semaphore};
-use tokio::time::timeout;
-
-// use tokio::runtime::Handle;
-use env_logger::Target;
-use log::{debug, info, LevelFilter};
-use std::sync::{atomic::*, Arc};
-use tokio::task::JoinSet;
+use serde_json::json;
+use tokio::{
+    net::UdpSocket,
+    runtime::Builder,
+    sync::{mpsc, Semaphore},
+    task::JoinSet,
+    time::timeout,
+};
 use tokio_util::task::TaskTracker;
 
 const BUFFER_SIZE: usize = 1500;
@@ -197,7 +197,7 @@ fn generate_test_dict_write_to_disk(
     Ok(test_dict)
 }
 
-async fn set_memcached_value<'a>(
+async fn set_memcached_value(
     test_dict: Arc<HashMap<Arc<String>, Arc<String>>>,
     server_address: String,
     port: String,
@@ -258,7 +258,7 @@ fn wrap_get_command(key: Arc<String>, seq: u16) -> Vec<u8> {
     seq_bytes
 }
 
-async fn socket_task<'a>(
+async fn socket_task(
     sockets_pool: Arc<Vec<UdpSocket>>,
     mut rx: mpsc::Receiver<TaskData>,
     tracker: TaskTracker,
