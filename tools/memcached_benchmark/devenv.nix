@@ -14,10 +14,11 @@
       "cargo"
       "rust-src"
       "rustc"
-     "clippy"
+      "clippy"
       "rust-analyzer"
       "rustfmt"
     ];
+    mold.enable = false;
     enable = true;
   };
 
