@@ -1,6 +1,11 @@
-[build]
+[env]
+CC = { value = "clang", force = true }
+
+[target.x86_64-unknown-linux-gnu]
+linker = "clang"
 rustflags = [
 	"-Zthreads=8",
 	"-Ctarget-cpu=native",
-	"-Clink-args=-fuse-ld=mold -Wl,-O1 -Wl,--as-needed -Wl,--gc-sections"
+	"-Clinker-plugin-lto",
+	"-Clink-args=-flto=thin -fuse-ld=mold -Wl,-O1 -Wl,--as-needed -Wl,--gc-sections"
 ]
