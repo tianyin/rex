@@ -53,6 +53,7 @@
         strace
         zstd
         eza
+        zlib
 
         bear # generate compile commands
         rsync # for make headers_install
