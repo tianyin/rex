@@ -74,7 +74,7 @@
         openssh # q-script ssh support
       ];
 
-      fhs = pkgs.buildFHSUserEnv {
+      fhs = pkgs.buildFHSEnv {
         name = "rex-env";
         targetPkgs = pkgs: rexPackages;
         runScript = "./scripts/start.sh";
