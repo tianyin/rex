@@ -4,6 +4,7 @@ rustflags = [
   "-Zthreads=8",
   "-Cno-redzone",
   "-Ccode-model=kernel",
+  "-Cforce-frame-pointers=y",
   "-Cforce-unwind-tables=n",
   "-Csymbol-mangling-version=v0",
   "-Ccodegen-units=1",
