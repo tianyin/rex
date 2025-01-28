@@ -44,6 +44,7 @@ standard kernel build dependencies.
 - binutils (>= 2.38)
 - cmake
 - elfutils
+- LLVM
 - mold linker
 - ninja
 - pahole
