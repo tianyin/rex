@@ -15,12 +15,15 @@
 #include <list>
 #include <memory>
 #include <optional>
+#include <ranges>
 #include <stdexcept>
 #include <string>
 #include <system_error>
 #include <unordered_map>
 #include <utility>
 #include <vector>
+
+#include <llvm/Demangle/Demangle.h>
 
 #include "bindings.h"
 #include "librex.h"
@@ -276,6 +279,7 @@ private:
   std::vector<rex_dyn_sym> dyn_syms;
   std::vector<std::string> rela_sym_name;
   std::optional<unsigned long> timeout_handler_off;
+  std::vector<std::tuple<std::string, uint64_t, uint64_t>> text_syms;
 
   std::unique_ptr<unsigned char[], file_map_del> file_map;
   std::optional<int> prog_fd;
@@ -479,12 +483,21 @@ int rex_obj::parse_progs() {
     scn_name = elf_strptr(elf.get(), shstrndx, elf64_getshdr(scn)->sh_name);
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
 
+    if (sym->st_value) {
+      // Align symbol size up to 16-byte boundary, which is the default function
+      // alignment in x86-64, to account for trailing nops
+      text_syms.emplace_back(llvm::demangle(sym_name), sym->st_value,
+                             (sym->st_size & ~0xf) + 0x10);
+    }
+
     if ("__rex_handle_timeout"sv == sym_name)
       timeout_handler_off = sym->st_value;
 
     if (debug) {
-      std::clog << "section: \"" << scn_name << "\"" << std::endl;
-      std::clog << "symbol: \"" << sym_name << "\"" << std::endl;
+      std::clog << "symbol: \"" << sym_name << "\"" << ", section: \""
+                << scn_name << "\"" << ", st_value=0x" << std::hex
+                << sym->st_value << ", st_size=" << sym->st_size << std::dec
+                << std::endl;
     }
 
     sec_def = find_sec_def(scn_name);
@@ -647,6 +660,7 @@ int rex_obj::load() {
   union bpf_attr attr = {};
   int idx = 0, ret = 0;
   std::filesystem::path tmp_file = "/tmp/rex-" + std::to_string(gettid());
+  std::unique_ptr<rex_text_sym[]> tsym_arr(new rex_text_sym[text_syms.size()]);
 
   // TODO: Will have race condition if multiple objs loaded at same time
   std::ofstream output(tmp_file, std::ios::out | std::ios::binary);
@@ -674,6 +688,15 @@ int rex_obj::load() {
 
   attr.dyn_syms = reinterpret_cast<__u64>(dyn_syms.data());
   attr.nr_dyn_syms = dyn_syms.size();
+
+  // Copy data into the array that will be sent to the kernel
+  for (const auto &[idx, sym] : std::views::enumerate(text_syms)) {
+    tsym_arr[idx].symbol = std::get<0>(sym).c_str();
+    std::tie(std::ignore, tsym_arr[idx].offset, tsym_arr[idx].size) = sym;
+  }
+
+  attr.text_syms = reinterpret_cast<__u64>(tsym_arr.get());
+  attr.nr_text_syms = text_syms.size();
 
   ret = bpf(BPF_PROG_LOAD_REX_BASE, &attr, sizeof(attr));
 
