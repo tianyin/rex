@@ -560,7 +560,7 @@ int rex_obj::parse_rela_dyn() {
       char *name = elf_strptr(elf.get(), strtabidx, sym->st_name);
 
       dyn_sym.offset = rela_dyn_data[idx].offset;
-      dyn_sym.symbol = reinterpret_cast<__u64>(name);
+      dyn_sym.symbol = name;
 
       dyn_syms.push_back(dyn_sym);
     } else {
@@ -576,8 +576,8 @@ int rex_obj::parse_rela_dyn() {
                 << dyn_rela.addend << std::endl;
     }
     for (auto &dyn_sym : dyn_syms) {
-      std::clog << "0x" << dyn_sym.offset << ", "
-                << reinterpret_cast<char *>(dyn_sym.symbol) << std::endl;
+      std::clog << "0x" << dyn_sym.offset << ", " << dyn_sym.symbol
+                << std::endl;
     }
     std::clog << std::dec;
   }
