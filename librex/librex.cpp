@@ -95,6 +95,10 @@ inline long bpf(__u64 cmd, union bpf_attr *attr, unsigned int size) {
   return syscall(__NR_bpf, cmd, attr, size);
 }
 
+inline uint64_t align_up_16(uint64_t val) {
+  return (val & 0xf) ? (val & ~0xf) + 0x10 : val;
+}
+
 } // end anonymous namespace
 
 // This struct is POD, meaning the C++ standard guarantees the same memory
@@ -487,7 +491,7 @@ int rex_obj::parse_progs() {
       // Align symbol size up to 16-byte boundary, which is the default function
       // alignment in x86-64, to account for trailing nops
       text_syms.emplace_back(llvm::demangle(sym_name), sym->st_value,
-                             (sym->st_size & ~0xf) + 0x10);
+                             align_up_16(sym->st_size));
     }
 
     if ("__rex_handle_timeout"sv == sym_name)
