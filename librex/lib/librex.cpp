@@ -6,13 +6,13 @@
 #include <unistd.h>
 
 #include <algorithm>
-#include <concepts>
 #include <cstdint>
 #include <cstring>
 #include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <list>
+#include <llvm/Demangle/Demangle.h>
 #include <memory>
 #include <optional>
 #include <ranges>
@@ -23,8 +23,6 @@
 #include <utility>
 #include <vector>
 
-#include <llvm/Demangle/Demangle.h>
-
 #include "bindings.h"
 #include "librex.h"
 
@@ -34,45 +32,37 @@ namespace {
 
 int debug = 1;
 
-#define str_has_pfx(str, pfx)                                                  \
-  (strncmp(str, pfx,                                                           \
-           __builtin_constant_p(pfx) ? sizeof(pfx) - 1 : strlen(pfx)) == 0)
+bool sec_def_matches(const struct bpf_sec_def *sec_def,
+                     std::string_view sec_name) {
+  std::string_view sec_pfx(sec_def->sec);
 
-bool sec_def_matches(const struct bpf_sec_def *sec_def, const char *sec_name) {
-  size_t len = strlen(sec_def->sec);
+  // "type/" always has to have proper SEC("type/extras") form
+  if (sec_pfx.back() == '/')
+    return sec_name.starts_with(sec_pfx);
 
-  /* "type/" always has to have proper SEC("type/extras") form */
-  if (sec_def->sec[len - 1] == '/') {
-    if (str_has_pfx(sec_name, sec_def->sec))
-      return true;
-    return false;
-  }
+  // "type+" means it can be either exact SEC("type") or
+  // well-formed SEC("type/extras") with proper '/' separator
+  if (sec_pfx.back() == '+') {
+    size_t pfx_size;
+    sec_pfx.remove_suffix(1);
+    pfx_size = sec_pfx.size();
 
-  /* "type+" means it can be either exact SEC("type") or
-   * well-formed SEC("type/extras") with proper '/' separator
-   */
-  if (sec_def->sec[len - 1] == '+') {
-    len--;
-    /* not even a prefix */
-    if (strncmp(sec_name, sec_def->sec, len) != 0)
+    // not even a prefix
+    if (!sec_name.starts_with(sec_pfx))
       return false;
-    /* exact match or has '/' separator */
-    if (sec_name[len] == '\0' || sec_name[len] == '/')
-      return true;
-    return false;
+    // exact match or has '/' separator
+    return sec_name.size() == pfx_size || sec_name[pfx_size] == '/';
   }
 
-  return strcmp(sec_name, sec_def->sec) == 0;
+  return sec_name == sec_pfx;
 }
 
-/**
- * @brief Walk through the static const struct bpf_sec_def section_defs
- * in libbpf.c and figure out the valid bpf section
- *
- * @param sec_name section for our own rex prog
- * @return section_defs
- */
-const bpf_sec_def *find_sec_def(const char *sec_name) {
+/// @brief Walk through the static const struct bpf_sec_def section_defs
+/// in libbpf.c and figure out the valid bpf section
+///
+/// @param sec_name section for our own rex prog
+/// @return section_defs
+const bpf_sec_def *find_sec_def(std::string_view sec_name) {
   for (size_t i = 0; i < global_bpf_section_defs.size; i++) {
     if (!sec_def_matches(&global_bpf_section_defs.arr[i], sec_name))
       continue;
@@ -80,15 +70,6 @@ const bpf_sec_def *find_sec_def(const char *sec_name) {
   }
 
   return nullptr;
-}
-
-template <std::integral T> inline T val_from_buf(const unsigned char *buf) {
-  return *reinterpret_cast<const T *>(buf);
-}
-
-template <std::integral T>
-inline void val_to_buf(unsigned char *buf, const T val) {
-  *reinterpret_cast<T *>(buf) = val;
 }
 
 inline long bpf(__u64 cmd, union bpf_attr *attr, unsigned int size) {
@@ -200,13 +181,12 @@ private:
   const struct bpf_sec_def *sec_def;
   Elf64_Off offset;
   std::optional<int> prog_fd;
-  rex_obj &obj;
 
 public:
   rex_prog() = delete;
-  rex_prog(const char *nm, const char *scn_nm, Elf64_Off off, rex_obj &obj)
-      : name(nm), scn_name(scn_nm), offset(off), obj(obj) {
-    sec_def = find_sec_def(scn_name.c_str());
+  rex_prog(const char *nm, const char *scn_nm, Elf64_Off off)
+      : name(nm), scn_name(scn_nm), offset(off) {
+    sec_def = find_sec_def(scn_name);
   }
 
   rex_prog(const rex_prog &) = delete;
@@ -512,7 +492,7 @@ int rex_obj::parse_progs() {
       std::clog << "successfully matched" << std::endl;
 
     sym_name = elf_strptr(elf.get(), strtabidx, sym->st_name);
-    progs.emplace_back(sym_name, scn_name, sym->st_value, *this);
+    progs.emplace_back(sym_name, scn_name, sym->st_value);
   }
 
   if (!timeout_handler_off) {
@@ -652,7 +632,8 @@ int rex_obj::fix_maps() {
     if (debug)
       std::clog << "map_fd=" << map_fd.value() << std::endl;
 
-    val_to_buf<uint64_t>(&this->file_map[kptr_file_off], map_fd.value());
+    *reinterpret_cast<uint64_t *>(&this->file_map[kptr_file_off]) =
+        map_fd.value();
   }
 
   return 0;
