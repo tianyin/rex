@@ -14,7 +14,7 @@ endif
 LLVM_INC := $(shell llvm-config --includedir)
 LLVM_LIBDIR := $(shell llvm-config --libdir)
 
-INC += -I${LINUX}/usr/include -I${LINUX}/tools/lib -I${LLVM_INC}
+INC += -I./include -I${LINUX}/usr/include -I${LINUX}/tools/lib -I${LLVM_INC}
 
 CXXFLAGS += -O2 -march=native -pipe -std=c++23 -fPIC -Wall -Werror -g
 CXXFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
@@ -31,14 +31,14 @@ LDFLAGS += -L${LINUX}/tools/lib/bpf -L${LLVM_LIBDIR} -lbpf -lelf -lLLVM
 
 all: librex.a librex.so
 
-librex.a: librex.o
+librex.a: lib/librex.o
 	+${AR} rcs $@ $<
 
-librex.so: librex.o
+librex.so: lib/librex.o
 	+${LD} ${CXXFLAGS} -shared -o $@ $< ${LDFLAGS}
 
-librex.o: librex.cpp librex.h bindings.h
-	+${CXX} ${INC} ${CXXFLAGS} -o $@ -c librex.cpp
+lib/librex.o: lib/librex.cpp include/librex.h lib/bindings.h
+	+${CXX} ${INC} ${CXXFLAGS} -o $@ -c lib/librex.cpp
 
 clean:
-	rm -f librex.o librex.a librex.so
+	rm -f lib/librex.o librex.a librex.so
