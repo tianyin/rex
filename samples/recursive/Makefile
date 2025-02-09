@@ -1,11 +1,8 @@
-LINUX ?= $(HOME)/linux
-
 LINUX_INC = ${LINUX}/usr/include
 LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
-LIBREX_DIR := $(shell if [ -d "/rex-kernel/librex" ]; then echo "/rex-kernel/librex"; else echo `realpath ../../librex`; fi)
+LIBREX_DIR := $(abspath ../../librex)
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Cenable_rex
-CARGO_FLAGS = 
 
 CC = gcc
 
@@ -49,6 +46,3 @@ clean:
 
 event-trigger: event-trigger.c
 	${CC} -I${LINUX_INC} ${CFLAGS} ${LDFLAGS} -o $@ $<
-
-vmcopy: target/x86_64-unknown-linux-gnu/release/recursive loader
-	cp target/x86_64-unknown-linux-gnu/release/recursive loader ../../rootfs/guest/

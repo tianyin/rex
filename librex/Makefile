@@ -1,5 +1,3 @@
-LINUX ?= $(HOME)/linux
-
 ifeq ($(LLVM),1) # Using LLVM toolchain
 CXX = clang++
 LD = clang++

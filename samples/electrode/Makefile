@@ -1,13 +1,10 @@
-LINUX ?= $(HOME)/linux
-
 LINUX_INC = ${LINUX}/usr/include
 LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
-LIBREX_DIR := $(shell if [ -d "/rex-kernel/librex" ]; then echo "/rex-kernel/librex"; else echo `realpath ../../librex`; fi)
+LIBREX_DIR := $(abspath ../../librex)
 
 NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
 
 RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Cenable_rex
-CARGO_FLAGS = 
 
 CC = gcc
 
