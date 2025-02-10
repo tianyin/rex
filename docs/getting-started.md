@@ -1,11 +1,11 @@
 # Getting started (p20250206)
 
 ## Nix flake
-Using Nix, a package manager, could allow you to bypass these dependency
+Using Nix, a package manager, allows you to bypass these dependency
 requirements below.
 
-Check out the https://nixos.org/download/ for installation
-instructions, the single-user installation should be enough.
+Check out the https://nixos.org/download/ for installation instructions,
+the single-user installation should be sufficient.
 
 ## Dependencies:
 The following tools/libraries are required. Older versions are not
@@ -30,12 +30,12 @@ cd rex-kernel
 git submodule update --init --recursive --progress
 ```
 
-### Additional step for Nix
-It will launch a Nix shell with all necessary dependencies installed.
-All subsequent steps should be carried out within this shell.
+If you are using Nix, the following additional step is required.
 ```bash
 nix develop --extra-experimental-features nix-command --extra-experimental-features flakes
 ```
+It will launch a Nix shell with all necessary dependencies installed.
+All subsequent steps should be carried out within this shell.
 
 The Linux directory now hosts the kernel repo, checked out at the pre-set
 commit. To build the kernel, do:
