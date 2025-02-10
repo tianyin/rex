@@ -4,7 +4,7 @@ LIBREX_DIR := $(abspath ../../librex)
 
 NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
 
-RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Cenable_rex
+RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Clink-arg=-nostartfiles -Cenable_rex
 
 CC = gcc
 
@@ -27,10 +27,13 @@ endif
 
 all: target/x86_64-unknown-linux-gnu/release/bmc entry
 
-target/x86_64-unknown-linux-gnu/debug/bmc: Cargo.toml ./src/*.rs
+clippy: Cargo.toml clippy.toml ./src/*.rs
+	cargo clippy -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
+
+target/x86_64-unknown-linux-gnu/debug/bmc: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
-target/x86_64-unknown-linux-gnu/release/bmc: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/release/bmc: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 llvm-ir: Cargo.toml ./src/*.rs

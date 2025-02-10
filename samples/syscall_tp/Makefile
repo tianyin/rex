@@ -2,7 +2,7 @@ LINUX_INC = ${LINUX}/usr/include
 LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
 LIBREX_DIR := $(abspath ../../librex)
 
-RUST_FLAGS = -Funsafe_code -Clink-arg=-nostartfiles -Cenable_rex
+RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Clink-arg=-nostartfiles -Cenable_rex
 
 CC = gcc
 
@@ -25,10 +25,13 @@ endif
 
 all: target/x86_64-unknown-linux-gnu/release/syscall_tp syscall_tp
 
-target/x86_64-unknown-linux-gnu/debug/syscall_tp: Cargo.toml ./src/*.rs
+clippy: Cargo.toml clippy.toml ./src/*.rs
+	cargo clippy -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
+
+target/x86_64-unknown-linux-gnu/debug/syscall_tp: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
-target/x86_64-unknown-linux-gnu/release/syscall_tp: Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/release/syscall_tp: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 syscall_tp: syscall_tp_user.c
