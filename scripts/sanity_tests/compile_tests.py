@@ -52,9 +52,9 @@ def run_make(directory):
 
         args = parse_arguments()
         if not args.no_clean_build:
-            command = "make clean; make LLVM=1"
+            command = "make clean; make"
         else:
-            command = "make LLVM=1"
+            command = "make"
 
         if "librex" not in str(directory):
             # the naming rule for samples/trace_event is slightly different

@@ -30,7 +30,7 @@ fn main() -> Result<()> {
     }
 
     let rexstub_so = rexstub_outdir.join("librexstub.so");
-    Command::new("gcc")
+    Command::new("clang")
         .arg("-fPIC")
         .arg("-nostartfiles")
         .arg("-nodefaultlibs")

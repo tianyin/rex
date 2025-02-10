@@ -6,7 +6,7 @@ NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-s
 
 RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Clink-arg=-nostartfiles -Cenable_rex
 
-CC = gcc
+CC = clang
 
 CFLAGS += -O2 -march=native -pipe -std=gnu11
 CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition

@@ -4,7 +4,7 @@ LIBREX_DIR := $(abspath ../../librex)
 
 RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Clink-arg=-nostartfiles -Cenable_rex
 
-CC = gcc
+CC = clang
 
 CFLAGS += -O2 -march=native -pipe -std=gnu11
 CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
