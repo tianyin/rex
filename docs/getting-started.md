@@ -12,9 +12,10 @@ The following tools/libraries are required. Older versions are not
 guaranteed to (or guaranteed not to) work. This list does not include
 standard kernel build dependencies.
 - `binutils (>= 2.38)`
-- `c++23`-compatible toolchain
+- `clang (>= 18.1.0)`
 - `cmake`
 - `elfutils`
+- `libstdc++ (>=13)` for missing `c++23` support in LLVM's `libcxx`
 - `LLVM`
 - `mold`
 - `ninja`
@@ -46,10 +47,6 @@ make oldconfig LLVM=1
 make -j`nproc` LLVM=1
 cd -
 ```
-Note: The default configuration in this repo
-([`q-script/.config`](q-script/.config)) uses the LLVM toolchain (i.e.
-`clang`, `llvm-ar`, `lld`, etc). If desired, the GNU toolchain (i.e. `gcc`,
-`ld.bfd`) can be used by removing the `LLVM=1` environment variable setup.
 
 Since `librex` loader library depends on the `libbpf` shipped with the
 kernel, `libbpf` needs to be built first:

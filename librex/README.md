@@ -24,7 +24,7 @@ is returned.
 
 The `rex_obj_get_bpf` returns a pointer to the equivalent `bpf_object` of
 the `obj` argument, which can be subsequently passed to `libbpf` APIs. If
-there is an error, a null pointer is returned. 
+there is an error, a null pointer is returned.
 
 **Note**: The returned pointer from both functions above are **non-owning**
 pointers, which means the caller of these function should not try to
@@ -39,11 +39,8 @@ enabled). This will most likely be helpful during debugging.
 ### Build
 
 Building `librex` requires a `c++23` compatible compiler and the `mold`
-linker. The `Makefile` supports both GNU and LLVM toolchains:
+linker. With dependencies installed, simply invoke the Makefile:
 
 ```bash
-# If you want to use GNU toolchain (gcc, as, ar, etc)
 make
-# If you want to use LLVM toolchain (clang with integrated as, llvm-ar, etc)
-make LLVM=1
 ```
