@@ -1,10 +1,10 @@
 # Rex kernel extensions
 ```
-____  _______  __
-|  _ \| ____\ \/ /
-| |_) |  _|  \  /
-|  _ <| |___ /  \
-|_| \_\_____/_/\_\
+ ____  _______  __  _____      _                 _
+|  _ \| ____\ \/ / | ____|_  _| |_ ___ _ __  ___(_) ___  _ __
+| |_) |  _|  \  /  |  _| \ \/ / __/ _ \ '_ \/ __| |/ _ \| '_ \
+|  _ <| |___ /  \  | |___ >  <| ||  __/ | | \__ \ | (_) | | | |
+|_| \_\_____/_/\_\ |_____/_/\_\\__\___|_| |_|___/_|\___/|_| |_|
 
 ```
 
@@ -34,7 +34,7 @@ Rex currently supports the following features:
   programs
 
 ## Getting started
-Please see the detailed guide [here](docs/getting-started.md).
+You can find the detailed guide [here](docs/getting-started.md).
 
 ## Example program
 The following example implements a kprobe program that attaches to a
@@ -74,7 +74,7 @@ TODO: add rustdoc of Rex
 Additional design documentations can be found under [docs](docs).
 
 ## License
-Rex is licensed under the GPLv2 license. Please see the license file in
-this repo for more details. The submodules in this repo are licensed under
-their own terms. Additionally, the memcached benchmark is licensed under
-the MIT license.
+Rex is licensed under the GPLv2 license. The submodules (Linux, Rust, LLVM)
+in this repo are licensed under their own terms. Please see the
+corresponding license file in for more details. Additionally, the memcached
+benchmark is licensed under the MIT license.
