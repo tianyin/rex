@@ -71,6 +71,16 @@ pub fn err_injector(obj: &kprobe, ctx: &mut PtRegs) -> Result {
 
 More sample programs can be found under [samples](samples).
 
+## Getting started
+
+You can find the detailed guide [here](docs/getting-started.md).
+
+## Documentations
+
+TODO: add rustdoc of Rex
+
+Additional design documentations can be found under [docs](docs).
+
 ## Why Rex?
 
 The existing eBPF extension relies on the in-kernel eBPF verifier to
@@ -139,16 +149,6 @@ let set_iter = payload.windows(4).enumerate().filter_map(|(i, v)| {
 
 The full implementation of BMC in Rex can be found at
 [samples/bmc](samples/bmc).
-
-## Getting started
-
-You can find the detailed guide [here](docs/getting-started.md).
-
-## Documentations
-
-TODO: add rustdoc of Rex
-
-Additional design documentations can be found under [docs](docs).
 
 ## License
 
