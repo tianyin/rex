@@ -76,9 +76,9 @@ The new implementation involves the following:
    sample gives the following:
 
    ```console
-   $ objdump -R target/x86_64-unknown-linux-gnu/release/error_injector
+   $ objdump -R target/x86_64-unknown-none/release/error_injector
 
-   target/x86_64-unknown-linux-gnu/release/error_injector:     file format elf64-x86-64
+   target/x86_64-unknown-none/release/error_injector:     file format elf64-x86-64
 
    DYNAMIC RELOCATION RECORDS
    OFFSET           TYPE              VALUE
