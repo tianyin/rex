@@ -3,7 +3,7 @@
 version = 3
 
 [[package]]
-name = "error_injection"
+name = "error_injector"
 version = "0.1.0"
 dependencies = [
  "rex",
