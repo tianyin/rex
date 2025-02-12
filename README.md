@@ -1,16 +1,16 @@
 # Rex kernel extensions
 ```
- ____  _______  __  _____      _                 _
-|  _ \| ____\ \/ / | ____|_  _| |_ ___ _ __  ___(_) ___  _ __
-| |_) |  _|  \  /  |  _| \ \/ / __/ _ \ '_ \/ __| |/ _ \| '_ \
-|  _ <| |___ /  \  | |___ >  <| ||  __/ | | \__ \ | (_) | | | |
-|_| \_\_____/_/\_\ |_____/_/\_\\__\___|_| |_|___/_|\___/|_| |_|
+____  _______  __  _____      _                 _
+|  _ \| ____\ \/ / | ____|_  _| |_ ___ _ __  ___(_) ___  _ __  ___
+| |_) |  _|  \  /  |  _| \ \/ / __/ _ \ '_ \/ __| |/ _ \| '_ \/ __|
+|  _ <| |___ /  \  | |___ >  <| ||  __/ | | \__ \ | (_) | | | \__ \
+|_| \_\_____/_/\_\ |_____/_/\_\\__\___|_| |_|___/_|\___/|_| |_|___/
 
 ```
 
 Rex is a safe and usable kernel extension framework that allows loading and
 executing Rust kernel extension programs in the place of eBPF. Unlike
-eBPF-based frameworks, Rex programs does not go through the in-kernel
+eBPF-based frameworks such as [Aya](https://aya-rs.dev), Rex programs does not go through the in-kernel
 verifier, instead, the programs are implemented in the safe subset of Rust,
 on which the Rust compiler performs the needed safety checks and generates
 native code directly. This approach avoids the overly restricted
@@ -41,7 +41,7 @@ The following example implements a kprobe program that attaches to a
 selected system call and injects an error (specified by `errno`) to the
 system call on a process (specified by its `pid`). The full example,
 including the loader program, can be found under
-[samples/error_injection](samples/error_injection).
+[samples/error_injector](samples/error_injector).
 
 ```Rust
 #![no_std]
