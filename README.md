@@ -1,4 +1,5 @@
 # Rex kernel extensions
+
 ```
 ____  _______  __  _____      _                 _
 |  _ \| ____\ \/ / | ____|_  _| |_ ___ _ __  ___(_) ___  _ __  ___
@@ -10,16 +11,18 @@ ____  _______  __  _____      _                 _
 
 Rex is a safe and usable kernel extension framework that allows loading and
 executing Rust kernel extension programs in the place of eBPF. Unlike
-eBPF-based frameworks such as [Aya](https://aya-rs.dev), Rex programs does not go through the in-kernel
-verifier, instead, the programs are implemented in the safe subset of Rust,
-on which the Rust compiler performs the needed safety checks and generates
-native code directly. This approach avoids the overly restricted
-verification requirements (e.g., program complexity contraints) and the
-resulting arcane verification errors, while at the same time potentially
-provides a better optimization opportunity in the native compiler backend
-(i.e., LLVM) than the eBPF backend + in-kernel JIT approach.
+eBPF-based frameworks such as [Aya](https://aya-rs.dev), Rex programs does
+not go through the in-kernel verifier, instead, the programs are
+implemented in the safe subset of Rust, on which the Rust compiler performs
+the needed safety checks and generates native code directly. This approach
+avoids the overly restricted verification requirements (e.g., program
+complexity contraints) and the resulting arcane verification errors, while
+at the same time potentially provides a better optimization opportunity in
+the native compiler backend (i.e., LLVM) than the eBPF backend + in-kernel
+JIT approach.
 
 Rex currently supports the following features:
+
 - 5 eBPF program types: `kprobe`, `perf_event`, `tracepoint`, `xdp`, and
   `tc`.
 - invocation of eBPF helper functions that are commonly used by these
@@ -34,9 +37,11 @@ Rex currently supports the following features:
   programs
 
 ## Getting started
+
 You can find the detailed guide [here](docs/getting-started.md).
 
 ## Example program
+
 The following example implements a kprobe program that attaches to a
 selected system call and injects an error (specified by `errno`) to the
 system call on a process (specified by its `pid`). The full example,
@@ -69,11 +74,13 @@ pub fn err_injector(obj: &kprobe, ctx: &mut PtRegs) -> Result {
 ```
 
 ## Documentations
+
 TODO: add rustdoc of Rex
 
 Additional design documentations can be found under [docs](docs).
 
 ## License
+
 Rex is licensed under the GPLv2 license. The submodules (Linux, Rust, LLVM)
 in this repo are licensed under their own terms. Please see the
 corresponding license file in for more details. Additionally, the memcached
