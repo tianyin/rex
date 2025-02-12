@@ -36,10 +36,6 @@ Rex currently supports the following features:
 - bindings and abstractions of kernel data types commonly needed by eBPF
   programs
 
-## Getting started
-
-You can find the detailed guide [here](docs/getting-started.md).
-
 ## Example program
 
 The following example implements a kprobe program that attaches to a
@@ -72,6 +68,81 @@ pub fn err_injector(obj: &kprobe, ctx: &mut PtRegs) -> Result {
         .ok_or(0)
 }
 ```
+
+More sample programs can be found under [samples](samples).
+
+## Why Rex?
+
+The existing eBPF extension relies on the in-kernel eBPF verifier to
+provide safety guarantees. This unfortunately leads to usability issues
+where safe programs are rejected by the verifier, including but not limited
+to:
+
+- programs may exceed the inherent complexity contraints of static
+  verification
+- compilers may not generate verifier-friendly code
+- same logic may need to be implemented in a certain way to please the
+  verifier
+
+Rex aims to address these issues by directly leveraging the safety
+guarantee from _safe Rust_. Developers can implement their programs in
+anyway that can be written in safe Rust, with few restrictions (see
+[docs/rust_rex_subset.md](docs/rust_rex_subset.md)), and no longer need to
+worry about program complexity, the code generator, or finding the (many
+time counter-intuitive) way of expressing the same logic to please the
+verifier.
+
+We demonstrate this with the implementation of the [BPF Memcached Cache
+(BMC)](https://github.com/Orange-OpenSource/bmc-cache), a state-of-the-art
+extension program for Memcached acceleration. As a complex eBPF program,
+BMC is forced to be splitted into several components connected by BPF
+tail-calls and use awkward loop/branch implementations to please the
+verifier, which are totally not needed in [its Rex
+implementation](samples/bmc).
+
+For example, we show the code in cache invalidation logic of the BPF-BMC
+that searches for a `SET` command in the packet payload:
+
+```C
+// Searches for SET command in payload
+for (unsigned int off = 0;
+     off < BMC_MAX_PACKET_LENGTH &&  payload + off + 1 <= data_end;
+     off++) {
+    if (set_found == 0 && payload[off] == 's' &&
+        payload + off + 3 <= data_end && payload[off + 1] == 'e' &&
+        payload[off + 2] == 't') {
+            off += 3;
+            set_found = 1;
+    }
+    ...
+}
+```
+
+The code not only instroduces an extra constraint in the loop (`off <
+BMC_MAX_PACKET_LENGTH`) solely for passing the verifier, but also employs
+repeated boilerplate code to check packet ends (`data_end`) and cumbersome
+logic to match the `"set"` string in the packet.
+
+None of these burdens is needed with the power of safe Rust in Rex, which
+has no complexity limits and provides more freedom on the implementation:
+
+```rust
+let set_iter = payload.windows(4).enumerate().filter_map(|(i, v)| {
+    if v == b"set " {
+      Some(i)
+    } else {
+      None
+    }
+});
+
+```
+
+The full implementation of BMC in Rex can be found at
+[samples/bmc](samples/bmc).
+
+## Getting started
+
+You can find the detailed guide [here](docs/getting-started.md).
 
 ## Documentations
 
