@@ -9,6 +9,17 @@ ____  _______  __  _____      _                 _
 
 ```
 
+#### Table of Contents
+
+- [What is Rex](#what-is-rex)
+- [Example program](#example-program)
+- [Build and run](#build-and-run)
+- [Documentations](#documentations)
+- [Why Rex](#why-rex)
+- [License](#license)
+
+## What is Rex
+
 Rex is a safe and usable kernel extension framework that allows loading and
 executing Rust kernel extension programs in the place of eBPF. Unlike
 eBPF-based frameworks such as [Aya](https://aya-rs.dev), Rex programs does
@@ -71,7 +82,7 @@ pub fn err_injector(obj: &kprobe, ctx: &mut PtRegs) -> Result {
 
 More sample programs can be found under [samples](samples).
 
-## Getting started
+## Build and run
 
 You can find the detailed guide [here](docs/getting-started.md).
 
@@ -81,7 +92,7 @@ TODO: add rustdoc of Rex
 
 Additional design documentations can be found under [docs](docs).
 
-## Why Rex?
+## Why Rex
 
 The existing eBPF extension relies on the in-kernel eBPF verifier to
 provide safety guarantees. This unfortunately leads to usability issues
