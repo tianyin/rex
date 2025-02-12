@@ -23,12 +23,12 @@ ifeq ($(V),2)
 CARGO_FLAGS += -vv
 endif
 
-all: target/x86_64-unknown-linux-gnu/release/error_injection loader userapp
+all: target/x86_64-unknown-linux-gnu/release/error_injector loader userapp
 
 clippy: Cargo.toml clippy.toml ./src/*.rs
 	cargo clippy -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
 
-target/x86_64-unknown-linux-gnu/debug/error_injection: clippy Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/debug/error_injector: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
 mir:
@@ -37,7 +37,7 @@ mir:
 llvm-ir:
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
 
-target/x86_64-unknown-linux-gnu/release/error_injection: clippy Cargo.toml ./src/*.rs
+target/x86_64-unknown-linux-gnu/release/error_injector: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 loader: loader.c
