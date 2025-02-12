@@ -107,11 +107,10 @@ to:
 
 Rex aims to address these issues by directly leveraging the safety
 guarantee from _safe Rust_. Developers can implement their programs in
-anyway that can be written in safe Rust, with few restrictions (see
-[docs/rust_rex_subset.md](docs/rust_rex_subset.md)), and no longer need to
-worry about program complexity, the code generator, or finding the (many
-time counter-intuitive) way of expressing the same logic to please the
-verifier.
+anyway that can be written in safe Rust with [few
+restrictions](docs/rust_rex_subset.md), and no longer need to worry about
+program complexity, the code generator, or finding the (many time
+counter-intuitive) way of expressing the same logic to please the verifier.
 
 We demonstrate this with the implementation of the [BPF Memcached Cache
 (BMC)](https://github.com/Orange-OpenSource/bmc-cache), a state-of-the-art
