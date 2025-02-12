@@ -9,7 +9,7 @@
 #include <librex.h>
 #include <libbpf.h>
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/tracex5"
+#define EXE "./target/x86_64-unknown-none/release/tracex5"
 
 /* install fake seccomp program to enable seccomp code path inside the kernel,
  * so that our kprobe attached to seccomp_phase1() can be triggered

@@ -10,7 +10,7 @@
 #include <librex.h>
 #include <libbpf.h>
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/spinlock_test"
+#define EXE "./target/x86_64-unknown-none/release/spinlock_test"
 
 int main(void)
 {

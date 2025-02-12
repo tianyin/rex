@@ -23,15 +23,15 @@ ifeq ($(V),2)
 CARGO_FLAGS += -vv
 endif
 
-all: target/x86_64-unknown-linux-gnu/release/syscall_tp syscall_tp
+all: target/x86_64-unknown-none/release/syscall_tp syscall_tp
 
 clippy: Cargo.toml clippy.toml ./src/*.rs
 	cargo clippy -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
 
-target/x86_64-unknown-linux-gnu/debug/syscall_tp: clippy Cargo.toml ./src/*.rs
+target/x86_64-unknown-none/debug/syscall_tp: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
-target/x86_64-unknown-linux-gnu/release/syscall_tp: clippy Cargo.toml ./src/*.rs
+target/x86_64-unknown-none/release/syscall_tp: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 syscall_tp: syscall_tp_user.c

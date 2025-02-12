@@ -17,7 +17,7 @@
 #include <librex.h>
 
 #define EXE \
-	"./target/x86_64-unknown-linux-gnu/release/spinlock_cleanup_benchmark"
+	"./target/x86_64-unknown-none/release/spinlock_cleanup_benchmark"
 
 int main(int argc, char **argv)
 {

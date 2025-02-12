@@ -14,7 +14,7 @@
 #include <libbpf.h>
 #include <bpf.h>
 
-#define EXE "target/x86_64-unknown-linux-gnu/release/trace_event_kern"
+#define EXE "target/x86_64-unknown-none/release/trace_event_kern"
 
 #define SAMPLE_FREQ 50
 

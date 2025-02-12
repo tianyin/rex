@@ -11,7 +11,7 @@
 #include <librex.h>
 #include <libbpf.h>
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/atomic"
+#define EXE "./target/x86_64-unknown-none/release/atomic"
 
 int main(void)
 {

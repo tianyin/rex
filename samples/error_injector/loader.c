@@ -7,7 +7,7 @@
 #include <librex.h>
 #include <libbpf.h>
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/error_injector"
+#define EXE "./target/x86_64-unknown-none/release/error_injector"
 
 #define USAGE "./loader <syscall> <errno>\n"
 

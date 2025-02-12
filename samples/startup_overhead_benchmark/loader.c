@@ -12,7 +12,7 @@
 #include <libbpf.h>
 
 #define EXE                                                                    \
-	"./target/x86_64-unknown-linux-gnu/release/startup_overhead_benchmark"
+	"./target/x86_64-unknown-none/release/startup_overhead_benchmark"
 
 int main(void)
 {
