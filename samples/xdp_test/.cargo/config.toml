@@ -12,4 +12,3 @@ linker = "clang"
 
 [unstable]
 build-std = ["core"]
-build-std-features = ["compiler-builtins-mem"]
