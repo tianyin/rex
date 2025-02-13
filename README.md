@@ -88,8 +88,6 @@ You can find the detailed guide [here](docs/getting-started.md).
 
 ## Documentations
 
-TODO: add rustdoc of Rex
-
 Additional design documentations can be found under [docs](docs).
 
 ## Why Rex
