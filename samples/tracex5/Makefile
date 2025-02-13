@@ -23,18 +23,18 @@ ifeq ($(V),2)
 CARGO_FLAGS += -vv
 endif
 
-all: target/x86_64-unknown-linux-gnu/release/tracex5 tracex5
+all: target/x86_64-unknown-none/release/tracex5 tracex5
 
 clippy: Cargo.toml clippy.toml ./src/*.rs
 	cargo clippy -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
 
-target/x86_64-unknown-linux-gnu/debug/tracex5: clippy Cargo.toml ./src/*.rs
+target/x86_64-unknown-none/debug/tracex5: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
 
 llvm-ir: Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS} --emit=llvm-ir
 
-target/x86_64-unknown-linux-gnu/release/tracex5: clippy Cargo.toml ./src/*.rs
+target/x86_64-unknown-none/release/tracex5: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} --release -- ${RUST_FLAGS}
 
 tracex5: tracex5.c

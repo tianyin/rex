@@ -12,7 +12,7 @@
 #include <bpf.h>
 #include <libbpf.h>
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/recursive"
+#define EXE "./target/x86_64-unknown-none/release/recursive"
 
 int main(void)
 {

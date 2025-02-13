@@ -16,7 +16,7 @@
 
 #define BPF_SYSFS_ROOT "/sys/fs/bpf"
 
-#define EXE "./target/x86_64-unknown-linux-gnu/release/xdp_test"
+#define EXE "./target/x86_64-unknown-none/release/xdp_test"
 
 static int nr_cpus = 0;
 

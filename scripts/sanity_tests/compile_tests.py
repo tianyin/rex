@@ -65,10 +65,10 @@ def run_make(directory):
             )
             if args.debug:
                 # also compile debug target
-                debug_target = f"target/x86_64-unknown-linux-gnu/debug/{sample_name}"
+                debug_target = f"target/x86_64-unknown-none/debug/{sample_name}"
                 command += f" all {debug_target}"
 
-            release_target = f"target/x86_64-unknown-linux-gnu/release/{sample_name}"
+            release_target = f"target/x86_64-unknown-none/release/{sample_name}"
 
         os.chdir(directory)
         subprocess.run(command, shell=True, capture_output=True, text=True, check=True)
