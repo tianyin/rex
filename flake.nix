@@ -34,6 +34,7 @@
         bison
         cmake
         diffutils
+        elfutils
         elfutils.dev
         fakeroot
         flex
@@ -41,7 +42,6 @@
         glibc.dev
         getopt
         gnumake
-        libelf
         ncurses
         openssl.dev
         pahole
