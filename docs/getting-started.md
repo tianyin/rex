@@ -65,7 +65,7 @@ kernel, `libbpf` needs to be built first:
 
 ```bash
 cd linux/tools/lib/bpf
-make -j`nproc`
+make -j`nproc` LLVM=1
 cd -
 ```
 
