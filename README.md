@@ -22,12 +22,12 @@ ____  _______  __  _____      _                 _
 
 Rex is a safe and usable kernel extension framework that allows loading and
 executing Rust kernel extension programs in the place of eBPF. Unlike
-eBPF-based frameworks such as [Aya](https://aya-rs.dev), Rex programs does
+eBPF-based frameworks such as [Aya](https://aya-rs.dev), Rex programs do
 not go through the in-kernel verifier, instead, the programs are
 implemented in the safe subset of Rust, on which the Rust compiler performs
 the needed safety checks and generates native code directly. This approach
 avoids the overly restricted verification requirements (e.g., program
-complexity contraints) and the resulting arcane verification errors, while
+complexity constraints) and the resulting arcane verification errors, while
 at the same time potentially provides a better optimization opportunity in
 the native compiler backend (i.e., LLVM) than the eBPF backend + in-kernel
 JIT approach.
@@ -104,8 +104,8 @@ to:
   verifier
 
 Rex aims to address these issues by directly leveraging the safety
-guarantee from _safe Rust_. Developers can implement their programs in
-anyway that can be written in safe Rust with [few
+guarantee from _safe Rust_. Developers can implement their programs in any
+way that can be written in safe Rust with [few
 restrictions](docs/rust_rex_subset.md), and no longer need to worry about
 program complexity, the code generator, or finding the (many time
 counter-intuitive) way of expressing the same logic to please the verifier.
@@ -136,7 +136,7 @@ for (unsigned int off = 0;
 }
 ```
 
-The code not only instroduces an extra constraint in the loop (`off <
+The code not only introduces an extra constraint in the loop (`off <
 BMC_MAX_PACKET_LENGTH`) solely for passing the verifier, but also employs
 repeated boilerplate code to check packet ends (`data_end`) and cumbersome
 logic to match the `"set"` string in the packet.
