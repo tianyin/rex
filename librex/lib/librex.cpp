@@ -299,7 +299,7 @@ rex_obj::rex_obj(const char *c_path)
   struct stat st;
   void *mmap_ret;
   int fd = open(c_path, 0, O_RDONLY);
-  Elf *ep = elf_begin(fd, ELF_C_READ_MMAP, NULL);
+  Elf *ep = elf_begin(fd, ELF_C_READ, NULL);
   if (!ep)
     throw std::invalid_argument("elf: failed to open file "s + c_path);
 
