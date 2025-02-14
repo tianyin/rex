@@ -19,6 +19,7 @@
           # Remove the line that contains "-nostdlibinc"
           sed -i 's|-nostdlibinc||g' "$out/nix-support/cc-cflags"
           echo " -resource-dir=${pkgs.llvmPackages.clang}/resource-root" >> "$out/nix-support/cc-cflags"
+          echo > "$out/nix-support/add-local-cc-cflags-before.sh"
         '';
       };
 
@@ -106,16 +107,8 @@
           runScript = "./scripts/start.sh";
 
           # NIX_CFLAGS_COMPILE = lib.strings.makeLibraryPath [ ] + " -isystem ${pkgs.libclang.lib}/lib/clang/19/include";
-          # If you want clang in /usr/bin/clang etc. inside the chroot:
-          # export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
-          # export LIBCLANG_PATH="${pkgs.libclang.lib}/lib/libclang.so"
-          extraShellInit = ''
-            # Symlink the wrapped clang binaries into /usr/bin
-          '';
-
-            # export PATH=${wrappedClang}/bin:"$PATH"
           profile = ''
-            export LD_LIBRARY_PATH="${pkgs.libclang.lib}/lib/clang/19/include:$LD_LIBRARY_PATH"
+            export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
             export LIBCLANG_PATH="${pkgs.libclang.lib}/lib/libclang.so"
             export NIX_ENFORCE_NO_NATIVE=0
           '';
@@ -135,8 +128,6 @@
           # - https://nixos.wiki/wiki/C#Hardening_flags
           hardeningDisable = [ "all" ];
 
-
-          # export LIBCLANG_PATH="${pkgs.llvmPackages_19.libclang.lib}/lib/libclang.so"
           shellHook = ''
             echo "loading rex env"
             source ./scripts/env.sh
