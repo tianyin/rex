@@ -8,9 +8,38 @@
   outputs = { self, nixpkgs, ... }:
     let
       system = "x86_64-linux";
+
+      basePkgs = import nixpkgs {
+        inherit system;
+      };
+
+      remoteNixpkgsPatches = [
+        {
+          meta.description = "cc-wrapper: remove -nostdlibinc";
+          url = "https://github.com/chinrw/nixpkgs/commit/0016d524d02035187216a6df9fff1dbffadfa81b.patch";
+          sha256 = "sha256-kYTSw+8vByZcCHXfVeWqi0/XVNjo8YJSey03k/+uxvw=";
+        }
+        {
+          meta.description = "cc-wrapper: disable warn about cross-compile";
+          url = "https://github.com/chinrw/nixpkgs/commit/3a6374fce7c048a86e7ff56671b1dbc4974757a9.patch";
+          sha256 = "sha256-pxgls4+wn5wekkQH8etdoYV3mAY8omviZ/MOu9sekE8";
+        }
+      ];
+
+      patchedNixpkgsSrc = basePkgs.applyPatches {
+        name = "nixpkgs-patched";
+        src = basePkgs.path;
+        patches = map basePkgs.fetchpatch remoteNixpkgsPatches;
+      };
+
+      patchedPkgs = import patchedNixpkgsSrc {
+        inherit system;
+      };
+
+
       pkgs = import nixpkgs {
         inherit system;
-        # overlays = overlays;
+        # overlays = [ overrideLLVM ];
       };
 
       wrapCC = cc: pkgs.wrapCCWith {
@@ -23,8 +52,10 @@
         '';
       };
 
-      wrappedClang = wrapCC pkgs.llvmPackages.clang.cc;
-      lib = nixpkgs.lib;
+
+
+      # wrappedClang = wrapCC pkgs.llvmPackages.clang.cc;
+      # lib = nixpkgs.lib;
 
       # Use unwrapped clang & lld to avoid warnings about multi-target usage
       rexPackages = with pkgs; [
@@ -38,6 +69,7 @@
         elfutils
         elfutils.dev
         fakeroot
+        findutils
         flex
         gcc
         glibc.dev
@@ -52,17 +84,17 @@
         zlib.dev
 
         ninja
-        rust-bindgen
+        patchedPkgs.rust-bindgen
         pahole
         strace
         zstd
         eza
-        linuxKernel.packages.linux_latest_libre.perf
+        perf-tools
+        # linuxKernel.packages.linux_latest.perf
 
         # Clang kernel builds
-        # llvmPackages.clang
-        # llvmPackages.clang
-        wrappedClang
+        patchedPkgs.llvmPackages.clang
+        # wrappedClang
         # llvmPackages.libcxxStdenv
         lld
         mold
@@ -106,10 +138,9 @@
           targetPkgs = pkgs: rexPackages;
           runScript = "./scripts/start.sh";
 
-          # NIX_CFLAGS_COMPILE = lib.strings.makeLibraryPath [ ] + " -isystem ${pkgs.libclang.lib}/lib/clang/19/include";
+          # export LIBCLANG_PATH="${pkgs.libclang.lib}/lib/libclang.so"
           profile = ''
             export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
-            export LIBCLANG_PATH="${pkgs.libclang.lib}/lib/libclang.so"
             export NIX_ENFORCE_NO_NATIVE=0
           '';
         };
@@ -129,6 +160,7 @@
           hardeningDisable = [ "all" ];
 
           shellHook = ''
+            export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
             echo "loading rex env"
             source ./scripts/env.sh
             export NIX_ENFORCE_NO_NATIVE=0
