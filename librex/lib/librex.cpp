@@ -30,7 +30,7 @@ using namespace std::literals;
 
 namespace {
 
-int debug = 1;
+int debug = 0;
 
 bool sec_def_matches(const struct bpf_sec_def *sec_def,
                      std::string_view sec_name) {
