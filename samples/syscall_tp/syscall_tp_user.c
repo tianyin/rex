@@ -57,8 +57,6 @@ static int test(char *filename, int num_progs)
 	struct bpf_object *objs[num_progs];
 	struct bpf_program *prog;
 
-	rex_set_debug(1);
-
 	for (i = 0; i < num_progs; i++) {
 		objs[i] = rex_obj_get_bpf(rex_obj_load(filename));
 		if (!objs[i]) {

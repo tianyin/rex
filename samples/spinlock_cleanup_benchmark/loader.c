@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 	struct bpf_program *prog;
 	struct bpf_object *obj;
 	char filename[256];
-	rex_set_debug(1); // enable debug info
+
 	int ret;
 
 	int interface_idx = atoi(argv[1]);

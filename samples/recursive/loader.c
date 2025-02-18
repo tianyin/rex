@@ -21,8 +21,6 @@ int main(void)
 	struct bpf_program *prog;
 	struct bpf_link *link = NULL;
 
-	rex_set_debug(1); // enable debug info
-
 	obj = rex_obj_get_bpf(rex_obj_load(EXE));
 	if (!obj) {
 		fprintf(stderr, "Object could not be opened\n");

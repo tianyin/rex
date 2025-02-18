@@ -51,8 +51,6 @@ int main(int argc, char *argv[])
 	int interface_count = 0;
 	int sig, quit = 0;
 
-	rex_set_debug(1); // enable debug info
-
 	interface_count = argc - optind;
 	if (interface_count <= 0) {
 		fprintf(stderr,

@@ -131,7 +131,6 @@ int main(int argc, char *argv[])
 	int sig, quit = 0;
 
 	libbpf_set_print(libbpf_print_fn);
-	rex_set_debug(1); // enable debug info
 
 	interface_count = argc - optind;
 	if (interface_count <= 0) {

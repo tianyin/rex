@@ -292,8 +292,6 @@ int main(int argc, char **argv)
 	char filename[256];
 	int error = 1;
 
-	rex_set_debug(1); // enable debug info
-
 	snprintf(filename, sizeof(filename), "%s_kern.o", argv[0]);
 
 	signal(SIGINT, err_exit);

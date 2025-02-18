@@ -29,8 +29,6 @@ int main(int argc, char *argv[])
 
 	errno_to_inject = -strtoul(argv[2], NULL, 10);
 
-	rex_set_debug(1);
-
 	rex_obj = rex_obj_load(EXE);
 	if (!rex_obj) {
 		fprintf(stderr, "rex_obj_load failed\n");
