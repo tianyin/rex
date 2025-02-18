@@ -3,11 +3,11 @@
 
 extern crate rex;
 
+use rex::kprobe::*;
 use rex::linux::bpf::*;
 use rex::map::*;
-use rex::kprobe::*;
 use rex::pt_regs::PtRegs;
-use rex::{bpf_printk, rex_map, rex_kprobe, Result};
+use rex::{bpf_printk, rex_kprobe, rex_map, Result};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, u64> = RexHashMap::new(5000, 0);

@@ -9,7 +9,7 @@ int main(int argc, char *argv[])
 	int nr_rounds, arg, fd;
 
 	if (argc != 3)
-		asm volatile ("ud2");
+		asm volatile("ud2");
 
 	nr_rounds = atoi(argv[1]);
 	arg = atoi(argv[2]);

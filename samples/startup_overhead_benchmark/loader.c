@@ -11,8 +11,7 @@
 #include <librex.h>
 #include <libbpf.h>
 
-#define EXE                                                                    \
-	"./target/x86_64-unknown-none/release/startup_overhead_benchmark"
+#define EXE "./target/x86_64-unknown-none/release/startup_overhead_benchmark"
 
 int main(void)
 {

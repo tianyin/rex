@@ -184,7 +184,7 @@ int main(int argc, char *argv[])
 	/* xdp_flags |= XDP_FLAGS_SKB_MODE; */
 	for (int i = 0; i < interface_count; i++) {
 		if (bpf_xdp_attach(interfaces_idx[i], xdp_main_prog_fd,
-					xdp_flags, NULL) < 0) {
+				   xdp_flags, NULL) < 0) {
 			fprintf(stderr,
 				"Error: bpf_set_link_xdp_fd failed for interface %d\n",
 				interfaces_idx[i]);
