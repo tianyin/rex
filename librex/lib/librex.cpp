@@ -542,10 +542,6 @@ int rex_obj::parse_rela_dyn() {
   nr_dyn_relas = rela_dyn_size / sizeof(rex_rela_dyn);
 
   for (idx = 0; idx < nr_dyn_relas; idx++) {
-    // Need to skip the map relocs, these are handled differently in the kernel
-    if (map_defs.find(rela_dyn_data[idx].addend) != map_defs.end())
-      continue;
-
     if (ELF64_R_TYPE(rela_dyn_data[idx].info) == R_X86_64_RELATIVE) {
       dyn_relas.push_back(rela_dyn_data[idx]);
     } else if (ELF64_R_TYPE(rela_dyn_data[idx].info) == R_X86_64_GLOB_DAT) {
