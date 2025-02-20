@@ -4,7 +4,7 @@ LIBREX_DIR := $(abspath ../../librex)
 
 NO_OPT = -C target-feature=-avx,-avx2,-sse,-sse2,-sse3,-sse4.1,-sse4.2,-sse4a,-ssse3
 
-RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Clink-arg=-nostartfiles -Clink-arg=-fuse-ld=bfd -Cenable_rex
+RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Cenable_rex
 
 CC = clang
 

@@ -2,7 +2,7 @@ LINUX_INC = ${LINUX}/usr/include
 LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
 LIBREX_DIR := $(abspath ../../librex)
 
-RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Clink-arg=-nostartfiles -Clink-arg=-fuse-ld=bfd -Cenable_rex
+RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Cenable_rex
 
 CC = clang
 
