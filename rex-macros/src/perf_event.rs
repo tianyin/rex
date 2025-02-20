@@ -29,7 +29,7 @@ impl PerfEvent {
             #item
 
             #[used]
-            #[link_section = "rex/perf_event"]
+            #[unsafe(link_section = "rex/perf_event")]
             static #prog_ident: perf_event =
                 perf_event::new(#fn_name, #function_name);
         };

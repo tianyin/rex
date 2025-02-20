@@ -64,7 +64,7 @@ impl TracePoint {
             #item
 
             #[used]
-            #[link_section = #attached_name]
+            #[unsafe(link_section = #attached_name)]
             static #prog_ident: tracepoint =
                 tracepoint::new(#fn_name, #function_name, #tp_type);
         };

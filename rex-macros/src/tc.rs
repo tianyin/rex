@@ -33,7 +33,7 @@ impl SchedCls {
             #item
 
             #[used]
-            #[link_section = "rex/tc"]
+            #[unsafe(link_section = "rex/tc")]
             static #prog_ident: sched_cls =
                 sched_cls::new(#fn_name, #function_name);
         };

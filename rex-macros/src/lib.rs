@@ -85,8 +85,8 @@ pub fn rex_map(_: TokenStream, item: TokenStream) -> TokenStream {
     let name = item.ident.to_string();
     let section_name: Cow<'_, _> = ".maps".to_string().into();
     (quote! {
-        #[link_section = #section_name]
-        #[export_name = #name]
+        #[unsafe(link_section = #section_name)]
+        #[unsafe(export_name = #name)]
         #[allow(non_upper_case_globals)]
         #item
     })
@@ -112,7 +112,7 @@ pub fn ensure_numeric(input: TokenStream) -> TokenStream {
 
     // You can still derive other traits, or just generate an empty
     // implementation
-    let gen = quote! {
+    let generated = quote! {
         impl #struct_name {
             #[inline(always)]
             pub(crate) fn from_bytes(data: &mut [u8]) -> &mut #struct_name{
@@ -121,5 +121,5 @@ pub fn ensure_numeric(input: TokenStream) -> TokenStream {
             }
         }
     };
-    gen.into()
+    generated.into()
 }

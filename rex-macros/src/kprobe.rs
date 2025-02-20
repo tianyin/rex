@@ -41,7 +41,7 @@ impl KProbe {
             #item
 
             #[used]
-            #[link_section = #attached_function]
+            #[unsafe(link_section = #attached_function)]
             static #prog_ident: kprobe =
                 kprobe::new(#fn_name, #function_name);
         };

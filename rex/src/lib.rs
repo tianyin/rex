@@ -5,7 +5,8 @@
     non_snake_case,
     non_upper_case_globals,
     unused,
-    internal_features
+    internal_features,
+    unsafe_op_in_unsafe_fn // Bindgen currently generates such code
 )]
 
 pub mod kprobe;
@@ -13,9 +14,9 @@ pub mod map;
 pub mod perf_event;
 pub mod prog_type;
 pub mod pt_regs;
-pub mod task_struct;
 pub mod sched_cls;
 pub mod spinlock;
+pub mod task_struct;
 pub mod tracepoint;
 pub mod utils;
 pub mod xdp;
@@ -43,7 +44,7 @@ compile_error!("CONFIG_KALLSYMS_ALL is required for rex");
 macro_rules! define_prog_entry {
     ($prog_ty:ident) => {
         paste! {
-            #[no_mangle]
+            #[unsafe(no_mangle)]
             #[inline(always)]
             fn [<__rex_entry_ $prog_ty>](
                 prog: &$prog_ty::$prog_ty,

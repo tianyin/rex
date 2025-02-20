@@ -30,7 +30,7 @@ impl Xdp {
             #item
 
             #[used]
-            #[link_section = "rex/xdp"]
+            #[unsafe(link_section = "rex/xdp")]
             static #prog_ident: xdp =
                 xdp::new(#fn_name, #function_name);
         };

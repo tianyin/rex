@@ -127,7 +127,7 @@ impl<'a> CleanupEntries<'a> {
 // The best way to deal with this is probably insert it directly in LLVM IR as
 // an inline asm block
 // For now, use inline(always) to hint the compiler for inlining if LTO is on
-#[no_mangle]
+#[unsafe(no_mangle)]
 #[inline(always)]
 unsafe fn __rex_check_stack() {
     // The program can only use the top 4 pages of the stack, therefore subtract
@@ -146,12 +146,12 @@ unsafe fn __rex_check_stack() {
     }
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 pub(crate) unsafe fn __rex_handle_timeout() -> ! {
     panic!("Timeout in Rex program");
 }
 
-#[no_mangle]
+#[unsafe(no_mangle)]
 unsafe fn __rex_handle_stack_overflow() -> ! {
     panic!("Stack overflow in Rex program");
 }

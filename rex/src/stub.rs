@@ -8,7 +8,7 @@ use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
 use crate::panic::{CleanupEntry, ENTRIES_SIZE};
 
 /// Functions
-extern "C" {
+unsafe extern "C" {
     /// `long bpf_trace_printk(const char *fmt, u32 fmt_size, ...)`
     ///
     /// Helpers takes at most 5 args so this function takes at most 3 fmt args
@@ -183,7 +183,7 @@ extern "C" {
 }
 
 /// Global variables
-extern "C" {
+unsafe extern "C" {
     /// `extern unsigned long volatile __cacheline_aligned_in_smp
     /// __jiffy_arch_data jiffies;`
     ///
