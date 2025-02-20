@@ -12,7 +12,7 @@ exclude = ["./samples/", "./rust/", "./tools/", "./scripts/"]
 
 [workspace.package]
 authors = ["Rex Contributors"]
-repository = "https://github.com/rosalab/inner_unikernels"
+repository = "https://github.com/rex-rs/rex"
 edition = "2021"
 
 [workspace.dependencies]
