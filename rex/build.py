@@ -9,7 +9,7 @@ bindgen_cmd = '''bindgen $LINUX/usr/include/%s --use-core
 --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
 --no-debug '.*' --no-doc-comments --rust-target=1.85.0 --rust-edition=2024
 --translate-enum-integer-types --no-prepend-enum-name --blocklist-type
-pt_regs -o %s -- -I$LINUX/usr/include'''
+pt_regs --wrap-unsafe-ops -o %s -- -I$LINUX/usr/include'''
 
 k_structs = ['task_struct', 'tk_read_base', 'seqcount_raw_spinlock_t',
              'clocksource', 'seqcount_t', 'seqcount_latch_t', 'timekeeper',
@@ -25,8 +25,9 @@ local_apic --opaque-type alt_instr --opaque-type x86_msi_data --opaque-type
 x86_msi_addr_lo --opaque-type kunit_try_catch --opaque-type spinlock
 --no-doc-comments --blocklist-function __list_.*_report --use-core
 --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
---no-debug '.*' --rust-target=1.85.0 --rust-edition=2024 -o %s --
--nostdinc -I$LINUX/arch/x86/include -I$LINUX/arch/x86/include/generated
+--no-debug '.*' --rust-target=1.85.0 --rust-edition=2024 --wrap-unsafe-ops
+-o %s -- -nostdinc -I$LINUX/arch/x86/include
+-I$LINUX/arch/x86/include/generated
 -I$LINUX/include -I$LINUX/arch/x86/include/uapi
 -I$LINUX/arch/x86/include/generated/uapi -I$LINUX/include/uapi
 -I$LINUX/include/generated/uapi -include

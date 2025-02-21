@@ -5,8 +5,7 @@
     non_snake_case,
     non_upper_case_globals,
     unused,
-    internal_features,
-    unsafe_op_in_unsafe_fn // Bindgen currently generates such code
+    internal_features
 )]
 
 pub mod kprobe;
