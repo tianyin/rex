@@ -75,6 +75,7 @@
         glibc.dev
         getopt
         gnumake
+        meson
         ncurses
         openssl.dev
         pahole
