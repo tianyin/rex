@@ -41,7 +41,9 @@ impl CleanupEntry {
     pub(crate) unsafe fn cleanup(&self) {
         if self.valid != 0 {
             if let Some(cleanup_fn) = self.cleanup_fn {
-                (cleanup_fn)(self.cleanup_arg);
+                unsafe {
+                    (cleanup_fn)(self.cleanup_arg);
+                }
             }
         }
     }
@@ -118,7 +120,9 @@ impl<'a> CleanupEntries<'a> {
     pub(crate) unsafe fn cleanup_all() {
         let mut entries = Self::this_cpu_cleanup_entries();
         for entry in entries.entries.iter_mut() {
-            entry.cleanup();
+            unsafe {
+                entry.cleanup();
+            }
             entry.valid = 0;
         }
     }

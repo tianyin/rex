@@ -34,7 +34,9 @@ impl<'a> rex_spinlock_guard<'a> {
 
     /// Function that unlocks the spinlock, used by cleanup list and drop
     pub(crate) unsafe fn panic_cleanup(lock: *mut ()) {
-        stub::bpf_spin_unlock(lock as *mut bpf_spin_lock);
+        unsafe {
+            stub::bpf_spin_unlock(lock as *mut bpf_spin_lock);
+        }
     }
 }
 

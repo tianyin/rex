@@ -33,12 +33,14 @@ macro_rules! impl_pcpu_read_integral {
             #[inline(always)]
             unsafe fn this_cpu_read(addr: *const Self) -> Self {
                 let mut var: Self;
-                core::arch::asm!(
-                    concat!("mov {0", reg_template!($t), "}, gs:[{1:r}]"),
-                    lateout(reg) var,
-                    in(reg) addr,
-                    options(readonly, nostack),
-                );
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mov {0", reg_template!($t), "}, gs:[{1:r}]"),
+                        lateout(reg) var,
+                        in(reg) addr,
+                        options(readonly, nostack),
+                    );
+                }
                 var
             }
         }
@@ -53,12 +55,14 @@ macro_rules! impl_pcpu_read_byte {
             #[inline(always)]
             unsafe fn this_cpu_read(addr: *const Self) -> Self {
                 let mut var: Self;
-                core::arch::asm!(
-                    concat!("mov {0}, gs:[{1:r}]"),
-                    lateout(reg_byte) var,
-                    in(reg) addr,
-                    options(readonly, nostack),
-                );
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mov {0}, gs:[{1:r}]"),
+                        lateout(reg_byte) var,
+                        in(reg) addr,
+                        options(readonly, nostack),
+                    );
+                }
                 var
             }
         }
@@ -73,12 +77,14 @@ macro_rules! impl_pcpu_read_ptr {
             #[inline(always)]
             unsafe fn this_cpu_read(addr: *const Self) -> Self {
                 let mut var: Self;
-                core::arch::asm!(
-                    concat!("mov {0:r}, gs:[{1:r}]"),
-                    lateout(reg) var,
-                    in(reg) addr,
-                    options(readonly, nostack),
-                );
+                unsafe {
+                    core::arch::asm!(
+                        concat!("mov {0:r}, gs:[{1:r}]"),
+                        lateout(reg) var,
+                        in(reg) addr,
+                        options(readonly, nostack),
+                    );
+                }
                 var
             }
         }
@@ -95,18 +101,22 @@ impl_pcpu_read_ptr!(const mut);
 /// For values of per-cpu variables
 #[inline(always)]
 pub(crate) unsafe fn this_cpu_read<T: PerCPURead>(pcp_addr: *const T) -> T {
-    T::this_cpu_read(pcp_addr)
+    unsafe { T::this_cpu_read(pcp_addr) }
 }
 
 /// For addresses of per-cpu variables
 /// This is more expensive (in terms of # of insns)
 #[inline(always)]
 pub unsafe fn this_cpu_ptr<T>(pcp_addr: *const T) -> *const T {
-    pcp_addr.byte_add(this_cpu_read(&raw const stub::this_cpu_off) as usize)
+    unsafe {
+        pcp_addr.byte_add(this_cpu_read(&raw const stub::this_cpu_off) as usize)
+    }
 }
 
 pub unsafe fn this_cpu_ptr_mut<T>(pcp_addr: *mut T) -> *mut T {
-    pcp_addr.byte_add(this_cpu_read(&raw const stub::this_cpu_off) as usize)
+    unsafe {
+        pcp_addr.byte_add(this_cpu_read(&raw const stub::this_cpu_off) as usize)
+    }
 }
 
 #[inline(always)]
