@@ -26,7 +26,7 @@ endif
 all: target/x86_64-unknown-none/release/trace_event_kern trace_event
 
 clippy: Cargo.toml clippy.toml ./src/*.rs
-	cargo clippy -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
+	cargo clippy ${CARGO_FLAGS} -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
 
 target/x86_64-unknown-none/debug/trace_event_kern: clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
