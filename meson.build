@@ -7,7 +7,7 @@ project('rex-compile',
     'b_lto=true',
     'b_lto_mode=thin',
     'b_pie=true',
-    'c_std=c17',
+    'c_std=gnu17',
     'cpp_std=c++23'
   ]
 )
@@ -49,7 +49,7 @@ rust_bootstrap = custom_target(
     '--build-dir=@SOURCE_ROOT@/rust/build', 
     '--set', 'install.prefix=@SOURCE_ROOT@/rust/dist'],
   console: true,
-  build_by_default: true
+  build_by_default: false
 )
 
 ln = find_program('ln')
@@ -64,6 +64,5 @@ libbpf = custom_target(
 )
 
 subdir('librex')
-librex_inc = include_directories('librex')
 
 subdir('samples')

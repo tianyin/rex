@@ -1,3 +1,5 @@
+rex_rootdir = '../../'
+
 sample_build = custom_target(
   'sample',
   output: ['target'],
@@ -17,13 +19,30 @@ sample_build = custom_target(
   build_by_default: true
 )
 
+loader_includes = [
+  join_paths(rex_rootdir, 'linux/usr/include'),
+  join_paths(rex_rootdir, 'linux/tools/lib')
+]
+
 executable(
   'loader', 
   'loader.c',
-  include_directories: librex_inc,
-  link_with: [librex, libbpf],
+  build_by_default: true,
   build_rpath: join_paths(meson.project_source_root(), 'linux/tools/lib/bpf'),
-  install: true,
+  c_args: [
+    '-pipe',
+    '-march=native',
+    '-ffunction-sections',
+    '-fdata-sections',
+    '-fno-semantic-interposition'
+  ],
+  dependencies: [librex_dep],
+  include_directories: loader_includes,
+  link_args: [
+    '-Wl,-O1',
+    '-Wl,--gc-sections',
+  ],
+  link_with: [libbpf],
   pie: true,
-  )
+)
 
