@@ -64,3 +64,6 @@ libbpf = custom_target(
 )
 
 subdir('librex')
+librex_inc = include_directories('librex')
+
+subdir('samples')
