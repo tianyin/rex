@@ -1,5 +1,5 @@
 project('rex-compile', 
-  ['c', 'cpp', 'rust'],
+  ['c', 'cpp'],
   version: '0.1.0',
   default_options : [
     'buildtype=debugoptimized',

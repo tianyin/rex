@@ -1,5 +1,5 @@
 LINUX_INC = ${LINUX}/usr/include
-LIBBPF_DIR = $(abspath ${LINUX}/tools/lib/bpf)
+LIBBPF_DIR = $(abspath ${LINUX}/tools/lib)
 LIBREX_DIR := $(abspath ../../librex)
 
 RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Cenable_rex
@@ -11,7 +11,7 @@ CFLAGS += -ffunction-sections -fdata-sections -fno-semantic-interposition
 LDFLAGS += -fuse-ld=mold -Wl,--as-needed -Wl,-O1 -Wl,--gc-sections
 
 LOADER_INC += -I${LINUX_INC} -I${LIBBPF_DIR} -I${LIBREX_DIR}/include
-LOADER_LDFLAGS = -L${LIBBPF_DIR} -L${LIBREX_DIR} -lbpf -lrex -Wl,-rpath=${LIBBPF_DIR} -Wl,-rpath=${LIBREX_DIR}
+LOADER_LDFLAGS = -L${LIBBPF_DIR}/bpf -L${LIBREX_DIR} -lbpf -lrex -Wl,-rpath=${LIBBPF_DIR} -Wl,-rpath=${LIBREX_DIR}
 
 V ?= 0
 
