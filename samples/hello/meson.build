@@ -7,10 +7,6 @@ sample_build = custom_target(
     'unstable-options', 
     '-C', meson.current_source_dir(),
     'rustc','-r','--',
-    '-Funsafe_code',
-    '-Finternal_features',
-    '-Fincomplete_features',
-    '-Funstable_features',
     '-Cenable_rex'
   ],
   env: env,

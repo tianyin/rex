@@ -2,7 +2,7 @@ LINUX_INC = ${LINUX}/usr/include
 LIBBPF_DIR = $(abspath ${LINUX}/tools/lib)
 LIBREX_DIR := $(abspath ../../librex)
 
-RUST_FLAGS = -Funsafe_code -Finternal_features -Fincomplete_features -Funstable_features -Cenable_rex
+RUST_FLAGS = -Cenable_rex
 
 CC = clang
 
@@ -28,7 +28,7 @@ endif
 all: target/x86_64-unknown-none/release/hello loader event-trigger
 
 clippy: Cargo.toml clippy.toml ./src/*.rs
-	cargo clippy ${CARGO_FLAGS} -r -- -Fclippy::disallowed-methods -Fclippy::disallowed-types
+	cargo clippy ${CARGO_FLAGS} -r
 
 target/x86_64-unknown-none/debug/hello: clippy clippy Cargo.toml ./src/*.rs
 	cargo rustc ${CARGO_FLAGS} -- ${RUST_FLAGS}
