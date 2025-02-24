@@ -1,7 +1,21 @@
 
-sample_build = custom_target(
-  'hello',
+sample_clippy = custom_target(
+  'hello-clippy',
   output: ['target'],
+  command: [
+    cargo_bin,'-Z',
+    'unstable-options', 
+    '-C', meson.current_source_dir(),
+    'clippy','-r',
+  ],
+  env: env,
+  console: true,
+  build_by_default: true
+)
+
+sample_build = custom_target(
+  'hello-build',
+  output: ['hello'],
   command: [
     cargo_bin,'-Z',
     'unstable-options', 
@@ -9,6 +23,7 @@ sample_build = custom_target(
     'rustc','-r','--',
     '-Cenable_rex'
   ],
+  depends: sample_clippy,
   env: env,
   console: true,
   build_by_default: true
