@@ -16,3 +16,4 @@ compile_commands.json
 target/
 .direnv
 .envrc
+.cache
