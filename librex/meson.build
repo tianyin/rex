@@ -20,7 +20,7 @@ librex = library(
   'rex',
   librex_sources,
   build_rpath: join_paths(meson.project_source_root(), 'linux/tools/lib/bpf'),
-  build_by_default: true,
+  build_by_default: false,
   cpp_args: [
     '-pipe',
     '-march=native',

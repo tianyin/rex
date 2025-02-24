@@ -1,12 +1,11 @@
-rex_rootdir = '../../'
 
 sample_build = custom_target(
-  'sample',
+  'hello',
   output: ['target'],
   command: [
     cargo_bin,'-Z',
     'unstable-options', 
-    '-C', join_paths(meson.project_source_root(),'samples/hello'),
+    '-C', meson.current_source_dir(),
     'rustc','-r','--',
     '-Funsafe_code',
     '-Finternal_features',
@@ -19,6 +18,7 @@ sample_build = custom_target(
   build_by_default: true
 )
 
+rex_rootdir = '../../'
 loader_includes = [
   join_paths(rex_rootdir, 'linux/usr/include'),
   join_paths(rex_rootdir, 'linux/tools/lib')
@@ -28,7 +28,7 @@ executable(
   'loader', 
   'loader.c',
   build_by_default: true,
-  build_rpath: join_paths(meson.project_source_root(), 'linux/tools/lib/bpf'),
+  build_rpath: join_paths(kernel_dir, 'tools/lib/bpf'),
   c_args: [
     '-pipe',
     '-march=native',
