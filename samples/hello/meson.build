@@ -13,6 +13,7 @@ sample_clippy = custom_target(
   build_by_default: true
 )
 
+env.set('CARGO_TARGET_DIR', '../../build/samples/hello/target')
 sample_build = custom_target(
   'hello-build',
   output: ['hello'],
@@ -35,18 +36,20 @@ loader_includes = [
   join_paths(rex_rootdir, 'linux/tools/lib')
 ]
 
-executable(
-  'loader', 
-  'loader.c',
-  build_by_default: true,
-  build_rpath: join_paths(kernel_dir, 'tools/lib/bpf'),
-  c_args: [
+cflags = [
     '-pipe',
     '-march=native',
     '-ffunction-sections',
     '-fdata-sections',
     '-fno-semantic-interposition'
-  ],
+]
+
+executable(
+  'loader', 
+  'loader.c',
+  build_by_default: true,
+  build_rpath: join_paths(kernel_dir, 'tools/lib/bpf'),
+  c_args: cflags,
   dependencies: [librex_dep],
   include_directories: loader_includes,
   link_args: [
@@ -54,6 +57,20 @@ executable(
     '-Wl,--gc-sections',
   ],
   link_with: [libbpf],
+  pie: true,
+)
+
+executable(
+  'event-trigger', 
+  'event-trigger.c',
+  build_by_default: true,
+  c_args: cflags,
+  include_directories: loader_includes,
+  link_args: [
+    '-Wl,-O1',
+    '-Wl,--gc-sections',
+  ],
+  install: false,
   pie: true,
 )
 
