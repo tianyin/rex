@@ -5,15 +5,8 @@ elf_dep = dependency('libelf')
 
 librex_public_inc = include_directories('include')
 
-librex_includes = [
-  librex_public_inc,
-  join_paths(rex_rootdir, 'linux/usr/include'),
-  join_paths(rex_rootdir, 'linux/tools/lib')
-]
-
 librex_sources = [
   'lib/librex.cpp',
-  kernel_build[1]
 ]
 
 librex = library(
@@ -28,14 +21,13 @@ librex = library(
     '-fdata-sections',
     '-fno-semantic-interposition'
   ],
-  dependencies: [elf_dep, llvm_dep],
+  dependencies: [elf_dep, llvm_dep, kernel_dep, libbpf_dep],
   gnu_symbol_visibility: 'hidden',
-  include_directories: librex_includes,
+  include_directories: librex_public_inc,
   link_args: [
     '-Wl,-O1',
     '-Wl,--gc-sections',
   ],
-  link_with: [libbpf],
   pic: true,
 )
 
