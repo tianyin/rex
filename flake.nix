@@ -32,10 +32,27 @@
         patches = map basePkgs.fetchpatch remoteNixpkgsPatches;
       };
 
+      patchedBindgen =
+        (self: super: {
+          rust-bindgen-unwrapped = super.rust-bindgen-unwrapped.overrideAttrs (finalAttrs: oldAttrs: {
+            src = super.fetchFromGitHub {
+              owner = "rust-lang";
+              repo = "rust-bindgen";
+              rev = "20aa65a0b9edfd5f8ab3e038197da5cb2c52ff18";
+              sha256 = "sha256-OrwPpXXfbkeS7SAmZDZDUXZV4BfSF3e/58LJjedY1vA=";
+            };
+            cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+              inherit (finalAttrs) pname src version;
+              hash = finalAttrs.cargoHash;
+            };
+            cargoHash = "sha256-e94pwjeGOv/We6uryQedj7L41dhCUc2wzi/lmKYnEMA=";
+          });
+        });
+
       patchedPkgs = import patchedNixpkgsSrc {
         inherit system;
+        overlays = [ patchedBindgen ];
       };
-
 
       pkgs = import nixpkgs {
         inherit system;
