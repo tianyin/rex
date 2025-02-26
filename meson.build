@@ -40,8 +40,9 @@ all_programs = custom_target('build_deps',
 rust_bin = join_paths(meson.current_build_dir(), 'rust-dist/bin')
 
 env = environment()
-env.prepend('PATH', rust_bin)
-env.set('LINUX', kbuild_dir)
+env.prepend('PATH', rust_bin, separator: ':')
+env.set('LINUX_OBJ', kbuild_dir)
+env.set('LINUX_SRC', join_paths(meson.current_source_dir(), './linux'))
 
 realpath = find_program('realpath')
 

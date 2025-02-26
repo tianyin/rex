@@ -18,7 +18,6 @@ sample_clippy = custom_target(
     '-C', meson.current_source_dir(),
     'clippy','-r',
   ],
-  depends: [kernel_build, rust_bootstrap],
   env: env,
   console: true,
   build_by_default: true
