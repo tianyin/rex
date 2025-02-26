@@ -23,8 +23,8 @@ rust_bootstrap = custom_target(
   output : ['cargo', 'rustc'],
   command: [python3_bin, '@SOURCE_ROOT@/rust/x.py', 'install',
     '--config=@SOURCE_ROOT@/rust/rex-config.toml',
-    '--build-dir=@SOURCE_ROOT@/rust/build', 
-    '--set', 'install.prefix=@SOURCE_ROOT@/rust/dist'],
+    '--build-dir=@OUTDIR@/rust-build', 
+    '--set', 'install.prefix=@OUTDIR@/rust-dist'],
   console: true,
   build_by_default: false
 )
