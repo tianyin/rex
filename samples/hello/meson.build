@@ -1,24 +1,34 @@
+build_dir = run_command(
+  realpath,
+  '--relative-to',
+  meson.current_source_dir(),
+  meson.current_build_dir(),
+  capture: true,
+  check: true
+).stdout().strip()
+
+env.set('CARGO_TARGET_DIR', join_paths(build_dir, 'target'))
 
 sample_clippy = custom_target(
   'hello-clippy',
   output: ['target'],
   command: [
-    cargo_bin,'-Z',
+    'cargo','-Z',
     'unstable-options', 
     '-C', meson.current_source_dir(),
     'clippy','-r',
   ],
+  depends: [kernel_build, rust_bootstrap],
   env: env,
   console: true,
   build_by_default: true
 )
 
-env.set('CARGO_TARGET_DIR', '../../build/samples/hello/target')
 sample_build = custom_target(
   'hello-build',
   output: ['hello'],
   command: [
-    cargo_bin,'-Z',
+    'cargo','-Z',
     'unstable-options', 
     '-C', meson.current_source_dir(),
     'rustc','-r','--',
@@ -29,12 +39,6 @@ sample_build = custom_target(
   console: true,
   build_by_default: true
 )
-
-rex_rootdir = '../../'
-loader_includes = [
-  join_paths(rex_rootdir, 'linux/usr/include'),
-  join_paths(rex_rootdir, 'linux/tools/lib')
-]
 
 cflags = [
     '-pipe',
@@ -48,15 +52,12 @@ executable(
   'loader', 
   'loader.c',
   build_by_default: true,
-  build_rpath: join_paths(kernel_dir, 'tools/lib/bpf'),
   c_args: cflags,
-  dependencies: [librex_dep],
-  include_directories: loader_includes,
+  dependencies: [librex_dep, libbpf_dep, kernel_dep],
   link_args: [
     '-Wl,-O1',
     '-Wl,--gc-sections',
   ],
-  link_with: [libbpf],
   pie: true,
 )
 
@@ -65,12 +66,11 @@ executable(
   'event-trigger.c',
   build_by_default: true,
   c_args: cflags,
-  include_directories: loader_includes,
+  dependencies: [kernel_dep],
   link_args: [
     '-Wl,-O1',
     '-Wl,--gc-sections',
   ],
-  install: false,
   pie: true,
 )
 

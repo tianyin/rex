@@ -15,6 +15,7 @@ project('rex-compile',
 cpp = meson.get_compiler('cpp')
 
 subdir('linux')
+subdir('librex')
 
 python3_bin = find_program('python3')
 rust_bootstrap_config = files('./rust/rex-config.toml')
@@ -36,5 +37,12 @@ all_programs = custom_target('build_deps',
     console: true,
 )
 
-subdir('librex')
+rust_bin = join_paths(meson.current_build_dir(), 'rust-dist/bin')
+
+env = environment()
+env.prepend('PATH', rust_bin)
+env.set('LINUX', kbuild_dir)
+
+realpath = find_program('realpath')
+
 subdir('samples')
