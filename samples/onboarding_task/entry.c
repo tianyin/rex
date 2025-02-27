@@ -1,6 +1,6 @@
 #include <assert.h>
-#include <bpf.h>
-#include <libbpf.h>
+#include <bpf/bpf.h>
+#include <bpf/libbpf.h>
 #include <linux/bpf.h>
 #include <linux/if_link.h>
 #include <linux/limits.h>

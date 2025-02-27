@@ -11,8 +11,8 @@
 
 #include "trace_helpers.h"
 #include <librex.h>
-#include <libbpf.h>
-#include <bpf.h>
+#include <bpf/libbpf.h>
+#include <bpf/bpf.h>
 
 #define EXE "target/x86_64-unknown-none/release/trace_event_kern"
 

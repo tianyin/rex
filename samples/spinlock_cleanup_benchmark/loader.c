@@ -11,8 +11,8 @@
 #include <linux/types.h>
 #include <linux/if_link.h>
 
-#include <bpf.h>
-#include <libbpf.h>
+#include <bpf/bpf.h>
+#include <bpf/libbpf.h>
 
 #include <librex.h>
 
