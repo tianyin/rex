@@ -14,20 +14,9 @@ librex = library(
   librex_sources,
   build_rpath: join_paths(meson.project_source_root(), 'linux/tools/lib/bpf'),
   build_by_default: false,
-  cpp_args: [
-    '-pipe',
-    '-march=native',
-    '-ffunction-sections',
-    '-fdata-sections',
-    '-fno-semantic-interposition'
-  ],
   dependencies: [elf_dep, llvm_dep, kernel_dep, libbpf_dep],
   gnu_symbol_visibility: 'hidden',
   include_directories: librex_public_inc,
-  link_args: [
-    '-Wl,-O1',
-    '-Wl,--gc-sections'
-  ],
   pic: true
 )
 

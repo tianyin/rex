@@ -39,24 +39,11 @@ sample_build = custom_target(
   build_by_default: true
 )
 
-cflags = [
-    '-pipe',
-    '-march=native',
-    '-ffunction-sections',
-    '-fdata-sections',
-    '-fno-semantic-interposition'
-]
-
 executable(
   'loader',
   'loader.c',
   build_by_default: true,
-  c_args: cflags,
   dependencies: [librex_dep, libbpf_dep, kernel_dep],
-  link_args: [
-    '-Wl,-O1',
-    '-Wl,--gc-sections'
-  ],
   pie: true
 )
 
@@ -64,12 +51,7 @@ executable(
   'event-trigger',
   'event-trigger.c',
   build_by_default: true,
-  c_args: cflags,
   dependencies: [kernel_dep],
-  link_args: [
-    '-Wl,-O1',
-    '-Wl,--gc-sections'
-  ],
   pie: true
 )
 

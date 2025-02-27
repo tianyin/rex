@@ -12,7 +12,26 @@ project('rex-compile',
   ]
 )
 
-cpp = meson.get_compiler('cpp')
+add_project_arguments(
+  [
+    '-pipe',
+    '-march=native',
+    '-ffunction-sections',
+    '-fdata-sections',
+    '-fno-semantic-interposition'
+  ],
+  language: ['c', 'cpp']
+)
+
+add_project_link_arguments(
+  [
+    '-Wl,-O1',
+    '-Wl,--gc-sections',
+    '-Wl,-znow',
+    '-Wl,-zrelro'
+  ],
+  language: ['c', 'cpp']
+)
 
 subdir('linux')
 subdir('librex')
