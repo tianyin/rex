@@ -7,13 +7,17 @@ build_dir = run_command(
   check: true
 ).stdout().strip()
 
+env = environment()
+env.prepend('PATH', rust_bin)
+env.set('LINUX_OBJ', kbuild_dir)
+env.set('LINUX_SRC', join_paths(meson.project_source_root(), './linux'))
 env.set('CARGO_TARGET_DIR', join_paths(build_dir, 'target'))
 
 sample_clippy = custom_target(
   'map_test_2-clippy',
   output: ['target'],
   command: [
-    'cargo', '-Z',
+    cargo_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'clippy', '-r'
@@ -27,7 +31,7 @@ sample_build = custom_target(
   'map_test_2-build',
   output: ['map_test_2'],
   command: [
-    'cargo', '-Z',
+    cargo_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'rustc', '-r', '--',
