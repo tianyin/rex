@@ -14,7 +14,7 @@ sample_clippy = custom_target(
   output: ['target'],
   command: [
     'cargo','-Z',
-    'unstable-options', 
+    'unstable-options',
     '-C', meson.current_source_dir(),
     'clippy','-r',
   ],
@@ -28,7 +28,7 @@ sample_build = custom_target(
   output: ['hello'],
   command: [
     'cargo','-Z',
-    'unstable-options', 
+    'unstable-options',
     '-C', meson.current_source_dir(),
     'rustc','-r','--',
     '-Cenable_rex'
@@ -48,7 +48,7 @@ cflags = [
 ]
 
 executable(
-  'loader', 
+  'loader',
   'loader.c',
   build_by_default: true,
   c_args: cflags,
@@ -61,7 +61,7 @@ executable(
 )
 
 executable(
-  'event-trigger', 
+  'event-trigger',
   'event-trigger.c',
   build_by_default: true,
   c_args: cflags,

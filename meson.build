@@ -1,4 +1,4 @@
-project('rex-compile', 
+project('rex-compile',
   ['c', 'cpp'],
   version: '0.1.0',
   default_options : [
@@ -24,7 +24,7 @@ rust_bootstrap = custom_target(
   output : ['cargo', 'rustc'],
   command: [python3_bin, '@SOURCE_ROOT@/rust/x.py', 'install',
     '--config=@SOURCE_ROOT@/rust/rex-config.toml',
-    '--build-dir=@OUTDIR@/rust-build', 
+    '--build-dir=@OUTDIR@/rust-build',
     '--set', 'install.prefix=@OUTDIR@/rust-dist'],
   console: true,
   build_by_default: false
