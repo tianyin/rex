@@ -20,7 +20,7 @@ sample_clippy = custom_target(
     cargo_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
-    'clippy', '-r',
+    'clippy', '-r'
   ],
   env: env,
   console: true,
