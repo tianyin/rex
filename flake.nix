@@ -154,7 +154,7 @@
         {
           name = "rex-env";
           targetPkgs = pkgs: rexPackages;
-          runScript = "./scripts/start.sh";
+          runScript = "bash";
 
           # export LIBCLANG_PATH="${pkgs.libclang.lib}/lib/libclang.so"
           profile = ''
@@ -180,7 +180,6 @@
           shellHook = ''
             export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
             echo "loading rex env"
-            source ./scripts/env.sh
             export NIX_ENFORCE_NO_NATIVE=0
           '';
         };
