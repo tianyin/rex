@@ -6,7 +6,7 @@ elf_dep = dependency('libelf')
 librex_public_inc = include_directories('include')
 
 librex_sources = [
-  'lib/librex.cpp',
+  'lib/librex.cpp'
 ]
 
 librex = library(
@@ -26,9 +26,9 @@ librex = library(
   include_directories: librex_public_inc,
   link_args: [
     '-Wl,-O1',
-    '-Wl,--gc-sections',
+    '-Wl,--gc-sections'
   ],
-  pic: true,
+  pic: true
 )
 
 librex_dep = declare_dependency(

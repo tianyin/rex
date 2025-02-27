@@ -13,10 +13,10 @@ sample_clippy = custom_target(
   'hello-clippy',
   output: ['target'],
   command: [
-    'cargo','-Z',
+    'cargo', '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
-    'clippy','-r',
+    'clippy', '-r'
   ],
   env: env,
   console: true,
@@ -27,10 +27,10 @@ sample_build = custom_target(
   'hello-build',
   output: ['hello'],
   command: [
-    'cargo','-Z',
+    'cargo', '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
-    'rustc','-r','--',
+    'rustc', '-r', '--',
     '-Cenable_rex'
   ],
   depends: sample_clippy,
@@ -55,9 +55,9 @@ executable(
   dependencies: [librex_dep, libbpf_dep, kernel_dep],
   link_args: [
     '-Wl,-O1',
-    '-Wl,--gc-sections',
+    '-Wl,--gc-sections'
   ],
-  pie: true,
+  pie: true
 )
 
 executable(
@@ -68,8 +68,8 @@ executable(
   dependencies: [kernel_dep],
   link_args: [
     '-Wl,-O1',
-    '-Wl,--gc-sections',
+    '-Wl,--gc-sections'
   ],
-  pie: true,
+  pie: true
 )
 

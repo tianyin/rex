@@ -22,10 +22,12 @@ rust_bootstrap_config = files('./rust/rex-config.toml')
 rust_bootstrap = custom_target(
   'rust',
   output : ['cargo', 'rustc'],
-  command: [python3_bin, '@SOURCE_ROOT@/rust/x.py', 'install',
+  command: [
+    python3_bin, '@SOURCE_ROOT@/rust/x.py', 'install',
     '--config=@SOURCE_ROOT@/rust/rex-config.toml',
     '--build-dir=@OUTDIR@/rust-build',
-    '--set', 'install.prefix=@OUTDIR@/rust-dist'],
+    '--set', 'install.prefix=@OUTDIR@/rust-dist'
+  ],
   console: true,
   build_by_default: false
 )
@@ -34,7 +36,7 @@ all_programs = custom_target('build_deps',
     output: ['kernel', 'kernel_libbpf', 'rust'],
     command: ['echo', 'Build all depends'],
     depends: [kernel_build, kernel_libbpf, rust_bootstrap],
-    console: true,
+    console: true
 )
 
 rust_bin = join_paths(meson.current_build_dir(), 'rust-dist/bin')
