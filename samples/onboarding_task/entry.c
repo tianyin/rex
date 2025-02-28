@@ -28,22 +28,17 @@ struct bpf_progs_desc {
 	struct bpf_program *prog;
 };
 
-static struct bpf_progs_desc progs[] = { { "xdp_rx_filter", BPF_PROG_TYPE_XDP,
-					   0, -1, NULL } };
-
 int main(int argc, char *argv[])
 {
 	struct rlimit r = { RLIM_INFINITY, RLIM_INFINITY };
-	int base_fd, rx_prog_fd, tx_prog_fd, xdp_main_prog_fd;
-	struct bpf_program *rx_prog, *tx_prog;
+	int xdp_main_prog_fd;
+	struct bpf_program *rx_prog;
 	struct bpf_object *obj;
-	char filename[PATH_MAX];
-	int err, prog_count;
+	int err;
 	__u32 xdp_flags = 0;
 	int *interfaces_idx;
 	int ret = 0;
 
-	int opt;
 	int interface_count = 0;
 	int sig, quit = 0;
 

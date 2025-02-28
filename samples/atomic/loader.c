@@ -15,7 +15,6 @@
 
 int main(void)
 {
-	int trace_pipe_fd;
 	struct bpf_object *obj;
 	struct bpf_program *prog;
 	struct bpf_link *link = NULL;
