@@ -7,7 +7,7 @@ use rex::linux::bpf::BPF_ANY;
 use rex::map::*;
 use rex::rex_tracepoint;
 use rex::tracepoint::*;
-use rex::{bpf_printk, rex_map, Result};
+use rex::{Result, bpf_printk, rex_map};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
@@ -94,12 +94,10 @@ fn map_test2(obj: &tracepoint) -> Result {
 
 #[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
 fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
-    map_test1(obj).map_err(|e| {
+    map_test1(obj).inspect_err(|&e| {
         bpf_printk!(obj, c"map_test1 failed with %lld.\n", e as u64);
-        e
     })?;
-    map_test2(obj).map_err(|e| {
+    map_test2(obj).inspect_err(|&e| {
         bpf_printk!(obj, c"map_test2 failed with %lld.\n", e as u64);
-        e
     })
 }
