@@ -51,11 +51,3 @@ executable(
   pie: true
 )
 
-executable(
-  'event-trigger',
-  'event-trigger.c',
-  build_by_default: true,
-  dependencies: [kernel_dep],
-  pie: true
-)
-
