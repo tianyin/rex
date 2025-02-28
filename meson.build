@@ -58,8 +58,10 @@ all_programs = custom_target('build_deps',
     console: true
 )
 
+perl = find_program('perl')
+
 rust_bin = join_paths(meson.current_build_dir(), 'rust-dist/bin')
-cargo_bin = join_paths(rust_bin, 'cargo')
+cargo_wrapper = join_paths(meson.project_source_root(), 'scripts/cargo-wrapper.pl')
 
 
 realpath = find_program('realpath')

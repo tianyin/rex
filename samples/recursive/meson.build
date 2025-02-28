@@ -17,7 +17,7 @@ sample_clippy = custom_target(
   'recursive-clippy',
   output: ['target'],
   command: [
-    cargo_bin, '-Z',
+    cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'clippy', '-r'
@@ -31,7 +31,7 @@ sample_build = custom_target(
   'recursive-build',
   output: ['recursive'],
   command: [
-    cargo_bin, '-Z',
+    cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'rustc', '-r', '--',

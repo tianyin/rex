@@ -17,7 +17,7 @@ sample_clippy = custom_target(
   'spinlock_cleanup_benchmark-clippy',
   output: ['target'],
   command: [
-    cargo_bin, '-Z',
+    cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'clippy', '-r'
@@ -31,7 +31,7 @@ sample_build = custom_target(
   'spinlock_cleanup_benchmark-build',
   output: ['spinlock_cleanup_benchmark'],
   command: [
-    cargo_bin, '-Z',
+    cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'rustc', '-r', '--',

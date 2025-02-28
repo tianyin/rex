@@ -17,7 +17,7 @@ sample_clippy = custom_target(
   'map_test_2-clippy',
   output: ['target'],
   command: [
-    cargo_bin, '-Z',
+    cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'clippy', '-r'
@@ -31,7 +31,7 @@ sample_build = custom_target(
   'map_test_2-build',
   output: ['map_test_2'],
   command: [
-    cargo_bin, '-Z',
+    cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
     'rustc', '-r', '--',
