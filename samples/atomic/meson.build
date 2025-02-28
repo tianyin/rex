@@ -20,7 +20,7 @@ sample_clippy = custom_target(
     cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
-    'clippy', '-r'
+    'clippy', '-qr'
   ],
   env: env,
   console: true,
@@ -34,7 +34,7 @@ sample_build = custom_target(
     cargo_wrapper, rust_bin, '-Z',
     'unstable-options',
     '-C', meson.current_source_dir(),
-    'rustc', '-r', '--',
+    'rustc', '-qr', '--',
     '-Cenable_rex'
   ],
   depends: sample_clippy,
