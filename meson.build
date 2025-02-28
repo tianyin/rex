@@ -33,10 +33,16 @@ add_project_link_arguments(
   language: ['c', 'cpp']
 )
 
+bindgen = find_program('bindgen')
+cmake = find_program('cmake')
+ninja = find_program('ninja')
+perl = find_program('perl')
+python3_bin = find_program('python3', version: '>=3.11')
+realpath = find_program('realpath')
+
 subdir('linux')
 subdir('librex')
 
-python3_bin = find_program('python3')
 rust_bootstrap_config = files('./rust/rex-config.toml')
 rust_bootstrap = custom_target(
   'rust',
@@ -58,12 +64,7 @@ all_programs = custom_target('build_deps',
     console: true
 )
 
-perl = find_program('perl')
-
 rust_bin = join_paths(meson.current_build_dir(), 'rust-dist/bin')
 cargo_wrapper = join_paths(meson.project_source_root(), 'scripts/cargo-wrapper.pl')
-
-
-realpath = find_program('realpath')
 
 subdir('samples')
