@@ -23,7 +23,7 @@ sample_clippy = custom_target(
     'clippy', '-qr'
   ],
   env: env,
-  console: true,
+  console: false,
   build_by_default: true
 )
 
@@ -39,7 +39,7 @@ sample_build = custom_target(
   ],
   depends: sample_clippy,
   env: env,
-  console: true,
+  console: false,
   build_by_default: true
 )
 
