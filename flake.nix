@@ -137,6 +137,7 @@
         # bmc deps
         iproute2
         memcached
+        python3
 
         zoxide # in case host is using zoxide
         openssh # q-script ssh support
