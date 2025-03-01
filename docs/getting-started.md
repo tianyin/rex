@@ -18,12 +18,11 @@ the single-user installation should be sufficient.
 The following tools/libraries are required. Older versions are not
 guaranteed to (or guaranteed not to) work. This list does not include
 standard kernel build dependencies.
-- `binutils (>= 2.38)`
-- `clang (>= 18.1.0)`
+- `clang+LLVM (>= 18.1.0)`
 - `cmake`
 - `elfutils`
 - `libstdc++ (>=13)` for missing `c++23` support in LLVM's `libcxx`
-- `LLVM`
+- `meson`
 - `mold`
 - `ninja`
 - `python (>= 3.11)`
@@ -49,77 +48,50 @@ nix develop --extra-experimental-features nix-command --extra-experimental-featu
 It will launch a Nix shell with all necessary dependencies installed.
 All subsequent steps should be carried out within this shell.
 
-The Linux directory now hosts the kernel repo, checked out at the pre-set
-commit. To build the kernel, do:
+Rex uses `meson` as its build system, to get started, first set up `meson`
+in Rex:
 
 ```bash
-cd linux
-cp ../scripts/q-script/.config .config
-make oldconfig LLVM=1
-make -j`nproc` LLVM=1
-cd -
+meson setup --native-file rex-native.ini ./build/
 ```
 
-Since `librex` loader library depends on the `libbpf` shipped with the
-kernel, `libbpf` needs to be built first:
-
-```bash
-cd linux/tools/lib/bpf
-make -j`nproc` LLVM=1
-cd -
-```
-
-Rex uses custom LLVM passes in the Rust compiler to generate additional
-code and instruments the extension programs, therefore,
+Rex requries the modified kernel and its `libbpf` library, which resides in
+the `linux` directory after submodule initialization. Rex also uses custom
+LLVM passes in the Rust compiler to generate additional code and
+instruments the extension programs, therefore,
 [bootstraping](https://en.wikipedia.org/wiki/Bootstrapping_(compilers)) the
-Rust compiler is required:
+Rust compiler is required. The Rust toolchain source can be found under the
+`rust` directory as another submodule.
+
+Building these dependencies is a one-time effort with the following
+command:
 
 ```bash
-cd rust
-./x.py install --config=rex-config.toml
-cd -
+meson compile -C build build_deps
 ```
 
-This will bootstrap a Rust compiler and build the relevant tools (e.g.,
-`cargo`, `clippy`, etc).  The Rust artifacts will be installed under
-`rust/dist`.
+This will build the kernel and its `libbpf`. It will also bootstrap the
+Rust compiler and build the relevant tools (e.g., `cargo`, `clippy`, etc).
 
-With the linux and Rust setup, add them to the environment (skip if using
-Nix):
-
-```bash
-source ./scripts/env.sh
-```
-
-Finally build `librex`:
+With the linux and Rust setup, all Rex sample programs can then be built
+with:
 
 ```bash
-cd librex
-make -j`nproc`
-cd -
+meson compile -C build
 ```
 
 ## Run `hello` example
-First build the source
+First boot the VM:
 
 ```bash
-cd samples/hello
-make
-cd -
-```
-
-Then boot the VM:
-
-```bash
-cd linux
-../scripts/q-script/yifei-q # use ../scripts/q-script/nix-q instead if you are using Nix
+cd build/linux
+../../scripts/q-script/yifei-q # use ../scripts/q-script/nix-q instead if you are using Nix
 ```
 
 Inside the VM:
 
 ```bash
-cd ..
-cd samples/hello
+cd ../samples/hello
 ./loader &
 ./event_trigger
 ```
