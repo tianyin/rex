@@ -13,7 +13,7 @@ env.set('LINUX_OBJ', kbuild_dir)
 env.set('LINUX_SRC', join_paths(meson.project_source_root(), './linux'))
 env.set('CARGO_TARGET_DIR', join_paths(build_dir, 'target'))
 
-sample_clippy = custom_target(
+syscall_tp_clippy = custom_target(
   'syscall_tp-clippy',
   output: ['target'],
   command: [
@@ -27,7 +27,7 @@ sample_clippy = custom_target(
   build_by_default: true
 )
 
-sample_build = custom_target(
+syscall_tp_build = custom_target(
   'syscall_tp-build',
   output: ['syscall_tp-rex'],
   command: [
@@ -43,10 +43,12 @@ sample_build = custom_target(
   build_by_default: true
 )
 
-executable(
+syscall_tp_loader = executable(
   'syscall_tp',
   'syscall_tp_user.c',
   build_by_default: true,
   dependencies: [librex_dep, libbpf_dep, kernel_dep],
   pie: true
 )
+
+runtest_deps += [syscall_tp_build, syscall_tp_loader]

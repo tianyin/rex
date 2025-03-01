@@ -13,7 +13,7 @@ env.set('LINUX_OBJ', kbuild_dir)
 env.set('LINUX_SRC', join_paths(meson.project_source_root(), './linux'))
 env.set('CARGO_TARGET_DIR', join_paths(build_dir, 'target'))
 
-sample_clippy = custom_target(
+hello_clippy = custom_target(
   'hello-clippy',
   output: ['target'],
   command: [
@@ -27,7 +27,7 @@ sample_clippy = custom_target(
   build_by_default: true
 )
 
-sample_build = custom_target(
+hello_build = custom_target(
   'hello-build',
   output: ['hello'],
   command: [
@@ -43,7 +43,7 @@ sample_build = custom_target(
   build_by_default: true
 )
 
-executable(
+hello_loader = executable(
   'loader',
   'loader.c',
   build_by_default: true,
@@ -51,7 +51,7 @@ executable(
   pie: true
 )
 
-executable(
+hello_trigger = executable(
   'event-trigger',
   'event-trigger.c',
   build_by_default: true,
@@ -59,3 +59,4 @@ executable(
   pie: true
 )
 
+runtest_deps += [hello_build, hello_loader, hello_trigger]

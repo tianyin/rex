@@ -13,7 +13,7 @@ env.set('LINUX_OBJ', kbuild_dir)
 env.set('LINUX_SRC', join_paths(meson.project_source_root(), './linux'))
 env.set('CARGO_TARGET_DIR', join_paths(build_dir, 'target'))
 
-sample_clippy = custom_target(
+map_test_clippy = custom_target(
   'map_test-clippy',
   output: ['target'],
   command: [
@@ -27,7 +27,7 @@ sample_clippy = custom_target(
   build_by_default: true
 )
 
-sample_build = custom_target(
+map_test_build = custom_target(
   'map_test-build',
   output: ['map_test'],
   command: [
@@ -43,7 +43,7 @@ sample_build = custom_target(
   build_by_default: true
 )
 
-executable(
+map_test_loader = executable(
   'loader',
   'loader.c',
   build_by_default: true,
@@ -51,7 +51,7 @@ executable(
   pie: true
 )
 
-executable(
+map_test_trigger = executable(
   'event-trigger',
   'event-trigger.c',
   build_by_default: true,
@@ -59,3 +59,8 @@ executable(
   pie: true
 )
 
+runtest_deps = [
+  map_test_build,
+  map_test_loader,
+  map_test_trigger
+]
