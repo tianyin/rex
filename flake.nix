@@ -154,7 +154,7 @@
         {
           name = "rex-env";
           targetPkgs = pkgs: rexPackages;
-          runScript = "bash";
+          runScript = "zsh";
 
           # export LIBCLANG_PATH="${pkgs.libclang.lib}/lib/libclang.so"
           profile = ''
