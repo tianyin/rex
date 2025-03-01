@@ -51,4 +51,29 @@ syscall_tp_loader = executable(
   pie: true
 )
 
-runtest_deps += [syscall_tp_build, syscall_tp_loader]
+
+sanity_test = custom_target(
+  'sanity_test',
+  output: ['runtest.py'],
+  command: [
+    'cp', '@CURRENT_SOURCE_DIR@/tests/runtest.py', '@OUTPUT@',
+    ]
+ )
+
+runtest_deps += [syscall_tp_build, syscall_tp_loader, sanity_test]
+
+sanity_test_env = environment()
+sanity_test_env.set('SAMPLE_PATH', meson.current_build_dir())
+sanity_test_env.set('Q_SCRIPT',
+  join_paths(meson.project_source_root(), 'scripts/q-script/sanity-test-q')
+)
+sanity_test_env.set('KERNEL_PATH', kbuild_dir)
+
+test('syscall_tp',
+  python3_bin,
+  args: [sanity_test_scripts],
+  env: sanity_test_env,
+  depends: runtest_deps,
+  is_parallel: false,
+  workdir: meson.current_build_dir()
+)

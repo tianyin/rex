@@ -138,13 +138,6 @@
         iproute2
         memcached
 
-        # python3 scripts
-        (pkgs.python3.withPackages
-          (python-pkgs: (with python-pkgs;  [
-            # select Python packages here
-            tqdm
-          ])))
-
         zoxide # in case host is using zoxide
         openssh # q-script ssh support
       ];

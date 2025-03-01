@@ -66,6 +66,7 @@ all_programs = custom_target('build_deps',
 
 rust_bin = join_paths(meson.current_build_dir(), 'rust-dist/bin')
 cargo_wrapper = join_paths(meson.project_source_root(), 'scripts/cargo-wrapper.pl')
+sanity_test_scripts = join_paths(meson.project_source_root(), 'scripts/sanity_tests/run_tests.py')
 
 runtest_deps = []
 

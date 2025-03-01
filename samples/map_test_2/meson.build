@@ -59,8 +59,33 @@ map_test_2_trigger = executable(
   pie: true
 )
 
+sanity_test = custom_target(
+  'sanity_test',
+  output: ['runtest.py'],
+  command: [
+    'cp', '@CURRENT_SOURCE_DIR@/tests/runtest.py', '@OUTPUT@',
+    ]
+ )
+
 runtest_deps += [
   map_test_2_build,
   map_test_2_loader,
-  map_test_2_trigger
+  map_test_2_trigger,
+  sanity_test
 ]
+
+sanity_test_env = environment()
+sanity_test_env.set('SAMPLE_PATH', meson.current_build_dir())
+sanity_test_env.set('Q_SCRIPT',
+  join_paths(meson.project_source_root(), 'scripts/q-script/sanity-test-q')
+)
+sanity_test_env.set('KERNEL_PATH', kbuild_dir)
+
+test('map_test_2',
+  python3_bin,
+  args: [sanity_test_scripts],
+  env: sanity_test_env,
+  depends: runtest_deps,
+  is_parallel: false,
+  workdir: meson.current_build_dir()
+)
