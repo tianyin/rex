@@ -9,7 +9,7 @@ use rex::sched_cls::*;
 use rex::spinlock::*;
 use rex::utils::*;
 use rex::xdp::*;
-use rex::{bpf_printk, rex_map, rex_tc, rex_xdp, FieldTransmute};
+use rex::{FieldTransmute, bpf_printk, rex_map, rex_tc, rex_xdp};
 
 const BMC_MAX_PACKET_LENGTH: usize = 1500;
 const BMC_CACHE_ENTRY_COUNT: u32 = 3250000;
@@ -136,7 +136,7 @@ fn hash_key(
         done_parsing = payload[key_len] == b'\r';
 
         // no key found
-        if key_len == 0 || key_len as usize > BMC_MAX_KEY_LENGTH {
+        if key_len == 0 || key_len > BMC_MAX_KEY_LENGTH {
             return Ok(XDP_PASS as i32);
         }
 
@@ -287,13 +287,10 @@ fn bmc_invalidate_cache(obj: &xdp, ctx: &mut xdp_md) -> Result {
     }
 
     // get the index for the set command in the payload
-    let set_iter = payload.windows(4).enumerate().filter_map(|(i, v)| {
-        if v == b"set " {
-            Some(i)
-        } else {
-            None
-        }
-    });
+    let set_iter = payload
+        .windows(4)
+        .enumerate()
+        .filter_map(|(i, v)| if v == b"set " { Some(i) } else { None });
 
     // iterate through the possible set commands
     for index in set_iter {
@@ -414,7 +411,7 @@ fn bmc_update_cache(
         let mut diff = 0;
         off = 6;
         while off < BMC_MAX_KEY_LENGTH &&
-            header_len + off < payload.len() as usize &&
+            header_len + off < payload.len() &&
             (payload[off] != b' ' || entry.data[off] != b' ')
         {
             if entry.data[off] != payload[off] {
@@ -433,13 +430,15 @@ fn bmc_update_cache(
     // cache is not up-to-date, update it
     entry.len = 0;
     let mut count = 0;
-    for i in 0..BMC_MAX_CACHE_DATA_SIZE {
+    for (i, &payload_data) in
+        payload.iter().enumerate().take(BMC_MAX_CACHE_DATA_SIZE)
+    {
         if header_len + i >= skb.len() as usize || count >= 2 {
             break;
         }
-        entry.data[i] = payload[i];
+        entry.data[i] = payload_data;
         entry.len += 1;
-        if payload[i] == b'\n' {
+        if payload_data == b'\n' {
             count += 1;
         }
     }

@@ -32,10 +32,27 @@
         patches = map basePkgs.fetchpatch remoteNixpkgsPatches;
       };
 
+      patchedBindgen =
+        (self: super: {
+          rust-bindgen-unwrapped = super.rust-bindgen-unwrapped.overrideAttrs (finalAttrs: oldAttrs: {
+            src = super.fetchFromGitHub {
+              owner = "rust-lang";
+              repo = "rust-bindgen";
+              rev = "20aa65a0b9edfd5f8ab3e038197da5cb2c52ff18";
+              sha256 = "sha256-OrwPpXXfbkeS7SAmZDZDUXZV4BfSF3e/58LJjedY1vA=";
+            };
+            cargoDeps = pkgs.rustPlatform.fetchCargoVendor {
+              inherit (finalAttrs) pname src version;
+              hash = finalAttrs.cargoHash;
+            };
+            cargoHash = "sha256-e94pwjeGOv/We6uryQedj7L41dhCUc2wzi/lmKYnEMA=";
+          });
+        });
+
       patchedPkgs = import patchedNixpkgsSrc {
         inherit system;
+        overlays = [ patchedBindgen ];
       };
-
 
       pkgs = import nixpkgs {
         inherit system;
@@ -75,6 +92,7 @@
         glibc.dev
         getopt
         gnumake
+        meson
         ncurses
         openssl.dev
         pahole
@@ -119,13 +137,7 @@
         # bmc deps
         iproute2
         memcached
-
-        # python3 scripts
-        (pkgs.python3.withPackages
-          (python-pkgs: (with python-pkgs;  [
-            # select Python packages here
-            tqdm
-          ])))
+        python3
 
         zoxide # in case host is using zoxide
         openssh # q-script ssh support
@@ -136,7 +148,7 @@
         {
           name = "rex-env";
           targetPkgs = pkgs: rexPackages;
-          runScript = "./scripts/start.sh";
+          runScript = "zsh";
 
           # export LIBCLANG_PATH="${pkgs.libclang.lib}/lib/libclang.so"
           profile = ''
@@ -162,7 +174,6 @@
           shellHook = ''
             export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
             echo "loading rex env"
-            source ./scripts/env.sh
             export NIX_ENFORCE_NO_NATIVE=0
           '';
         };

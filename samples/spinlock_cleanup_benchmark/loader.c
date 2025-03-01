@@ -11,8 +11,8 @@
 #include <linux/types.h>
 #include <linux/if_link.h>
 
-#include <bpf.h>
-#include <libbpf.h>
+#include <bpf/bpf.h>
+#include <bpf/libbpf.h>
 
 #include <librex.h>
 
@@ -22,9 +22,6 @@ int main(int argc, char **argv)
 {
 	struct bpf_program *prog;
 	struct bpf_object *obj;
-	char filename[256];
-
-	int ret;
 
 	int interface_idx = atoi(argv[1]);
 	unsigned int xdp_flags = 0;

@@ -220,7 +220,7 @@ host() {
 	init+="SCRIPT='$SCRIPT' "
 	init+="$ENVIRON_ARG "
 	# grading script specific
-	init+="REPONAME='$REPONAME' "
+	init+="TEST_PATH='$TEST_PATH' "
 
 	init+=" $(realpath $0) "
 
@@ -559,10 +559,11 @@ EOF
 		cd "$DIR_KERNEL"
 	fi
 
-	cd $REPONAME
-	echo $REPONAME
+	SAMPLE_PATH=$(dirname $TEST_PATH)
+	cd $SAMPLE_PATH
+	echo $TEST_PATH
 	pwd
-	python3 ${REPONAME}/tests/runtest.py
+	python3 ${TEST_PATH}
 	cp auto_grade.txt ${DIR_KERNEL}
 
 	poweroff -f
@@ -585,7 +586,7 @@ EOF
 	sleep 30
 }
 
-while getopts "2i:dhgms:c:f:r:n" opt; do
+while getopts "2i:dhgms:c:f:t:n" opt; do
 	case $opt in
 	h) usage ;;
 	2) CMDLINE+=" cgroup_no_v1=all" ;;
@@ -596,7 +597,7 @@ while getopts "2i:dhgms:c:f:r:n" opt; do
 	d) SSH=true ;;
 	s) SCRIPT="$OPTARG" ;;
 	f) FWD_PORT="$OPTARG" ;;
-	r) REPONAME="$OPTARG"  ;;
+	t) TEST_PATH="$OPTARG"  ;;
 	n)
 		case "$OPTARG" in
 		user) ;;
@@ -619,7 +620,7 @@ while getopts "2i:dhgms:c:f:r:n" opt; do
 done
 shift $((OPTIND - 1))
 
-echo $REPONAME
+echo $TEST_PATH
 
 if [[ ! -z "$IMAGE" && -e "${IMAGE/.img/.fixup}" ]]; then
 	IMAGE_FIXUP="${IMAGE/.img/.fixup}"

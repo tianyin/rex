@@ -5,11 +5,11 @@ import sys
 import tomllib
 
 # https://github.com/rust-lang/rust-bindgen
-bindgen_cmd = '''bindgen $LINUX/usr/include/%s --use-core
+bindgen_cmd = '''bindgen $LINUX_OBJ/usr/include/%s --use-core
 --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
 --no-debug '.*' --no-doc-comments --rust-target=1.85.0 --rust-edition=2024
 --translate-enum-integer-types --no-prepend-enum-name --blocklist-type
-pt_regs --wrap-unsafe-ops -o %s -- -I$LINUX/usr/include'''
+pt_regs --wrap-unsafe-ops -o %s -- -I$LINUX_OBJ/usr/include'''
 
 k_structs = ['task_struct', 'tk_read_base', 'seqcount_raw_spinlock_t',
              'clocksource', 'seqcount_t', 'seqcount_latch_t', 'timekeeper',
@@ -26,14 +26,15 @@ x86_msi_addr_lo --opaque-type kunit_try_catch --opaque-type spinlock
 --no-doc-comments --blocklist-function __list_.*_report --use-core
 --with-derive-default --ctypes-prefix core::ffi --no-layout-tests
 --no-debug '.*' --rust-target=1.85.0 --rust-edition=2024 --wrap-unsafe-ops
--o %s -- -nostdinc -I$LINUX/arch/x86/include
--I$LINUX/arch/x86/include/generated
--I$LINUX/include -I$LINUX/arch/x86/include/uapi
--I$LINUX/arch/x86/include/generated/uapi -I$LINUX/include/uapi
--I$LINUX/include/generated/uapi -include
-$LINUX/include/linux/compiler-version.h -include
-$LINUX/include/linux/kconfig.h -include
-$LINUX/include/linux/compiler_types.h -D__KERNEL__
+-o %s -- -nostdinc -I$LINUX_SRC/arch/x86/include
+-I$LINUX_OBJ/arch/x86/include/generated
+-I$LINUX_SRC/include -I$LINUX_SRC/arch/x86/include/uapi
+-I$LINUX_OBJ/arch/x86/include/generated/uapi -I$LINUX_SRC/include/uapi
+-I$LINUX_OBJ/include
+-I$LINUX_OBJ/include/generated/uapi -include
+$LINUX_SRC/include/linux/compiler-version.h -include
+$LINUX_SRC/include/linux/kconfig.h -include
+$LINUX_SRC/include/linux/compiler_types.h -D__KERNEL__
 --target=x86_64-linux-gnu -fintegrated-as -Werror=unknown-warning-option
 -Werror=ignored-optimization-argument -Werror=option-ignored
 -Werror=unused-command-line-argument -fmacro-prefix-map=./= -std=gnu11
@@ -73,7 +74,7 @@ def prep_uapi_headers(linux_path, headers, out_dir):
             os.makedirs(subdir)
 
         out_f = os.path.join(subdir, '%s.rs' % os.path.splitext(hfile)[0])
-        cmd = bindgen_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
+        cmd = bindgen_cmd.replace('\n', ' ').replace('$LINUX_OBJ', linux_path)
         subprocess.run(cmd % (header, out_f), check=True, shell=True)
 
 
@@ -88,7 +89,7 @@ def parse_cargo_toml(cargo_toml_path):
     return uheaders, kheaders, kconfigs
 
 
-def prep_kernel_headers(headers, linux_path, out_dir):
+def prep_kernel_headers(headers, linux_src, linux_obj, out_dir):
     bindings_h = os.path.join(out_dir, 'bindings.h')
     out_subdir = os.path.join(out_dir, 'linux')
     if not os.path.exists(out_subdir):
@@ -99,9 +100,14 @@ def prep_kernel_headers(headers, linux_path, out_dir):
         for h in headers:
             bindings.write('#include <%s>\n' % h)
 
-    cmd = bindgen_kernel_cmd.replace('\n', ' ').replace('$LINUX', linux_path)
-    subprocess.run(cmd % (bindings_h, '|'.join(k_structs), kernel_rs),
-                   check=True, shell=True)
+    cmd = (
+        bindgen_kernel_cmd.replace("\n", " ")
+        .replace("$LINUX_SRC", linux_src)
+        .replace("$LINUX_OBJ", linux_obj)
+    )
+    subprocess.run(
+        cmd % (bindings_h, "|".join(k_structs), kernel_rs), check=True, shell=True
+    )
 
 
 def parse_kconfigs(dot_config_path, kconfigs):
@@ -123,17 +129,18 @@ def parse_kconfigs(dot_config_path, kconfigs):
 
 
 def main(argv):
-    linux_path = argv[1]
-    out_dir = argv[2]
+    linux_obj = argv[1]
+    linux_src = argv[2]
+    out_dir = argv[3]
     target_path = os.getcwd()
 
     result = parse_cargo_toml(os.path.join(target_path, 'Cargo.toml'))
     uheaders, kheaders, kconfigs = result
 
     u_out_dir = os.path.join(out_dir, 'uapi')
-    prep_uapi_headers(linux_path, uheaders, u_out_dir)
-    prep_kernel_headers(kheaders, linux_path, out_dir)
-    parse_kconfigs(os.path.join(linux_path, '.config'), kconfigs)
+    prep_uapi_headers(linux_obj, uheaders, u_out_dir)
+    prep_kernel_headers(kheaders, linux_src, linux_obj, out_dir)
+    parse_kconfigs(os.path.join(linux_obj, '.config'), kconfigs)
     return 0
 
 

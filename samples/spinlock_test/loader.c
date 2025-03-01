@@ -8,7 +8,7 @@
 #include <linux/unistd.h>
 
 #include <librex.h>
-#include <libbpf.h>
+#include <bpf/libbpf.h>
 
 #define EXE "./target/x86_64-unknown-none/release/spinlock_test"
 

@@ -6,7 +6,7 @@ extern crate rex;
 use rex::map::*;
 use rex::rex_tracepoint;
 use rex::tracepoint::*;
-use rex::{bpf_printk, rex_map, Result};
+use rex::{Result, bpf_printk, rex_map};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
@@ -197,24 +197,19 @@ fn map_test_ringbuf(obj: &tracepoint) -> Result {
 
 #[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
 fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
-    map_test_hash(obj).map_err(|e| {
+    map_test_hash(obj).inspect_err(|&e| {
         bpf_printk!(obj, c"map_test failed with %lld.\n", e as u64);
-        e
     })?;
-    map_test_array(obj).map_err(|e| {
+    map_test_array(obj).inspect_err(|&e| {
         bpf_printk!(obj, c"map_test failed with %lld.\n", e as u64);
-        e
     })?;
-    map_test_stack(obj).map_err(|e| {
+    map_test_stack(obj).inspect_err(|&e| {
         bpf_printk!(obj, c"map_test failed with %lld.\n", e as u64);
-        e
     })?;
-    // map_test_ringbuf(obj).map_err(|e| {
+    // map_test_ringbuf(obj).inspect_err(|&e| {
     //     bpf_printk!(obj, "map_test2 failed with %lld.\n", e as u64);
-    //     e
     // })?;
-    map_test_queue(obj).map_err(|e| {
+    map_test_queue(obj).inspect_err(|&e| {
         bpf_printk!(obj, c"map_test failed with %lld.\n", e as u64);
-        e
     })
 }

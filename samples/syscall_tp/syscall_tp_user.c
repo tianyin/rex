@@ -9,8 +9,8 @@
 #include <linux/perf_event.h>
 #include <errno.h>
 #include <sys/resource.h>
-#include <libbpf.h>
-#include <bpf.h>
+#include <bpf/libbpf.h>
+#include <bpf/bpf.h>
 
 #include <librex.h>
 

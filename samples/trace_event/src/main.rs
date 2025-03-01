@@ -8,7 +8,7 @@ use rex::linux::bpf::*;
 use rex::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use rex::map::*;
 use rex::perf_event::*;
-use rex::{rex_map, rex_perf_event, Result};
+use rex::{Result, rex_map, rex_perf_event};
 
 pub const TASK_COMM_LEN: usize = 16;
 
@@ -54,7 +54,7 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
             t.get_comm(&mut key.comm);
             0u64
         })
-        .ok_or_else(|| 0i32)?;
+        .ok_or(0i32)?;
 
     key.kernstack = obj
         .bpf_get_stackid_pe(ctx, &stackmap, KERN_STACKID_FLAGS)

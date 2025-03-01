@@ -9,11 +9,13 @@ use std::string::String;
 
 fn main() -> Result<()> {
     let out_dir = env::var("OUT_DIR").unwrap();
-    let linux_dir = env::var("LINUX").unwrap();
+    let linux_obj = env::var("LINUX_OBJ").unwrap();
+    let linux_src = env::var("LINUX_SRC").unwrap();
 
     let output = Command::new("python3")
         .arg("build.py")
-        .arg(&linux_dir)
+        .arg(&linux_obj)
+        .arg(&linux_src)
         .arg(&out_dir)
         .output()?;
 
