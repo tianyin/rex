@@ -56,7 +56,7 @@ pub struct xdp_md<'a> {
 }
 
 // Define accessors of program-accessible fields
-impl<'a> xdp_md<'a> {
+impl xdp_md<'_> {
     #[inline(always)]
     pub fn data_length(&self) -> usize {
         self.data_slice.len()

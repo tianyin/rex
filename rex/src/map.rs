@@ -194,7 +194,7 @@ pub struct RexRingBufEntry<'a, T> {
     has_used: bool,
 }
 
-impl<'a, T> RexRingBufEntry<'a, T> {
+impl<T> RexRingBufEntry<'_, T> {
     pub fn submit(mut self) {
         self.has_used = true;
         bpf_ringbuf_submit(self.data, 0)
@@ -210,7 +210,7 @@ impl<'a, T> RexRingBufEntry<'a, T> {
     }
 }
 
-impl<'a, T> core::ops::Drop for RexRingBufEntry<'a, T> {
+impl<T> core::ops::Drop for RexRingBufEntry<'_, T> {
     fn drop(&mut self) {
         if !self.has_used {
             if self.submit_by_default {
