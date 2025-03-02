@@ -19,7 +19,7 @@ use core::{mem, slice};
 
 pub struct __sk_buff<'a> {
     pub data_slice: &'a mut [c_uchar],
-    kptr: &'a mut sk_buff,
+    kptr: &'static mut sk_buff,
 }
 
 // Define accessors of program-accessible fields
@@ -282,7 +282,7 @@ impl sched_cls {
     // to create another instance of pt_regs (private fields, no pub ctor)
     #[inline(always)]
     fn convert_ctx(&self, ctx: *mut ()) -> __sk_buff {
-        let kptr: &mut sk_buff = unsafe { &mut *(ctx as *mut sk_buff) };
+        let kptr = unsafe { &mut *(ctx as *mut sk_buff) };
 
         let data = kptr.data as u32;
 

@@ -52,7 +52,7 @@ pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
 
 pub struct xdp_md<'a> {
     pub data_slice: &'a mut [c_uchar],
-    kptr: &'a mut xdp_buff,
+    kptr: &'static mut xdp_buff,
 }
 
 // Define accessors of program-accessible fields
@@ -121,7 +121,7 @@ impl xdp {
     // to create another instance of pt_regs (private fields, no pub ctor)
     #[inline(always)]
     fn convert_ctx(&self, ctx: *mut ()) -> xdp_md {
-        let kptr: &mut xdp_buff = unsafe { &mut *(ctx as *mut xdp_buff) };
+        let kptr = unsafe { &mut *(ctx as *mut xdp_buff) };
 
         // NOTE: not support jumobo frame yet with non-linear xdp_buff
         let data_length = kptr.data_end as usize - kptr.data as usize;

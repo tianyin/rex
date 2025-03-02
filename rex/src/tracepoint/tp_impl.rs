@@ -13,10 +13,10 @@ pub enum tp_type {
     SyscallsEnterOpen,
     SyscallsExitOpen,
 }
-pub enum tp_ctx<'a> {
+pub enum tp_ctx {
     Void,
-    SyscallsEnterOpen(&'a SyscallsEnterOpenArgs),
-    SyscallsExitOpen(&'a SyscallsExitOpenArgs),
+    SyscallsEnterOpen(&'static SyscallsEnterOpenArgs),
+    SyscallsExitOpen(&'static SyscallsExitOpenArgs),
 }
 
 /// First 3 fields should always be rtti, prog_fn, and name
@@ -72,7 +72,6 @@ impl tracepoint {
 impl rex_prog for tracepoint {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
         let newctx = self.convert_ctx(ctx);
-
         ((self.prog)(self, newctx)).unwrap_or_else(|e| e) as u32
     }
 }

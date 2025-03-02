@@ -71,7 +71,7 @@ impl perf_event {
         }
     }
 
-    fn convert_ctx(&self, ctx: *mut ()) -> &bpf_perf_event_data {
+    fn convert_ctx(&self, ctx: *mut ()) -> &'static bpf_perf_event_data {
         unsafe { &*(ctx as *mut bpf_perf_event_data) }
     }
 
