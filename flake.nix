@@ -153,7 +153,7 @@
           profile = ''
             export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
             export NIX_ENFORCE_NO_NATIVE=0
-            export PATH=$(realpath ./build/rust-dist/bin):$PATH
+            export PATH=$(realpath "./build/rust-dist/bin"):$PATH
             export RUST_BACKTRACE=1
           '';
         };
