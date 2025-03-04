@@ -43,6 +43,7 @@ pub struct eth_header {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct bmc_cache_entry {
     lock: bpf_spin_lock,
     pub len: u32,
@@ -52,6 +53,7 @@ pub struct bmc_cache_entry {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct memcached_key {
     hash: u32,
     data: [u8; BMC_MAX_KEY_LENGTH],
@@ -59,6 +61,7 @@ struct memcached_key {
 }
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 pub struct bmc_stats {
     get_recv_count: u32,
     set_recv_count: u32,

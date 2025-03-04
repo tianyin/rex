@@ -11,6 +11,7 @@ use rex::{bpf_printk, rex_xdp};
 use rex::{rex_map, Result};
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct MapEntry {
     data: u64,
     lock: bpf_spin_lock,

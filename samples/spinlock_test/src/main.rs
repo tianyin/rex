@@ -10,6 +10,7 @@ use rex::{rex_map, Result};
 use rex::{rex_tracepoint, tracepoint::*};
 
 #[repr(C)]
+#[derive(Clone, Copy)]
 struct MapEntry {
     data: u64,
     lock: bpf_spin_lock,
