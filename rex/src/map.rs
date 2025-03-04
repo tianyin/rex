@@ -1,4 +1,4 @@
-use crate::utils::{to_result, Result};
+use crate::utils::{to_result, NoRef, Result};
 use crate::{
     base_helper::{
         bpf_map_delete_elem, bpf_map_lookup_elem, bpf_map_peek_elem,
@@ -17,7 +17,10 @@ use crate::{
 use core::{marker::PhantomData, mem, ptr};
 
 #[repr(C)]
-pub struct RexMapHandle<const MT: bpf_map_type, K, V> {
+pub struct RexMapHandle<const MT: bpf_map_type, K, V>
+where
+    V: Copy + NoRef,
+{
     // Map metadata
     map_type: u32,
     key_size: u32,
@@ -33,7 +36,10 @@ pub struct RexMapHandle<const MT: bpf_map_type, K, V> {
     val_type: PhantomData<V>,
 }
 
-impl<const MT: bpf_map_type, K, V> RexMapHandle<MT, K, V> {
+impl<const MT: bpf_map_type, K, V> RexMapHandle<MT, K, V>
+where
+    V: Copy + NoRef,
+{
     pub const fn new(ms: u32, mf: u32) -> RexMapHandle<MT, K, V> {
         Self {
             map_type: MT,
@@ -48,7 +54,10 @@ impl<const MT: bpf_map_type, K, V> RexMapHandle<MT, K, V> {
     }
 }
 
-unsafe impl<const MT: bpf_map_type, K, V> Sync for RexMapHandle<MT, K, V> {}
+unsafe impl<const MT: bpf_map_type, K, V> Sync for RexMapHandle<MT, K, V> where
+    V: Copy + NoRef
+{
+}
 
 pub type RexStackTrace<K, V> = RexMapHandle<BPF_MAP_TYPE_STACK_TRACE, K, V>;
 pub type RexPerCPUArrayMap<V> = RexMapHandle<BPF_MAP_TYPE_PERCPU_ARRAY, u32, V>;
@@ -69,7 +78,10 @@ pub struct RexRingBuf {
 
 unsafe impl Sync for RexRingBuf {}
 
-impl<'a, K, V> RexHashMap<K, V> {
+impl<'a, K, V> RexHashMap<K, V>
+where
+    V: Copy + NoRef,
+{
     pub fn insert(&'static self, key: &K, value: &V) -> Result {
         bpf_map_update_elem(self, key, value, BPF_ANY as u64)
     }
@@ -91,7 +103,10 @@ impl<'a, K, V> RexHashMap<K, V> {
     }
 }
 
-impl<'a, V> RexArrayMap<V> {
+impl<'a, V> RexArrayMap<V>
+where
+    V: Copy + NoRef,
+{
     pub fn insert(&'static self, key: &u32, value: &V) -> Result {
         bpf_map_update_elem(self, key, value, BPF_ANY as u64)
     }
@@ -152,7 +167,10 @@ impl RexRingBuf {
     }
 }
 
-impl<V> RexStack<V> {
+impl<V> RexStack<V>
+where
+    V: Copy + NoRef,
+{
     pub fn push(&'static self, value: &V) -> Result {
         bpf_map_push_elem(self, value, BPF_ANY as u64)
     }
@@ -170,7 +188,10 @@ impl<V> RexStack<V> {
     }
 }
 
-impl<V> RexQueue<V> {
+impl<V> RexQueue<V>
+where
+    V: Copy + NoRef,
+{
     pub fn push(&'static self, value: &V) -> Result {
         bpf_map_push_elem(self, value, BPF_ANY as u64)
     }

@@ -14,7 +14,7 @@ use crate::prog_type::rex_prog;
 use crate::pt_regs::PtRegs;
 use crate::stub;
 use crate::task_struct::TaskStruct;
-use crate::utils::{to_result, Result};
+use crate::utils::{to_result, NoRef, Result};
 
 use core::intrinsics::unlikely;
 use paste::paste;
@@ -94,7 +94,10 @@ impl perf_event {
         ctx: &bpf_perf_event_data,
         map: &'static RexStackTrace<K, V>,
         flags: u64,
-    ) -> Result {
+    ) -> Result
+    where
+        V: Copy + NoRef,
+    {
         let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
         if unlikely(map_kptr.is_null()) {
             return Err(EINVAL as i32);

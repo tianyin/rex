@@ -90,3 +90,8 @@ pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
 }
 
 pub(crate) use to_result;
+
+/// A marker trait that prevents derivation on types that contain references.
+pub unsafe auto trait NoRef {}
+impl<T: ?Sized> !NoRef for &T {}
+impl<T: ?Sized> !NoRef for &mut T {}

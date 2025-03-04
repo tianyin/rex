@@ -7,7 +7,7 @@ use crate::panic::__rex_handle_timeout;
 use crate::per_cpu::{cpu_number, this_cpu_read};
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
-use crate::utils::{to_result, Result};
+use crate::utils::{to_result, NoRef, Result};
 use core::ffi::CStr;
 use core::mem::{self, MaybeUninit};
 // use crate::timekeeping::*;
@@ -69,7 +69,10 @@ pub(crate) fn bpf_trace_printk(
 pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
     map: &'static RexMapHandle<MT, K, V>,
     key: &'a K,
-) -> Option<&'a mut V> {
+) -> Option<&'a mut V>
+where
+    V: Copy + NoRef,
+{
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return None;
@@ -92,7 +95,10 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
     key: &K,
     value: &V,
     flags: u64,
-) -> Result {
+) -> Result
+where
+    V: Copy + NoRef,
+{
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
@@ -111,7 +117,10 @@ pub(crate) fn bpf_map_update_elem<const MT: bpf_map_type, K, V>(
 pub(crate) fn bpf_map_delete_elem<const MT: bpf_map_type, K, V>(
     map: &'static RexMapHandle<MT, K, V>,
     key: &K,
-) -> Result {
+) -> Result
+where
+    V: Copy + NoRef,
+{
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
@@ -129,7 +138,10 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
     map: &'static RexMapHandle<MT, K, V>,
     value: &V,
     flags: u64,
-) -> Result {
+) -> Result
+where
+    V: Copy + NoRef,
+{
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return Err(EINVAL as i32);
@@ -146,7 +158,10 @@ pub(crate) fn bpf_map_push_elem<const MT: bpf_map_type, K, V>(
 
 pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
     map: &'static RexMapHandle<MT, K, V>,
-) -> Option<V> {
+) -> Option<V>
+where
+    V: Copy + NoRef,
+{
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return None;
@@ -165,7 +180,10 @@ pub(crate) fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
 
 pub(crate) fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
     map: &'static RexMapHandle<MT, K, V>,
-) -> Option<V> {
+) -> Option<V>
+where
+    V: Copy + NoRef,
+{
     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
     if unlikely(map_kptr.is_null()) {
         return None;
@@ -408,7 +426,10 @@ macro_rules! base_helper_defs {
             &self,
             map: &'static crate::map::RexMapHandle<MT, K, V>,
             key: &'b K,
-        ) -> Option<&'b mut V> {
+        ) -> Option<&'b mut V>
+        where
+            V: Copy + crate::utils::NoRef,
+        {
             crate::base_helper::bpf_map_lookup_elem(map, key)
         }
 
@@ -419,7 +440,10 @@ macro_rules! base_helper_defs {
             key: &K,
             value: &V,
             flags: u64,
-        ) -> crate::Result {
+        ) -> crate::Result
+        where
+            V: Copy + crate::utils::NoRef,
+        {
             crate::base_helper::bpf_map_update_elem(map, key, value, flags)
         }
 
@@ -428,7 +452,10 @@ macro_rules! base_helper_defs {
             &self,
             map: &'static crate::map::RexMapHandle<MT, K, V>,
             key: &K,
-        ) -> crate::Result {
+        ) -> crate::Result
+        where
+            V: Copy + crate::utils::NoRef,
+        {
             crate::base_helper::bpf_map_delete_elem(map, key)
         }
 
@@ -438,7 +465,10 @@ macro_rules! base_helper_defs {
             map: &'static crate::map::RexMapHandle<MT, K, V>,
             value: &V,
             flags: u64,
-        ) -> crate::Result {
+        ) -> crate::Result
+        where
+            V: Copy + crate::utils::NoRef,
+        {
             crate::base_helper::bpf_map_push_elem(map, value, flags)
         }
 
@@ -446,7 +476,10 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_pop_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static crate::map::RexMapHandle<MT, K, V>,
-        ) -> Option<V> {
+        ) -> Option<V>
+        where
+            V: Copy + crate::utils::NoRef,
+        {
             crate::base_helper::bpf_map_pop_elem(map)
         }
 
@@ -454,7 +487,10 @@ macro_rules! base_helper_defs {
         pub fn bpf_map_peek_elem<const MT: bpf_map_type, K, V>(
             &self,
             map: &'static crate::map::RexMapHandle<MT, K, V>,
-        ) -> Option<V> {
+        ) -> Option<V>
+        where
+            V: Copy + crate::utils::NoRef,
+        {
             crate::base_helper::bpf_map_peek_elem(map)
         }
 

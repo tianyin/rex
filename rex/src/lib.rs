@@ -1,5 +1,11 @@
 #![no_std]
-#![feature(array_ptr_get, c_variadic, core_intrinsics, negative_impls)]
+#![feature(
+    array_ptr_get,
+    auto_traits,
+    c_variadic,
+    core_intrinsics,
+    negative_impls
+)]
 #![allow(
     non_camel_case_types,
     non_snake_case,
