@@ -223,7 +223,10 @@ where
 pub(crate) fn bpf_probe_read_kernel<T>(
     dst: &mut T,
     unsafe_ptr: *const (),
-) -> Result {
+) -> Result
+where
+    T: Copy + NoRef,
+{
     termination_check!(unsafe {
         to_result!(stub::bpf_probe_read_kernel(
             dst as *mut T as *mut (),
@@ -499,7 +502,10 @@ macro_rules! base_helper_defs {
             &self,
             dst: &mut T,
             unsafe_ptr: *const (),
-        ) -> crate::Result {
+        ) -> crate::Result
+        where
+            T: Copy + crate::utils::NoRef,
+        {
             crate::base_helper::bpf_probe_read_kernel(dst, unsafe_ptr)
         }
 
