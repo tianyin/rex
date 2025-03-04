@@ -26,7 +26,6 @@ pub mod tracepoint;
 pub mod utils;
 pub mod xdp;
 
-mod barrier;
 mod base_helper;
 mod bindings;
 mod debug;
