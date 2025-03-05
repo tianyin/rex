@@ -7,8 +7,8 @@ use rex::linux::bpf::bpf_spin_lock;
 use rex::map::RexArrayMap;
 use rex::spinlock::rex_spinlock_guard;
 use rex::xdp::*;
+use rex::{Result, rex_map};
 use rex::{bpf_printk, rex_xdp};
-use rex::{rex_map, Result};
 
 #[repr(C)]
 #[derive(Clone, Copy)]

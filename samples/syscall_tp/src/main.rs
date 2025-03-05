@@ -6,7 +6,7 @@ extern crate rex;
 use rex::linux::bpf::BPF_NOEXIST;
 use rex::map::RexArrayMap;
 use rex::tracepoint::{tp_ctx, tp_type, tracepoint};
-use rex::{rex_map, rex_tracepoint, Result};
+use rex::{Result, rex_map, rex_tracepoint};
 
 #[rex_map]
 static enter_open_map: RexArrayMap<u32> = RexArrayMap::new(1, 0);

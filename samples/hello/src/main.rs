@@ -3,10 +3,10 @@
 
 extern crate rex;
 
+use rex::Result;
 use rex::bpf_printk;
 use rex::rex_tracepoint;
 use rex::tracepoint::*;
-use rex::Result;
 
 #[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
 fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {

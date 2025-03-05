@@ -4,7 +4,7 @@ extern crate rex;
 
 use core::sync::atomic::{AtomicU64, Ordering};
 use rex::pt_regs::PtRegs;
-use rex::{bpf_printk, Result};
+use rex::{Result, bpf_printk};
 use rex::{kprobe::*, rex_kprobe};
 
 static ATOM: AtomicU64 = AtomicU64::new(42);

@@ -6,7 +6,7 @@ extern crate rex;
 use rex::linux::bpf::bpf_spin_lock;
 use rex::map::RexArrayMap;
 use rex::spinlock::rex_spinlock_guard;
-use rex::{rex_map, Result};
+use rex::{Result, rex_map};
 use rex::{rex_tracepoint, tracepoint::*};
 
 #[repr(C)]
