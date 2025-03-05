@@ -364,46 +364,49 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     })
 }
 
-pub(crate) fn bpf_ringbuf_reserve<T>(
-    map: &'static RexRingBuf,
-    size: u64,
-) -> *mut T {
-    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if unlikely(map_kptr.is_null()) {
-        return core::ptr::null_mut();
-    }
+// TODO: fix ring buf helpers for Electrode, need to limit type with trait NoRef
+// pub(crate) fn bpf_ringbuf_reserve<T>(
+//     map: &'static RexRingBuf,
+//     size: u64,
+// ) -> *mut T {
+//     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+//     if unlikely(map_kptr.is_null()) {
+//         return core::ptr::null_mut();
+//     }
+//
+//     let data = termination_check!(unsafe {
+//         stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0)
+//     });
+//
+//     data as *mut T
+// }
+//
+// pub(crate) fn bpf_ringbuf_submit<T>(data: &mut T, flags: u64) {
+//     compile_error!("Not finished");
+//     termination_check!(unsafe {
+//         stub::bpf_ringbuf_submit(data as *mut T as *mut (), flags)
+//     })
+// }
 
-    let data = termination_check!(unsafe {
-        stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0)
-    });
+// pub(crate) fn bpf_ringbuf_discard<T>(data: &mut T, flags: u64) {
+//     compile_error!("Not finished");
+//     termination_check!(unsafe {
+//         stub::bpf_ringbuf_discard(data as *mut T as *mut (), flags)
+//     })
+// }
 
-    data as *mut T
-}
-
-pub(crate) fn bpf_ringbuf_submit<T>(data: &mut T, flags: u64) {
-    termination_check!(unsafe {
-        stub::bpf_ringbuf_submit(data as *mut T as *mut (), flags)
-    })
-}
-
-pub(crate) fn bpf_ringbuf_discard<T>(data: &mut T, flags: u64) {
-    termination_check!(unsafe {
-        stub::bpf_ringbuf_discard(data as *mut T as *mut (), flags)
-    })
-}
-
-pub(crate) fn bpf_ringbuf_query(
-    map: &'static RexRingBuf,
-    flags: u64,
-) -> Option<u64> {
-    let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
-    if unlikely(map_kptr.is_null()) {
-        return None;
-    }
-    Some(termination_check!(unsafe {
-        stub::bpf_ringbuf_query(map_kptr, flags)
-    }))
-}
+// pub(crate) fn bpf_ringbuf_query(
+//     map: &'static RexRingBuf,
+//     flags: u64,
+// ) -> Option<u64> {
+//     let map_kptr = unsafe { core::ptr::read_volatile(&map.kptr) };
+//     if unlikely(map_kptr.is_null()) {
+//         return None;
+//     }
+//     Some(termination_check!(unsafe {
+//         stub::bpf_ringbuf_query(map_kptr, flags)
+//     }))
+// }
 
 macro_rules! base_helper_defs {
     () => {
@@ -561,20 +564,20 @@ macro_rules! base_helper_defs {
             crate::base_helper::bpf_snprintf(buf, fmt, data)
         }
 
-        #[inline(always)]
-        pub fn bpf_ringbuf_reserve<T>(
-            &self,
-            map: &'static RexRingBuf,
-            size: u64,
-            flags: u64,
-        ) -> *mut T {
-            crate::base_helper::bpf_ringbuf_reserve(map, flags)
-        }
-
-        #[inline(always)]
-        pub fn bpf_ringbuf_submit<T>(&self, data: &mut T, flags: u64) {
-            crate::base_helper::bpf_ringbuf_submit(data, flags)
-        }
+        // #[inline(always)]
+        // pub fn bpf_ringbuf_reserve<T>(
+        //     &self,
+        //     map: &'static RexRingBuf,
+        //     size: u64,
+        //     flags: u64,
+        // ) -> *mut T {
+        //     crate::base_helper::bpf_ringbuf_reserve(map, flags)
+        // }
+        //
+        // #[inline(always)]
+        // pub fn bpf_ringbuf_submit<T>(&self, data: &mut T, flags: u64) {
+        //     crate::base_helper::bpf_ringbuf_submit(data, flags)
+        // }
     };
 }
 

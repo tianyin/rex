@@ -3,8 +3,8 @@ use crate::{
     base_helper::{
         bpf_map_delete_elem, bpf_map_lookup_elem, bpf_map_peek_elem,
         bpf_map_pop_elem, bpf_map_push_elem, bpf_map_update_elem,
-        bpf_ringbuf_discard, bpf_ringbuf_query, bpf_ringbuf_reserve,
-        bpf_ringbuf_submit,
+        // bpf_ringbuf_discard, bpf_ringbuf_query, bpf_ringbuf_reserve,
+        // bpf_ringbuf_submit,
     },
     linux::bpf::{
         bpf_map_type, BPF_ANY, BPF_EXIST, BPF_MAP_TYPE_ARRAY,
@@ -120,52 +120,52 @@ where
     }
 }
 
-impl RexRingBuf {
-    pub const fn new(ms: u32, mf: u32) -> RexRingBuf {
-        RexRingBuf {
-            map_type: BPF_MAP_TYPE_RINGBUF,
-            key_size: 0,
-            val_size: 0,
-            max_size: ms,
-            map_flag: mf,
-            kptr: ptr::null_mut(),
-        }
-    }
-
-    pub fn reserve<'a, T>(
-        &'static self,
-        submit_by_default: bool,
-        value: T,
-    ) -> Option<RexRingBufEntry<'a, T>> {
-        let data: *mut T = bpf_ringbuf_reserve::<T>(self, 0);
-        if data.is_null() {
-            None
-        } else {
-            unsafe { data.write(value) };
-            Some(RexRingBufEntry {
-                data: unsafe { &mut *data },
-                submit_by_default,
-                has_used: false,
-            })
-        }
-    }
-
-    pub fn available_bytes(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_AVAIL_DATA as u64)
-    }
-
-    pub fn size(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_RING_SIZE as u64)
-    }
-
-    pub fn consumer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_CONS_POS as u64)
-    }
-
-    pub fn producer_position(&'static self) -> Option<u64> {
-        bpf_ringbuf_query(self, BPF_RB_PROD_POS as u64)
-    }
-}
+// impl RexRingBuf {
+//     pub const fn new(ms: u32, mf: u32) -> RexRingBuf {
+//         RexRingBuf {
+//             map_type: BPF_MAP_TYPE_RINGBUF,
+//             key_size: 0,
+//             val_size: 0,
+//             max_size: ms,
+//             map_flag: mf,
+//             kptr: ptr::null_mut(),
+//         }
+//     }
+//
+//     pub fn reserve<'a, T>(
+//         &'static self,
+//         submit_by_default: bool,
+//         value: T,
+//     ) -> Option<RexRingBufEntry<'a, T>> {
+//         let data: *mut T = bpf_ringbuf_reserve::<T>(self, 0);
+//         if data.is_null() {
+//             None
+//         } else {
+//             unsafe { data.write(value) };
+//             Some(RexRingBufEntry {
+//                 data: unsafe { &mut *data },
+//                 submit_by_default,
+//                 has_used: false,
+//             })
+//         }
+//     }
+//
+//     pub fn available_bytes(&'static self) -> Option<u64> {
+//         bpf_ringbuf_query(self, BPF_RB_AVAIL_DATA as u64)
+//     }
+//
+//     pub fn size(&'static self) -> Option<u64> {
+//         bpf_ringbuf_query(self, BPF_RB_RING_SIZE as u64)
+//     }
+//
+//     pub fn consumer_position(&'static self) -> Option<u64> {
+//         bpf_ringbuf_query(self, BPF_RB_CONS_POS as u64)
+//     }
+//
+//     pub fn producer_position(&'static self) -> Option<u64> {
+//         bpf_ringbuf_query(self, BPF_RB_PROD_POS as u64)
+//     }
+// }
 
 impl<V> RexStack<V>
 where
@@ -209,36 +209,36 @@ where
     }
 }
 
-pub struct RexRingBufEntry<'a, T> {
-    data: &'a mut T,
-    submit_by_default: bool,
-    has_used: bool,
-}
-
-impl<T> RexRingBufEntry<'_, T> {
-    pub fn submit(mut self) {
-        self.has_used = true;
-        bpf_ringbuf_submit(self.data, 0)
-    }
-
-    pub fn discard(mut self) {
-        self.has_used = true;
-        bpf_ringbuf_discard(self.data, 0)
-    }
-
-    pub fn write(&mut self, value: T) {
-        *self.data = value
-    }
-}
-
-impl<T> core::ops::Drop for RexRingBufEntry<'_, T> {
-    fn drop(&mut self) {
-        if !self.has_used {
-            if self.submit_by_default {
-                bpf_ringbuf_submit(self.data, 0);
-            } else {
-                bpf_ringbuf_discard(self.data, 0);
-            }
-        }
-    }
-}
+// pub struct RexRingBufEntry<'a, T> {
+//     data: &'a mut T,
+//     submit_by_default: bool,
+//     has_used: bool,
+// }
+//
+// impl<T> RexRingBufEntry<'_, T> {
+//     pub fn submit(mut self) {
+//         self.has_used = true;
+//         bpf_ringbuf_submit(self.data, 0)
+//     }
+//
+//     pub fn discard(mut self) {
+//         self.has_used = true;
+//         bpf_ringbuf_discard(self.data, 0)
+//     }
+//
+//     pub fn write(&mut self, value: T) {
+//         *self.data = value
+//     }
+// }
+//
+// impl<T> core::ops::Drop for RexRingBufEntry<'_, T> {
+//     fn drop(&mut self) {
+//         if !self.has_used {
+//             if self.submit_by_default {
+//                 bpf_ringbuf_submit(self.data, 0);
+//             } else {
+//                 bpf_ringbuf_discard(self.data, 0);
+//             }
+//         }
+//     }
+// }
