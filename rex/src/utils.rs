@@ -12,37 +12,6 @@ impl From<u16be> for u16 {
     }
 }
 
-mod private {
-    pub trait SafeTransmuteBase {}
-}
-
-pub trait SafeTransmute: private::SafeTransmuteBase {}
-
-macro_rules! safe_transmute_impl {
-    ($dest_ty:ident $($dest_tys:ident)*) => {
-        impl private::SafeTransmuteBase for $dest_ty {}
-        impl SafeTransmute for $dest_ty {}
-        safe_transmute_impl!($($dest_tys)*);
-    };
-    () => {};
-}
-
-safe_transmute_impl!(u64 i64 u32 i32 u16 i16 u8 i8);
-
-macro_rules! safe_transmute_impl_arr {
-    ($dest_ty:ident $($dest_tys:ident)*) => {
-        impl<const N: usize> private::SafeTransmuteBase for [$dest_ty; N] {}
-        impl<const N: usize> SafeTransmute for [$dest_ty; N] {}
-        safe_transmute_impl_arr!($($dest_tys)*);
-    };
-    () => {};
-}
-
-safe_transmute_impl_arr!(u64 i64 u32 i32 u16 i16 u8 i8);
-
-#[inline(always)]
-pub fn safe_transmute<T: SafeTransmute>() {}
-
 /// A specialized Result for typical int return value in the kernel
 ///
 /// To be used as the return type for functions that may fail.
@@ -66,11 +35,12 @@ macro_rules! to_result {
         }
     }};
 }
+pub(crate) use to_result;
 
 // User can get the customized struct like memcached from the data_slice
 // TODO: add a bound checking for this function, add size check
 #[inline(always)]
-pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
+pub unsafe fn convert_slice_to_struct<T: NoRef>(slice: &[c_uchar]) -> &T {
     assert!(
         slice.len() >= mem::size_of::<T>(),
         "size mismatch in convert_slice_to_struct"
@@ -80,7 +50,9 @@ pub unsafe fn convert_slice_to_struct<T>(slice: &[c_uchar]) -> &T {
 }
 
 #[inline(always)]
-pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
+pub unsafe fn convert_slice_to_struct_mut<T: NoRef>(
+    slice: &mut [c_uchar],
+) -> &mut T {
     assert!(
         slice.len() >= mem::size_of::<T>(),
         "size mismatch in convert_slice_to_struct_mut"
@@ -88,8 +60,6 @@ pub unsafe fn convert_slice_to_struct_mut<T>(slice: &mut [c_uchar]) -> &mut T {
 
     unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
 }
-
-pub(crate) use to_result;
 
 /// A marker trait that prevents derivation on types that contain references.
 pub unsafe auto trait NoRef {}

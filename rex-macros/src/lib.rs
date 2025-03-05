@@ -10,7 +10,7 @@ use proc_macro::TokenStream;
 use proc_macro_error::{abort, proc_macro_error};
 use quote::quote;
 use std::borrow::Cow;
-use syn::{parse_macro_input, Data, DeriveInput, ItemStatic};
+use syn::ItemStatic;
 
 use kprobe::KProbe;
 use perf_event::PerfEvent;
@@ -91,35 +91,4 @@ pub fn rex_map(_: TokenStream, item: TokenStream) -> TokenStream {
         #item
     })
     .into()
-}
-
-#[proc_macro_derive(FieldTransmute)]
-pub fn ensure_numeric(input: TokenStream) -> TokenStream {
-    let ast: DeriveInput = parse_macro_input!(input as DeriveInput);
-    let struct_name = ast.ident;
-    let mut fields_token = vec![];
-
-    if let Data::Struct(s) = ast.data {
-        for field in s.fields {
-            let field_type = &field.ty;
-            // get field ident
-            let _ = field.ident.as_ref().unwrap();
-
-            let token = quote!( safe_transmute::<#field_type>(); );
-            fields_token.push(token);
-        }
-    }
-
-    // You can still derive other traits, or just generate an empty
-    // implementation
-    let generated = quote! {
-        impl #struct_name {
-            #[inline(always)]
-            pub(crate) fn from_bytes(data: &mut [u8]) -> &mut #struct_name{
-             #(#fields_token)*
-             unsafe { convert_slice_to_struct_mut::<#struct_name>(data) }
-            }
-        }
-    };
-    generated.into()
 }

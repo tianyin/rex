@@ -9,7 +9,7 @@ use rex::sched_cls::*;
 use rex::spinlock::*;
 use rex::utils::*;
 use rex::xdp::*;
-use rex::{FieldTransmute, bpf_printk, rex_map, rex_tc, rex_xdp};
+use rex::{bpf_printk, rex_map, rex_tc, rex_xdp};
 
 const BMC_MAX_PACKET_LENGTH: usize = 1500;
 const BMC_CACHE_ENTRY_COUNT: u32 = 3250000;
@@ -25,7 +25,6 @@ const FNV_PRIME_32: u32 = 16777619;
 const ETH_ALEN: usize = 6;
 const MEMCACHED_PORT: u16 = 11211;
 
-#[derive(FieldTransmute)]
 #[repr(C, packed)]
 pub struct memcached_udp_header {
     request_id: u16,
@@ -34,7 +33,6 @@ pub struct memcached_udp_header {
     unused: u16,
 }
 
-#[derive(FieldTransmute)]
 #[repr(C, packed)]
 pub struct eth_header {
     pub h_dest: [u8; ETH_ALEN],
