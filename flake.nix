@@ -92,7 +92,6 @@
         glibc.dev
         getopt
         gnumake
-        meson
         ncurses
         openssl.dev
         pahole
@@ -129,6 +128,10 @@
         libclang.lib
         libclang.dev
 
+        # meson deps
+        meson
+        curl
+        perl
 
         bear # generate compile commands
         rsync # for make headers_install
@@ -148,7 +151,7 @@
         {
           name = "rex-env";
           targetPkgs = pkgs: rexPackages;
-          runScript = "zsh";
+          runScript = "bash";
 
           profile = ''
             export LD_LIBRARY_PATH=${pkgs.libgcc.lib}/lib:$LD_LIBRARY_PATH
