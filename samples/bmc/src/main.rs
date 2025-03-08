@@ -25,19 +25,12 @@ const FNV_PRIME_32: u32 = 16777619;
 const ETH_ALEN: usize = 6;
 const MEMCACHED_PORT: u16 = 11211;
 
-#[repr(C, packed)]
+#[repr(C)]
 pub struct memcached_udp_header {
     request_id: u16,
     seq_num: u16,
     num_dgram: u16,
     unused: u16,
-}
-
-#[repr(C, packed)]
-pub struct eth_header {
-    pub h_dest: [u8; ETH_ALEN],
-    pub h_source: [u8; ETH_ALEN],
-    pub h_proto: u16,
 }
 
 #[repr(C)]
@@ -457,7 +450,7 @@ fn bmc_update_cache(
 #[rex_tc]
 fn xdp_tx_filter(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let header_len = size_of::<iphdr>() +
-        size_of::<eth_header>() +
+        size_of::<ethhdr>() +
         size_of::<udphdr>() +
         size_of::<memcached_udp_header>();
 

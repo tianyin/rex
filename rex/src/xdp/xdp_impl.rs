@@ -159,6 +159,7 @@ impl xdp {
         }
     }
 
+    // WARN: currently we are accessing unaligned struct for iphdr
     #[inline(always)]
     pub fn ip_header<'b>(&self, ctx: &'b mut xdp_md) -> &'b mut iphdr {
         // NOTE: this assumes packet has ethhdr
