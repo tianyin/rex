@@ -61,7 +61,17 @@ pub unsafe fn convert_slice_to_struct_mut<T: NoRef>(
     unsafe { &mut *(slice.as_mut_ptr() as *mut T) }
 }
 
-/// A marker trait that prevents derivation on types that contain references.
+/// A marker trait that prevents derivation on types that contain references or
+/// raw pointers. This avoids accidental dereference of invalid pointers in
+/// foreign objects obtained from the kernel (e.g. via `bpf_map_lookup_elem` or
+/// `bpf_probe_read_kernel`).
+///
+/// Though dererferencing raw pointers are not possible in Rex programs as it
+/// requires `unsafe`, we still need to consider the case where a core library
+/// type wraps the unsafe deref operation under a safe interface (an example is
+/// `core::slice::Iter`).
 pub unsafe auto trait NoRef {}
 impl<T: ?Sized> !NoRef for &T {}
 impl<T: ?Sized> !NoRef for &mut T {}
+impl<T: ?Sized> !NoRef for *const T {}
+impl<T: ?Sized> !NoRef for *mut T {}
