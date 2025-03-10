@@ -22,6 +22,7 @@ tokio-util = { version = "0.7", features = ["rt"] }
 rand_chacha = "0"
 log = "0"
 env_logger = { version = "0" }
+mimalloc = "0"
 
 
 [profile.release]

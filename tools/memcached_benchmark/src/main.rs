@@ -28,6 +28,11 @@ use tokio::{
     time::timeout,
 };
 use tokio_util::task::TaskTracker;
+use mimalloc::MiMalloc;
+
+#[global_allocator]
+static GLOBAL: MiMalloc = MiMalloc;
+
 
 const BUFFER_SIZE: usize = 1500;
 const SEED: u64 = 12312;
