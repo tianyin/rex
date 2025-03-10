@@ -5,7 +5,7 @@ LLVM) and running Rex extensions requires modifications to the Linux
 kernel.  The steps below describe how to set up both the toolchain and
 kernel for running Rex extensions in a VM.
 
-Note that this guide assumes a server machine with ample RAM and processors. For those trying to run Rex on Windows Subsystem for Linux (WSL) and/or personal machines, you should look at [the WSL guide](getting-started-wsl.md).
+Note that this guide assumes a server machine with ample RAM and processors. For those trying to run Rex on Windows Subsystem for Linux (WSL) and/or personal machines, you should look at [the Troubleshooting section](#troubleshooting).
 
 ## Nix flake
 
@@ -103,3 +103,62 @@ The following output should be printed out:
 ```console
 <...>-245     [002] d...1    18.417331: bpf_trace_printk: Rust triggered from PID 245.
 ```
+
+## Troubleshooting
+
+### Building dependencies:
+This step includes compiling the Linux kernel which can get quite resource intensive. In our tests `6GB` is the minimum value for which compiling Linux is possible, this means you might not be able to use Rex on machines with 6GB or less RAM. A sign that you ran into Out-Of-Memory (OOM) error is if you encounter this warning:
+
+```bash
+/root/rex/linux/scripts/link-vmlinux.sh: line 113: 55407 Killed                  LLVM_OBJCOPY="${OBJCOPY}" ${PAHOLE} -J ${PAHOLE_FLAGS} ${1}
+```
+
+And error:
+
+```bash
+FAILED: load BTF from vmlinux: invalid argument
+```
+
+Or similar problems.
+
+For WSL users, it is recommended to allocate more RAM to WSL before starting this step since WSL by default only utilizes half the RAM available on the host machine:
+
+From a Powershell instance, create and open a `.wslconfig` file in your home directory:
+```bash
+notepad $HOME/.wslconfig
+```
+
+Add the following lines to the file then save:
+```bash
+[wsl2]
+memory=6GB
+```
+
+You should change the value to how much memory you want to allocate to WSL.
+
+### Building the Rex samples:
+There are some caveats before you run this step. By default the `ninja` build tool uses a quite high level of parallelism, which might again cause OOM on personal machines. A sign of this happenning is if you try this step and run into similar errors to:
+
+```bash
+error: could not compile `core` (lib)
+
+Caused by:
+    process didn't exit successfully:
+```
+
+To resolve this problem, try running with fewer commands in parallel using the `-j` argument, for example to run with 4 commands in parallel:
+
+```bash
+meson compile -C build -j 4
+```
+
+Our tests indicate a peak memory usage of 12GB with `-j 8`, so if you have less RAM it's helpful to keep the `-j` argument below 8.
+
+### Booting the QEMU VM:
+By default our QEMU VM runs on 8GB of memory. To reduce this, open the qemu scripts using an editor and locate line 300:
+
+```bash
+MEMORY=8192
+```
+
+And change this value to the number you want. Rex has been tested to work with 4GB or `MEMORY=4096`.
