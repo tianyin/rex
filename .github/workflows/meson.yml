@@ -18,9 +18,12 @@ jobs:
       - name: Setup Meson build directory
         run: meson setup --native-file rex-native.ini --reconfigure ./build
 
-      - name: Compile with Meson
+      - name: Compile Rex deps
+        run: meson compile -C build build_deps
+
+      - name: Compile Rex samples
         run: meson compile -C build
 
-      - name: Run Meson tests
+      - name: Run Rex sanity tests
         run: meson test -C build
 
