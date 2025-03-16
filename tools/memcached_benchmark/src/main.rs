@@ -7,32 +7,35 @@ use std::{
     io::{BufRead, BufReader, Write},
     mem::size_of_val,
     result::Result,
-    sync::{atomic::*, Arc},
+    sync::{Arc, atomic::*},
     vec,
 };
 
 use clap::{Parser, Subcommand, ValueEnum};
 use env_logger::Target;
-use log::{debug, info, LevelFilter};
+use log::{LevelFilter, debug, info};
 use memcache::MemcacheError;
-use rand::distributions::{Alphanumeric, DistString, Distribution};
-use rand_chacha::{rand_core::SeedableRng, ChaCha8Rng};
+use mimalloc::MiMalloc;
+use rand::{
+    Rng,
+    distr::{Alphanumeric, SampleString},
+};
+use rand_chacha::{ChaCha8Rng, rand_core::SeedableRng};
+use rand_distr::Zipf;
 use rayon::prelude::*;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use tokio::{
     net::UdpSocket,
     runtime::Builder,
-    sync::{mpsc, Semaphore},
+    sync::{Semaphore, mpsc},
     task::JoinSet,
     time::timeout,
 };
 use tokio_util::task::TaskTracker;
-use mimalloc::MiMalloc;
 
 #[global_allocator]
 static GLOBAL: MiMalloc = MiMalloc;
-
 
 const BUFFER_SIZE: usize = 1500;
 const SEED: u64 = 12312;
@@ -148,7 +151,7 @@ enum Commands {
 }
 
 fn generate_random_str(len: usize) -> String {
-    Alphanumeric.sample_string(&mut rand::thread_rng(), len)
+    Alphanumeric.sample_string(&mut rand::rng(), len)
 }
 
 fn generate_memcached_test_dict(
@@ -357,10 +360,12 @@ async fn get_command_benchmark(
     }
     let sockets_pool = Arc::new(sockets_pool);
 
-    let mut client =
-        async_memcached::Client::new(format!("tcp://{}:{}", server_address, port))
-            .await
-            .expect("TCP memcached connection failed");
+    let mut client = async_memcached::Client::new(format!(
+        "tcp://{}:{}",
+        server_address, port
+    ))
+    .await
+    .expect("TCP memcached connection failed");
 
     let tracker = TaskTracker::new();
     let cloned_tracker = tracker.clone();
@@ -505,13 +510,13 @@ fn generate_test_entries(
     nums: usize,
 ) -> Vec<(Arc<String>, Arc<String>, Protocol)> {
     let mut rng = ChaCha8Rng::seed_from_u64(SEED);
-    let zipf = zipf::ZipfDistribution::new(test_dict.len() - 1, 0.99).unwrap();
+    let zipf = Zipf::new((test_dict.len() - 1) as f64, 0.99).unwrap();
 
     let mut counter: usize = 0;
     let keys: Vec<Arc<String>> = test_dict.keys().cloned().collect();
     (0..nums)
         .map(|_| {
-            let key = &keys[zipf.sample(&mut rng)];
+            let key = &keys[rng.sample(zipf) as usize];
             let value = test_dict.get(key).unwrap();
             // every 31 element is tcp. udp:tcp = 30:1
             let protocol = if counter % 31 == 30 {
