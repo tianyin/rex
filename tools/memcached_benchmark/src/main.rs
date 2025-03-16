@@ -219,7 +219,7 @@ async fn set_memcached_value(
         let client = async_memcached::Client::new(addr.as_str())
             .await
             .expect("TCP memcached connection failed");
-        sockets_pool.push(Arc::new(tokio::sync::Mutex::new(client)));
+        sockets_pool.push(tokio::sync::Mutex::new(client));
     }
     let sockets_pool = Arc::new(sockets_pool);
 
@@ -230,9 +230,9 @@ async fn set_memcached_value(
         let sockets_pool_clone = sockets_pool.clone();
         let key_clone = key.clone();
         let value_clone = value.clone();
-        let permit = Arc::clone(&sem).acquire_owned().await;
+        let sem = sem.clone();
         set.spawn(async move {
-            let _permit = permit;
+            let _permit = sem.acquire_owned().await;
             let mut socket = sockets_pool_clone[count & 0x3F].lock().await;
             socket
                 .set(&*key_clone, &*value_clone, None, None)
@@ -512,19 +512,17 @@ fn generate_test_entries(
     let mut rng = ChaCha8Rng::seed_from_u64(SEED);
     let zipf = Zipf::new((test_dict.len() - 1) as f64, 0.99).unwrap();
 
-    let mut counter: usize = 0;
     let keys: Vec<Arc<String>> = test_dict.keys().cloned().collect();
     (0..nums)
-        .map(|_| {
+        .map(|idx| {
             let key = &keys[rng.sample(zipf) as usize];
             let value = test_dict.get(key).unwrap();
             // every 31 element is tcp. udp:tcp = 30:1
-            let protocol = if counter % 31 == 30 {
+            let protocol = if idx % 31 == 30 {
                 Protocol::Tcp
             } else {
                 Protocol::Udp
             };
-            counter += 1;
             (key.clone(), value.clone(), protocol)
         })
         .collect()
