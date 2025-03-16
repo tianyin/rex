@@ -15,7 +15,15 @@ jobs:
         with:
           submodules: true
 
-      - name: Setup Meson build directory
+      - name: Cache Rex build directory
+        uses: actions/cache@v3
+        with:
+          path: build
+          key: ${{ runner.os }}-${{ runner.name }}-meson-${{ hashFiles('rex-native.ini', 'meson.build') }}
+          restore-keys: |
+            ${{ runner.os }}-${{ runner.name }}-meson
+
+      - name: Setup Rex build directory
         run: meson setup --native-file rex-native.ini --reconfigure ./build
 
       - name: Compile Rex deps
