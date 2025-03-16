@@ -1,0 +1,26 @@
+name: Meson Build and Test
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  build_and_test:
+    runs-on: self-hosted
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+        with:
+          submodules: true
+
+      - name: Setup Meson build directory
+        run: meson setup --native-file rex-native.ini --reconfigure ./build
+
+      - name: Compile with Meson
+        run: meson compile -C build
+
+      - name: Run Meson tests
+        run: meson test -C build
+
