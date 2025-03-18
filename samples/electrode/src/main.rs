@@ -6,14 +6,10 @@ extern crate rex;
 
 use core::mem::{size_of, swap};
 
-use rex::bpf_printk;
-
-use rex::rex_tc;
-use rex::rex_xdp;
 use rex::sched_cls::*;
-
 use rex::utils::*;
 use rex::xdp::*;
+use rex::{rex_printk, rex_tc, rex_xdp};
 
 pub mod common;
 pub mod maps;
@@ -37,14 +33,25 @@ macro_rules! swap_field {
 fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let header_len =
         size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
-    let ip_header = obj.ip_header(ctx);
+    let iphdr_start = size_of::<ethhdr>();
+    let iphdr_end = iphdr_start + size_of::<iphdr>();
+    let udphdr_end = iphdr_end + size_of::<udphdr>();
+
+    let ip_header = convert_slice_to_struct::<iphdr>(
+        &ctx.data_slice[iphdr_start..iphdr_end],
+    );
 
     match u8::from_be(ip_header.protocol) as u32 {
         IPPROTO_TCP => {
             // NOTE: currently we only take care of UDP memcached
         }
         IPPROTO_UDP => {
-            let port = u16::from_be(obj.udp_header(ctx).dest);
+            let port = u16::from_be(
+                convert_slice_to_struct::<udphdr>(
+                    &ctx.data_slice[iphdr_end..udphdr_end],
+                )
+                .dest,
+            );
             let payload = &mut ctx.data_slice[header_len..];
 
             // port check, our process bound to 12345.
@@ -74,19 +81,28 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
 #[rex_tc]
 fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let mut header_len =
-        size_of::<iphdr>() + size_of::<eth_header>() + size_of::<udphdr>();
+        size_of::<iphdr>() + size_of::<ethhdr>() + size_of::<udphdr>();
+    let iphdr_start = size_of::<ethhdr>();
+    let iphdr_end = iphdr_start + size_of::<iphdr>();
+    let udphdr_end = iphdr_end + size_of::<udphdr>();
 
     // check if the packet is long enough
     if skb.data_slice.len() <= header_len {
         return Ok(TC_ACT_OK as i32);
     }
 
-    let ip_header = obj.ip_header(skb);
+    let ip_header = convert_slice_to_struct::<iphdr>(
+        &skb.data_slice[iphdr_start..iphdr_end],
+    );
     match u8::from_be(ip_header.protocol) as u32 {
         IPPROTO_UDP => {
             // only port 12345 is allowed
-            let udp_header = obj.udp_header(skb);
-            let port = u16::from_be(udp_header.dest);
+            let port = u16::from_be(
+                convert_slice_to_struct::<udphdr>(
+                    &skb.data_slice[iphdr_end..udphdr_end],
+                )
+                .dest,
+            );
             if port != 12345 {
                 return Ok(TC_ACT_OK as i32);
             }
@@ -95,7 +111,7 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
             header_len += MAGIC_LEN + size_of::<u64>();
 
             if skb.data_slice.len() < header_len {
-                bpf_printk!(obj, "data_slice.len() < header_len\n");
+                rex_printk!("data_slice.len() < header_len\n").ok();
                 return Ok(TC_ACT_OK as i32);
             }
             let payload = &skb.data_slice;
@@ -130,11 +146,11 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let len = payload.len();
 
     if type_len >= MTU || len < type_len as usize || len < 5 {
-        bpf_printk!(obj, "too small type_len: {}\n", type_len);
+        rex_printk!("too small type_len: {}\n", type_len).ok();
         return Ok(TC_ACT_SHOT as i32);
     }
 
-    bpf_printk!(obj, "handle_udp_fast_broad_cast\n");
+    rex_printk!("handle_udp_fast_broad_cast\n").ok();
 
     // update payload index
     let payload = &payload[type_len as usize..];
@@ -213,15 +229,19 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
         .bpf_map_lookup_elem(&MAP_CONFIGURE, &key)
         .ok_or_else(|| TC_ACT_SHOT as i32)?;
 
-    let udp_header = obj.udp_header(skb);
-    udp_header.dest = replica_info.port;
-    udp_header.check = 0;
+    {
+        let udp_header = &mut obj.udp_header(skb);
+        udp_header.dest = replica_info.port;
+        udp_header.check = 0;
+    }
 
-    let ip_header = obj.ip_header(skb);
-    ip_header.daddr = replica_info.addr;
-    ip_header.check = compute_ip_checksum(ip_header);
+    {
+        let ip_header = &mut obj.ip_header(skb);
+        *ip_header.daddr() = replica_info.addr;
+        ip_header.check = compute_ip_checksum(ip_header);
+    }
 
-    let eth_header = obj.eth_header(skb);
+    let mut eth_header = obj.eth_header(skb);
     for i in 0..ETH_ALEN {
         eth_header.h_dest[i] = replica_info.eth[i];
     }
@@ -237,12 +257,12 @@ fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
     let type_len_bytes = &payload[..size_of::<u64>()];
     let type_len = u64::from_ne_bytes(type_len_bytes.try_into().unwrap());
-    bpf_printk!(obj, "type_len: %u\n", type_len);
+    rex_printk!("type_len: {}\n", type_len).ok();
 
     // Check the conditions
     let len = payload.len();
     if type_len >= MTU || len < type_len as usize {
-        bpf_printk!(obj, "too big type_len: %u\n", type_len);
+        rex_printk!("too big type_len: {}\n", type_len).ok();
         return Ok(XDP_PASS as i32);
     }
     let payload_index = header_len + MAGIC_LEN + size_of::<u64>();
@@ -322,7 +342,7 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
         .bpf_map_lookup_elem(&map_ctr_state, &zero)
         .ok_or_else(|| 0i32)?;
 
-    bpf_printk!(obj, "handle_prepare\n");
+    rex_printk!("handle_prepare\n").ok();
     // rare case, not handled properly now.
     if ctr_state.state != ReplicaStatus::STATUS_NORMAL {
         return Ok(XDP_DROP as i32);
@@ -358,7 +378,7 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
         return Ok(XDP_PASS as i32);
     }
 
-    bpf_printk!(obj, "write buffer\n");
+    rex_printk!("write buffer\n").ok();
 
     let payload = &mut ctx.data_slice[payload_index + FAST_PAXOS_DATA_LEN..];
 
@@ -369,14 +389,12 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
     // buffer not enough, offload to user-space.
     // It's easy to avoid cause VR sends `CommitMessage` make followers keep up
     // with the leader.
-    let pt = obj
-        .bpf_ringbuf_reserve(&map_prepare_buffer, MAX_DATA_LEN as u64, 0)
+    let mut pt = map_prepare_buffer
+        .reserve(MAX_DATA_LEN)
         .ok_or_else(|| 0i32)?;
 
-    for i in 0..MAX_DATA_LEN {
-        pt[i] = payload[i];
-        obj.bpf_ringbuf_submit(pt, 0); // guarantee to succeed.
-    }
+    pt.copy_from_slice(&payload[0..MAX_DATA_LEN]);
+    pt.submit(0); // guaranteed to succeed.
 
     prepare_fast_reply(obj, ctx, payload_index)
 }
@@ -393,7 +411,7 @@ fn prepare_fast_reply(
         return Ok(XDP_PASS as i32);
     }
 
-    bpf_printk!(obj, "prepare_fast_reply\n");
+    rex_printk!("prepare_fast_reply\n").ok();
 
     // read our state
     // may update to function parameter later
@@ -449,21 +467,26 @@ fn prepare_fast_reply(
     let useless_len = payload.len() as u16;
     let new_len = ctx.data_length() as u16 - useless_len;
 
-    let eth_header = obj.eth_header(ctx);
-    swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
+    {
+        let eth_header: &mut ethhdr = &mut obj.eth_header(ctx);
+        swap_field!(eth_header.h_dest, eth_header.h_source, ETH_ALEN);
+    }
+    {
+        // update the port
+        let udp_header = &mut obj.udp_header(ctx);
+        udp_header.source = udp_header.dest;
+        udp_header.dest = leader_info.port;
+        udp_header.check = 0;
+        udp_header.len = new_len.to_be();
+    }
 
-    // update the port
-    let udp_header = obj.udp_header(ctx);
-    udp_header.source = udp_header.dest;
-    udp_header.dest = leader_info.port;
-    udp_header.check = 0;
-    udp_header.len = new_len.to_be();
-
-    let ip_header = obj.ip_header(ctx);
-    ip_header.tot_len = (new_len + size_of::<iphdr>() as u16).to_be();
-    ip_header.saddr = ip_header.daddr;
-    ip_header.daddr = leader_info.addr;
-    ip_header.check = compute_ip_checksum(ip_header);
+    {
+        let ip_header = &mut obj.ip_header(ctx);
+        ip_header.tot_len = (new_len + size_of::<iphdr>() as u16).to_be();
+        *ip_header.saddr() = *ip_header.daddr();
+        *ip_header.daddr() = leader_info.addr;
+        ip_header.check = compute_ip_checksum(ip_header);
+    }
 
     // FIX: need to consider the positive offset
     // but the original code check the length before adjust the tail
@@ -471,7 +494,7 @@ fn prepare_fast_reply(
         .bpf_xdp_adjust_tail(ctx, new_len as i32 - ctx.data_length() as i32)
         .is_err()
     {
-        bpf_printk!(obj, "adjust tail failed\n");
+        rex_printk!("adjust tail failed\n").ok();
         return Ok(XDP_DROP as i32);
     }
 
@@ -492,7 +515,7 @@ fn handle_prepare_ok(
         return Ok(XDP_DROP as i32);
     }
 
-    bpf_printk!(obj, "handle prepareOK\n");
+    rex_printk!("handle prepareOK\n").ok();
 
     let msg_view = u32::from_ne_bytes(payload[0..4].try_into().unwrap());
     let msg_opnum = u32::from_ne_bytes(payload[4..8].try_into().unwrap());
@@ -519,7 +542,7 @@ fn handle_prepare_ok(
         .bpf_xdp_adjust_tail(ctx, -(payload_index as i32))
         .is_err()
     {
-        bpf_printk!(obj, "adjust tail failed\n");
+        rex_printk!("adjust tail failed\n").ok();
         return Ok(XDP_DROP as i32);
     }
 
