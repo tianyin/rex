@@ -2,15 +2,15 @@
 
 use std::{
     collections::HashMap,
-    error::Error,
     fs::File,
     io::{BufRead, BufReader, Write},
     mem::size_of_val,
-    result::Result,
+    result::Result::Ok,
     sync::{Arc, atomic::*},
     vec,
 };
 
+use anyhow::{Result, anyhow};
 use clap::{Parser, Subcommand, ValueEnum};
 use env_logger::Target;
 use log::{LevelFilter, debug, info};
@@ -188,7 +188,7 @@ fn generate_test_dict_write_to_disk(
     value_size: usize,
     nums: usize,
     dict_path: &str,
-) -> Result<HashMap<String, String>, std::io::Error> {
+) -> Result<HashMap<String, String>> {
     let test_dict = generate_memcached_test_dict(key_size, value_size, nums);
     debug!("test dict len: {}", test_dict.len());
     if let Some((key, value)) = test_dict.iter().next() {
@@ -209,7 +209,7 @@ async fn set_memcached_value(
     test_dict: Arc<HashMap<Arc<String>, Arc<String>>>,
     server_address: String,
     port: String,
-) -> Result<(), MemcacheError> {
+) -> Result<()> {
     info!("Start set memcached value");
     let addr = format!("tcp://{}:{}", server_address, port);
     let mut sockets_pool = vec![];
@@ -347,7 +347,7 @@ async fn get_command_benchmark(
     key_size: usize,
     value_size: usize,
     pipeline: usize,
-) -> Result<(), Box<dyn Error>> {
+) -> Result<()> {
     // assign client address
     let addr = Arc::new(format!("{}:{}", server_address, port));
 
@@ -443,7 +443,7 @@ fn get_server(
 fn write_hashmap_to_file<T: Serialize>(
     hashmap: &T,
     file_path: &str,
-) -> std::io::Result<()> {
+) -> Result<()> {
     // Serialize the hashmap to a JSON string
     let serialized =
         serde_yaml::to_string(hashmap).expect("Failed to serialize");
@@ -530,7 +530,7 @@ fn generate_test_entries(
 
 fn load_test_dict(
     test_dict_path: &std::path::Path,
-) -> Result<HashMap<String, String>, Box<dyn Error>> {
+) -> Result<HashMap<String, String>> {
     // load dict from file if dict_path is not empty
     info!("loading dict from path {:?}", test_dict_path);
     let file = File::open(test_dict_path)?;
@@ -561,7 +561,7 @@ fn load_test_dict(
     Ok(test_dict)
 }
 
-fn run_bench() -> Result<(), Box<dyn Error>> {
+fn run_bench() -> Result<()> {
     let args = Cli::parse();
     let Commands::Bench {
         server_address,
@@ -579,7 +579,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
         pipeline,
     } = args.command
     else {
-        return Err("invalid command".into());
+        return Err(anyhow!("invalid command"));
     };
 
     let server = get_server(&server_address, &port, &protocol)?;
@@ -760,7 +760,7 @@ fn run_bench() -> Result<(), Box<dyn Error>> {
     Ok(())
 }
 
-fn main() -> std::result::Result<(), Box<dyn Error>> {
+fn main() -> Result<()> {
     let args = Cli::parse();
 
     env_logger::Builder::new()
