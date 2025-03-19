@@ -39,14 +39,14 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: rustfmt
-          toolchain: 1.85.0
+          toolchain: stable
       - name: Rustfmt Check
         uses: actions-rust-lang/rustfmt@v1
         with:
           manifest-path: ./tools/memcached_benchmark/Cargo.toml
       - name: Build
-        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=lld -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo build -vvv
+        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=mold -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo build -vvv
       - name: Run tests with debug build
-        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=lld -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo test --verbose
+        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=mold -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo test --verbose
       - name: Run tests with release build
-        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=lld -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo test -r --verbose
+        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=mold -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo test -r --verbose

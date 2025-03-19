@@ -7,5 +7,5 @@ rustflags = [
 	"-Zthreads=8",
 	"-Ctarget-cpu=native",
 	"-Clinker-plugin-lto",
-	"-Clink-args=-flto=thin -fuse-ld=lld -Wl,-O1 -Wl,--as-needed -Wl,--gc-sections",
+	"-Clink-args=-flto=thin -fuse-ld=mold -Wl,-O1 -Wl,--as-needed -Wl,--gc-sections",
 ]
