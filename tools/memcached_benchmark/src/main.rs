@@ -5,7 +5,6 @@ use std::{
     fs::File,
     io::{BufRead, BufReader, Write},
     mem::size_of_val,
-    result::Result::Ok,
     sync::{Arc, atomic::*},
     vec,
 };
