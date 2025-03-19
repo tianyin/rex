@@ -44,8 +44,8 @@ jobs:
         with:
           manifest-path: ./tools/memcached_benchmark/Cargo.toml
       - name: Build
-        run: cargo build -vvv
+        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=lld -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo build -vvv
       - name: Run tests with debug build
-        run: cargo test --verbose
+        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=lld -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo test --verbose
       - name: Run tests with release build
-        run: cargo test -r --verbose
+        run: RUSTFLAGS='-Ctarget-cpu=native -Clinker-plugin-lto -Clink-arg=-flto=thin -Clink-arg=-fuse-ld=lld -Clink-arg=-Wl,-O1 -Clink-arg=-Wl,--as-needed' cargo test -r --verbose
