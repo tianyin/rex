@@ -25,5 +25,6 @@ rex_build = custom_target(
   ],
   env: env,
   console: false,
+  build_always_stale: true,
   build_by_default: false
 )
