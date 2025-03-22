@@ -139,7 +139,8 @@ Add the following lines to the file then save:
 
 ```bash
 [wsl2]
-memory=6GB
+memory=8GB
+swap=8GB
 ```
 
 You should change the value to how much memory you want to allocate to WSL.
