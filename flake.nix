@@ -92,6 +92,7 @@
         getopt
         gnumake
         ncurses
+        openssl
         openssl.dev
         pahole
         pkg-config
