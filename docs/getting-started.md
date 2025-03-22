@@ -144,6 +144,38 @@ memory=6GB
 
 You should change the value to how much memory you want to allocate to WSL.
 
+Another issue that may happen is bootstrap failure due to the missing
+`libLLVM-19-rex.so`:
+
+```console
+  --- stderr
+  llvm-config: error: libLLVM-19-rex.so is missing
+  thread 'main' panicked at compiler/rustc_llvm/build.rs:264:16:
+  command did not execute successfully: "/home/chin39/Documents/rex-kernel/build/rust-build/x86_64-unknown-linux-gnu/llvm/bin/llvm-config" "--link-shared" "--libs" "--system-libs" "asmparser" "bitreader" "bitwriter" "coverage" "instrumentation" "ipo" "linker" "lto" "x86"
+  expected success, got: exit status: 1
+  stack backtrace:
+     0: rust_begin_unwind
+               at /rustc/9fc6b43126469e3858e2fe86cafb4f0fd5068869/library/std/src/panicking.rs:665:5
+     1: core::panicking::panic_fmt
+               at /rustc/9fc6b43126469e3858e2fe86cafb4f0fd5068869/library/core/src/panicking.rs:76:14
+     2: build_script_build::output
+     3: build_script_build::main
+     4: core::ops::function::FnOnce::call_once
+  note: Some details are omitted, run with `RUST_BACKTRACE=full` for a verbose backtrace.
+Build completed unsuccessfully in 0:00:12
+FAILED: cargo rustc
+env 'RUSTFLAGS=-Z threads=8 -C target-cpu=native -C codegen-units=1 -C link-arg=-fuse-ld=mold -C link-arg=-Wl,-O1 -C link-arg=-Wl,--as-needed -C link-arg=-flto=thin' /usr/bin/python3 ../rust/x.py install --config=../rust/rex-config.toml --build-dir=./rust-build --set install.prefix=./rust-dist
+ninja: build stopped: subcommand failed.
+```
+
+Notably this may happen as a result of [`ba85ec815c2f ("rust: enable more
+optimizations and features in bootstrap
+config")`](https://github.com/rex-rs/rex/commit/ba85ec815c2fc9721e3b466d1c296bd7dd79b1b3),
+as it changes the linkage of `libLLVM` from static to dynamic, but rust
+bootstrap process does not rebuild `libLLVM.so` following the change.
+The issue can be fixed by removing the build directory created by meson and
+starting a clean build.
+
 ### Building the Rex samples:
 
 There are some caveats before you run this step. By default the `ninja`
