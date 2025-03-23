@@ -14,7 +14,7 @@ on:
 jobs:
   build_and_test:
     if: github.repository == 'rex-rs/rex'
-    runs-on: [self-hosted, nix-runner]
+    runs-on: [self-hosted, nix]
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
