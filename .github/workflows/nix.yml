@@ -1,0 +1,40 @@
+name: Meson Build and Test via nix
+on:
+  push:
+    branches: [main, ci]
+    paths-ignore:
+      - docs/**
+      - tools/**
+  pull_request:
+    branches: [main]
+    paths-ignore:
+      - docs/**
+      - tools/**
+
+jobs:
+  build_and_test:
+    if: github.repository == 'rex-rs/rex'
+    runs-on: [self-hosted, nix-runner]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: true
+
+      - name: Cache Rex build directory
+        uses: actions/cache@v3
+        with:
+          path: build
+          key: ${{ runner.os }}-${{ runner.name }}-meson-${{ hashFiles('rex-native.ini', 'meson.build') }}
+
+      - name: Setup Rex build directory
+        run: meson setup --native-file rex-native.ini --reconfigure ./build
+        shell: nix develop -v -L .#rex --command bash -e {0}
+
+      - name: Compile Rex deps
+        shell: nix develop -v -L .#rex --command bash -e {0}
+        run: meson compile -C build build_deps
+
+      - name: Compile Rex samples
+        shell: nix develop -v -L .#rex --command bash -e {0}
+        run: meson compile -C build
