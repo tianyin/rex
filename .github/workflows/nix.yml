@@ -21,12 +21,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Cache Rex build directory
-        uses: actions/cache@v3
-        with:
-          path: build
-          key: ${{ runner.os }}-${{ runner.name }}-meson-${{ hashFiles('rex-native.ini', 'meson.build') }}
-
       - name: Setup Rex build directory
         run: meson setup --native-file rex-native.ini --reconfigure ./build
         shell: nix develop -v -L .#rex --command bash -e {0}
