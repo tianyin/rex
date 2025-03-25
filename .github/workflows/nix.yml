@@ -19,7 +19,7 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          submodules: true
+          submodules: recursive
 
       - name: Cache Rex build directory
         uses: actions/cache@v3
@@ -32,9 +32,9 @@ jobs:
         shell: nix develop -v -L .#rex --command bash -e {0}
 
       - name: Compile Rex deps
-        shell: nix develop -v -L .#rex --command bash -e {0}
         run: meson compile -C build build_deps
+        shell: nix develop -v -L .#rex --command bash -e {0}
 
       - name: Compile Rex samples
-        shell: nix develop -v -L .#rex --command bash -e {0}
         run: meson compile -C build
+        shell: nix develop -v -L .#rex --command bash -e {0}
