@@ -166,5 +166,5 @@ The full implementation of BMC in Rex can be found at
 
 Rex is licensed under the GPLv2 license. The submodules (Linux, Rust, LLVM)
 in this repo are licensed under their own terms. Please see the
-corresponding license file in for more details. Additionally, the memcached
+corresponding license files for more details. Additionally, the memcached
 benchmark is licensed under the MIT license.
