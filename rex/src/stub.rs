@@ -2,7 +2,7 @@
 use core::ffi::{c_char, c_uchar, VaList};
 
 use crate::bindings::linux::kernel::{
-    bpf_perf_event_data_kern, pcpu_hot, sk_buff, xdp_buff,
+    bpf_perf_event_data_kern, pcpu_hot, sk_buff, xdp_buff, MAX_BPRINTF_BUF,
 };
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
 use crate::panic::{CleanupEntry, ENTRIES_SIZE};
@@ -180,6 +180,9 @@ unsafe extern "C" {
 
     /// u64 bpf_ringbuf_query(void *ringbuf, u64 flags)
     pub(crate) fn bpf_ringbuf_query(ringbuf: *mut (), flags: u64) -> u64;
+
+    /// void rex_trace_printk(void)
+    pub(crate) fn rex_trace_printk();
 }
 
 /// Global variables
@@ -229,4 +232,7 @@ unsafe extern "C" {
     ///
     /// Offset on the current
     pub(crate) static this_cpu_off: u64;
+
+    /// DEFINE_PER_CPU(char[MAX_BPRINTF_BUF], rex_log_buf) = { 0 };
+    pub(crate) static mut rex_log_buf: [u8; MAX_BPRINTF_BUF as usize];
 }
