@@ -103,7 +103,7 @@ unsafe extern "C" {
     /// `__nocfi noinline void notrace __noreturn rex_landingpad(char *msg)`
     ///
     /// The in-kernel panic landingpad for panic recovery
-    pub(crate) fn rex_landingpad(msg: *const u8) -> !;
+    pub(crate) fn rex_landingpad() -> !;
 
     /// `long bpf_spin_lock(struct bpf_spin_lock *lock)`
     pub(crate) fn bpf_spin_lock(lock: *mut bpf_spin_lock) -> i64;
