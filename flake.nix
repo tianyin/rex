@@ -88,6 +88,7 @@
         fakeroot
         findutils
         flex
+        git
         gcc
         getopt
         gnumake
