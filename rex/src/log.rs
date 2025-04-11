@@ -19,6 +19,13 @@ impl LogBuf {
         };
         Self { buf, off: 0 }
     }
+
+    /// Reset the offset of the buffer, i.e. discarding all contents not yet
+    /// sent to the kernel
+    #[inline(always)]
+    pub(crate) fn reset(&mut self) {
+        self.off = 0;
+    }
 }
 
 impl Write for LogBuf {

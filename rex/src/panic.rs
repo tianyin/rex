@@ -176,7 +176,9 @@ fn panic(info: &PanicInfo) -> ! {
 
     let mut buf = LogBuf::new();
     if write!(&mut buf, "{}", info).is_err() {
-        write!(&mut buf, "unknown rust panic");
+        buf.reset();
+        // This string always fits in the buffer, so we ignore the Result
+        write!(&mut buf, "unknown rust panic").ok();
     }
 
     unsafe { ffi::rex_landingpad() }
