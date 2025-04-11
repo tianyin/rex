@@ -95,7 +95,7 @@ macro_rules! impl_pcpu_read_ptr {
 
 impl_pcpu_read_integral!(u64 i64 u32 i32 u16 i16);
 impl_pcpu_read_byte!(u8 i8);
-/// Mut: we have the CPU and assume no nesting
+// Mut: we have the CPU and assume no nesting
 impl_pcpu_read_ptr!(const mut);
 
 /// For values of per-cpu variables

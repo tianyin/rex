@@ -1,4 +1,4 @@
-/// All kernel symbols we need should be declared here
+// All kernel symbols we need should be declared here
 use core::ffi::{c_uchar, VaList};
 
 use crate::bindings::linux::kernel::{
@@ -7,7 +7,7 @@ use crate::bindings::linux::kernel::{
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
 use crate::panic::{CleanupEntry, ENTRIES_SIZE};
 
-/// Functions
+// Functions
 unsafe extern "C" {
     /// `void *bpf_map_lookup_elem(struct bpf_map *map, const void *key)`
     ///
@@ -174,7 +174,7 @@ unsafe extern "C" {
     pub(crate) fn rex_trace_printk();
 }
 
-/// Global variables
+// Global variables
 unsafe extern "C" {
     /// `extern unsigned long volatile __cacheline_aligned_in_smp
     /// __jiffy_arch_data jiffies;`
