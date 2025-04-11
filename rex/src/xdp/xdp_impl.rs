@@ -1,4 +1,4 @@
-use crate::stub;
+use crate::ffi;
 
 use crate::base_helper::termination_check;
 pub use crate::bindings::linux::kernel::{
@@ -174,14 +174,14 @@ impl xdp {
 
     // FIX: update based on xdp_md to convert to xdp_buff
     // pub fn bpf_xdp_adjust_head(&self, xdp: &mut xdp_buff, offset: i32) -> i32
-    // {     unsafe { stub::bpf_xdp_adjust_head(xdp, offset) }
+    // {     unsafe { ffi::bpf_xdp_adjust_head(xdp, offset) }
     // }
 
     // WARN: this function is unsafe
     #[inline(always)]
     pub fn bpf_xdp_adjust_tail(&self, ctx: &mut xdp_md, offset: i32) -> Result {
         let ret = termination_check!(unsafe {
-            stub::bpf_xdp_adjust_tail(ctx.kptr, offset)
+            ffi::bpf_xdp_adjust_tail(ctx.kptr, offset)
         });
         if ret != 0 {
             return Err(ret);

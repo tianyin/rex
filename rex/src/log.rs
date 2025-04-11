@@ -1,8 +1,8 @@
 use core::fmt::{self, Write};
 
 use crate::bindings::uapi::linux::errno::E2BIG;
+use crate::ffi;
 use crate::per_cpu::this_cpu_ptr_mut;
-use crate::stub;
 
 /// An abstraction over the in-kernel per-cpu log buffer
 /// This struct implements [`Write`], and therefore can be used for formatting
@@ -15,7 +15,7 @@ impl LogBuf {
     /// Construct a new `LogBuf` from the kernel log buffer on the current CPU
     pub(crate) fn new() -> Self {
         let buf = unsafe {
-            &mut *this_cpu_ptr_mut(&raw mut stub::rex_log_buf).as_mut_slice()
+            &mut *this_cpu_ptr_mut(&raw mut ffi::rex_log_buf).as_mut_slice()
         };
         Self { buf, off: 0 }
     }
@@ -50,7 +50,7 @@ pub fn rex_trace_printk(args: fmt::Arguments<'_>) -> crate::Result {
     // Format and write message to the per-cpu buf, then print it out
     write!(&mut LogBuf::new(), "{}", args).map_err(|_| -(E2BIG as i32))?;
     unsafe {
-        stub::rex_trace_printk();
+        ffi::rex_trace_printk();
     }
 
     Ok(0)

@@ -1,9 +1,9 @@
+use crate::ffi;
 use crate::linux::bpf::bpf_map_type;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::per_cpu::{cpu_number, this_cpu_read};
 use crate::random32::bpf_user_rnd_u32;
-use crate::stub;
 use crate::utils::{to_result, NoRef, Result};
 use core::mem::MaybeUninit;
 // use crate::timekeeping::*;
@@ -16,7 +16,7 @@ macro_rules! termination_check {
         let termination_flag: *mut u8;
         unsafe {
             termination_flag = crate::per_cpu::this_cpu_ptr_mut(
-                &raw mut crate::stub::rex_termination_state,
+                &raw mut crate::ffi::rex_termination_state,
             );
 
             // Set the termination flag
@@ -58,7 +58,7 @@ where
     }
 
     let value = termination_check!(unsafe {
-        stub::bpf_map_lookup_elem(map_kptr, key as *const K as *const ())
+        ffi::bpf_map_lookup_elem(map_kptr, key as *const K as *const ())
             as *mut V
     });
 
@@ -84,7 +84,7 @@ where
     }
 
     termination_check!(unsafe {
-        to_result!(stub::bpf_map_update_elem(
+        to_result!(ffi::bpf_map_update_elem(
             map_kptr,
             key as *const K as *const (),
             value as *const V as *const (),
@@ -106,7 +106,7 @@ where
     }
 
     termination_check!(unsafe {
-        to_result!(stub::bpf_map_delete_elem(
+        to_result!(ffi::bpf_map_delete_elem(
             map_kptr,
             key as *const K as *const ()
         ) as i32)
@@ -127,7 +127,7 @@ where
     }
 
     termination_check!(unsafe {
-        to_result!(stub::bpf_map_push_elem(
+        to_result!(ffi::bpf_map_push_elem(
             map_kptr,
             value as *const V as *const (),
             flags
@@ -149,7 +149,7 @@ where
     let mut value: MaybeUninit<V> = MaybeUninit::uninit();
 
     let res = termination_check!(unsafe {
-        to_result!(stub::bpf_map_pop_elem(
+        to_result!(ffi::bpf_map_pop_elem(
             map_kptr,
             value.as_mut_ptr() as *mut ()
         ) as i32)
@@ -171,7 +171,7 @@ where
     let mut value: MaybeUninit<V> = MaybeUninit::uninit();
 
     let res = termination_check!(unsafe {
-        to_result!(stub::bpf_map_peek_elem(
+        to_result!(ffi::bpf_map_peek_elem(
             map_kptr,
             value.as_mut_ptr() as *mut ()
         ) as i32)
@@ -192,7 +192,7 @@ where
 //     }
 
 //     unsafe {
-//         to_result!(stub::bpf_for_each_map_elem(map_kptr, callback_fn as
+//         to_result!(ffi::bpf_for_each_map_elem(map_kptr, callback_fn as
 // *const (), callback_ctx as *const C as *const (), flags) as i32)     }
 // }
 
@@ -207,7 +207,7 @@ where
     T: Copy + NoRef,
 {
     termination_check!(unsafe {
-        to_result!(stub::bpf_probe_read_kernel(
+        to_result!(ffi::bpf_probe_read_kernel(
             dst as *mut T as *mut (),
             core::mem::size_of::<T>() as u32,
             unsafe_ptr,
@@ -216,36 +216,36 @@ where
 }
 
 pub(crate) fn bpf_jiffies64() -> u64 {
-    unsafe { core::ptr::read_volatile(&stub::jiffies) }
+    unsafe { core::ptr::read_volatile(&ffi::jiffies) }
 }
 
 /// Assumes `CONFIG_USE_PERCPU_NUMA_NODE_ID`
 pub(crate) fn bpf_get_numa_node_id() -> i32 {
-    unsafe { this_cpu_read(&raw const stub::numa_node) }
+    unsafe { this_cpu_read(&raw const ffi::numa_node) }
 }
 
 // This two functions call the original helper directly, so that confirm the
 // return value is correct
 /*
 pub(crate) fn bpf_ktime_get_ns_origin() -> u64 {
-    unsafe { stub::ktime_get_mono_fast_ns() }
+    unsafe { ffi::ktime_get_mono_fast_ns() }
 }
 
 pub(crate) fn bpf_ktime_get_boot_ns_origin() -> u64 {
-    unsafe { stub::ktime_get_boot_fast_ns() }
+    unsafe { ffi::ktime_get_boot_fast_ns() }
 }
 */
 
 pub(crate) fn bpf_ktime_get_ns() -> u64 {
-    termination_check!(unsafe { stub::bpf_ktime_get_ns() })
+    termination_check!(unsafe { ffi::bpf_ktime_get_ns() })
 }
 
 pub(crate) fn bpf_ktime_get_boot_ns() -> u64 {
-    termination_check!(unsafe { stub::bpf_ktime_get_boot_ns() })
+    termination_check!(unsafe { ffi::bpf_ktime_get_boot_ns() })
 }
 
 pub(crate) fn bpf_ktime_get_coarse_ns() -> u64 {
-    termination_check!(unsafe { stub::bpf_ktime_get_coarse_ns() })
+    termination_check!(unsafe { ffi::bpf_ktime_get_coarse_ns() })
 }
 
 /*
@@ -273,7 +273,7 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
     data: &[u64; M],
 ) -> Result {
     termination_check!(unsafe {
-        to_result!(stub::bpf_snprintf(
+        to_result!(ffi::bpf_snprintf(
             str.as_mut_ptr(),
             N as u32,
             fmt.as_ptr(),
@@ -294,7 +294,7 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
 //     }
 //
 //     let data = termination_check!(unsafe {
-//         stub::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0)
+//         ffi::bpf_ringbuf_reserve(map_kptr, mem::size_of::<T>() as u64, 0)
 //     });
 //
 //     data as *mut T
@@ -303,14 +303,14 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
 // pub(crate) fn bpf_ringbuf_submit<T>(data: &mut T, flags: u64) {
 //     compile_error!("Not finished");
 //     termination_check!(unsafe {
-//         stub::bpf_ringbuf_submit(data as *mut T as *mut (), flags)
+//         ffi::bpf_ringbuf_submit(data as *mut T as *mut (), flags)
 //     })
 // }
 
 // pub(crate) fn bpf_ringbuf_discard<T>(data: &mut T, flags: u64) {
 //     compile_error!("Not finished");
 //     termination_check!(unsafe {
-//         stub::bpf_ringbuf_discard(data as *mut T as *mut (), flags)
+//         ffi::bpf_ringbuf_discard(data as *mut T as *mut (), flags)
 //     })
 // }
 
@@ -323,7 +323,7 @@ pub(crate) fn bpf_snprintf<const N: usize, const M: usize>(
 //         return None;
 //     }
 //     Some(termination_check!(unsafe {
-//         stub::bpf_ringbuf_query(map_kptr, flags)
+//         ffi::bpf_ringbuf_query(map_kptr, flags)
 //     }))
 // }
 

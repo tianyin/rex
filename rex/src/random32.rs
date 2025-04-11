@@ -1,5 +1,5 @@
 use crate::bindings::linux::kernel::rnd_state;
-use crate::stub;
+use crate::ffi;
 
 macro_rules! TAUSWORTHE {
     ($s: expr, $a: expr, $b: expr, $c: expr, $d: expr) => {
@@ -20,5 +20,5 @@ pub(crate) fn prandom_u32_state(state: &mut rnd_state) -> u32 {
 #[inline(always)]
 pub(crate) fn bpf_user_rnd_u32() -> u32 {
     // directly use get_random_u32
-    unsafe { stub::get_random_u32() }
+    unsafe { ffi::get_random_u32() }
 }

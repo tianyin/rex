@@ -5,11 +5,11 @@ use crate::bindings::uapi::linux::bpf::{
 };
 
 use crate::base_helper::termination_check;
+use crate::ffi;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::prog_type::rex_prog;
 use crate::pt_regs::PtRegs;
-use crate::stub;
 use crate::task_struct::TaskStruct;
 use crate::utils::{to_result, NoRef, Result};
 
@@ -81,7 +81,7 @@ impl perf_event {
             as *const bpf_perf_event_data_kern;
 
         termination_check!(unsafe {
-            to_result!(stub::bpf_perf_prog_read_value(ctx_kptr, buf, size))
+            to_result!(ffi::bpf_perf_prog_read_value(ctx_kptr, buf, size))
         })
     }
 
@@ -103,7 +103,7 @@ impl perf_event {
             as *const bpf_perf_event_data_kern;
 
         termination_check!(unsafe {
-            to_result!(stub::bpf_get_stackid_pe(ctx_kptr, map_kptr, flags))
+            to_result!(ffi::bpf_get_stackid_pe(ctx_kptr, map_kptr, flags))
         })
     }
 

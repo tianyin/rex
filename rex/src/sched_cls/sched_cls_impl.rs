@@ -1,4 +1,4 @@
-use crate::stub;
+use crate::ffi;
 
 use crate::bindings::linux::kernel::{
     ethhdr, iphdr, sk_buff, sock, tcphdr, udphdr,
@@ -252,7 +252,7 @@ impl sched_cls {
         flags: u64,
     ) -> Result {
         let ret = termination_check!(unsafe {
-            stub::bpf_clone_redirect(skb.kptr, ifindex, flags)
+            ffi::bpf_clone_redirect(skb.kptr, ifindex, flags)
         });
 
         if ret != 0 {

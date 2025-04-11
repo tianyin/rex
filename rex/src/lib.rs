@@ -23,11 +23,11 @@ pub mod xdp;
 mod base_helper;
 mod bindings;
 mod debug;
+mod ffi;
 mod log;
 mod panic;
 mod per_cpu;
 mod random32;
-mod stub;
 
 extern crate paste;
 
