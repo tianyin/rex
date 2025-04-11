@@ -6,9 +6,7 @@
     core_intrinsics,
     negative_impls
 )]
-#![allow(
-    internal_features
-)]
+#![allow(internal_features)]
 
 pub mod kprobe;
 pub mod map;
@@ -34,7 +32,6 @@ mod stub;
 extern crate paste;
 
 use crate::prog_type::rex_prog;
-use core::panic::PanicInfo;
 pub use rex_macros::*;
 
 use paste::paste;

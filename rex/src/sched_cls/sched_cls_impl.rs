@@ -1,8 +1,7 @@
-use crate::debug::printk;
 use crate::stub;
 
 use crate::bindings::linux::kernel::{
-    ethhdr, iphdr, net_device, sk_buff, sock, tcphdr, udphdr,
+    ethhdr, iphdr, sk_buff, sock, tcphdr, udphdr,
 };
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
 pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
@@ -13,8 +12,7 @@ use crate::prog_type::rex_prog;
 use crate::utils::*;
 
 use crate::base_helper::termination_check;
-use crate::map::*;
-use core::ffi::{c_char, c_uchar, c_uint, c_void};
+use core::ffi::{c_char, c_uchar};
 use core::{mem, slice};
 
 pub struct __sk_buff<'a> {
@@ -105,28 +103,26 @@ impl<'a> __sk_buff<'a> {
     // TODO: may need to update based on __sk_buff
     pub fn vlan_tci(&self) -> u16 {
         unsafe {
-            (self
-                .kptr
+            self.kptr
                 .__bindgen_anon_4
                 .__bindgen_anon_1
                 .as_ref()
                 .__bindgen_anon_2
                 .__bindgen_anon_1
-                .vlan_tci)
+                .vlan_tci
         }
     }
 
     #[inline(always)]
     pub fn vlan_proto(&self) -> u16be {
         u16be(unsafe {
-            (self
-                .kptr
+            self.kptr
                 .__bindgen_anon_4
                 .__bindgen_anon_1
                 .as_ref()
                 .__bindgen_anon_2
                 .__bindgen_anon_1
-                .vlan_proto)
+                .vlan_proto
         })
     }
 

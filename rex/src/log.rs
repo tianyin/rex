@@ -1,5 +1,4 @@
-use core::fmt::{self, Arguments, Write};
-use core::mem;
+use core::fmt::{self, Write};
 
 use crate::bindings::uapi::linux::errno::E2BIG;
 use crate::per_cpu::this_cpu_ptr_mut;
@@ -66,4 +65,3 @@ macro_rules! rex_printk {
         $crate::rex_trace_printk(format_args!($($arg)*))
     }};
 }
-pub use rex_printk;

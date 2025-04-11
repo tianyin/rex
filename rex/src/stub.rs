@@ -1,5 +1,5 @@
 /// All kernel symbols we need should be declared here
-use core::ffi::{c_char, c_uchar, VaList};
+use core::ffi::{c_uchar, VaList};
 
 use crate::bindings::linux::kernel::{
     bpf_perf_event_data_kern, pcpu_hot, sk_buff, xdp_buff, MAX_BPRINTF_BUF,

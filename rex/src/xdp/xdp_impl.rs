@@ -1,16 +1,13 @@
 use crate::stub;
 
 use crate::base_helper::termination_check;
-use crate::bindings::linux::kernel::iphdr__bindgen_ty_1__bindgen_ty_1;
 pub use crate::bindings::linux::kernel::{
     ethhdr, iphdr, tcphdr, udphdr, xdp_buff,
 };
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
-use crate::debug::printk;
-use crate::map::*;
 use crate::prog_type::rex_prog;
 use crate::utils::*;
-use core::ffi::{c_uchar, c_uint, c_void};
+use core::ffi::c_uchar;
 use core::{mem, mem::size_of, slice};
 
 // expose the following constants to the user
@@ -33,7 +30,7 @@ impl iphdr {
 #[inline(always)]
 pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
     let mut sum: u32 = 0;
-    let mut checksum: u16 = 0;
+    let checksum: u16 = 0;
     ip_header.check = 0;
 
     let count = size_of::<iphdr>() >> 1;

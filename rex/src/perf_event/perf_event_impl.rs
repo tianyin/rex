@@ -1,13 +1,10 @@
-use crate::bindings::linux::kernel::{
-    bpf_perf_event_data_kern, perf_sample_data,
-};
+use crate::bindings::linux::kernel::bpf_perf_event_data_kern;
 
 use crate::bindings::uapi::linux::bpf::{
-    bpf_map_type, bpf_perf_event_value, BPF_MAP_TYPE_STACK_TRACE,
-    BPF_PROG_TYPE_PERF_EVENT,
+    bpf_map_type, bpf_perf_event_value, BPF_PROG_TYPE_PERF_EVENT,
 };
 
-use crate::base_helper::{base_helper_defs, termination_check};
+use crate::base_helper::termination_check;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
 use crate::prog_type::rex_prog;
@@ -17,7 +14,6 @@ use crate::task_struct::TaskStruct;
 use crate::utils::{to_result, NoRef, Result};
 
 use core::intrinsics::unlikely;
-use paste::paste;
 
 #[repr(transparent)]
 pub struct bpf_perf_event_data {
@@ -118,7 +114,7 @@ impl perf_event {
 
 impl rex_prog for perf_event {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
-        let mut newctx = self.convert_ctx(ctx);
+        let newctx = self.convert_ctx(ctx);
         ((self.prog)(self, newctx)).unwrap_or_else(|e| e) as u32
     }
 }

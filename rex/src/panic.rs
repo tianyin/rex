@@ -113,14 +113,14 @@ impl<'a> CleanupEntries<'a> {
     /// This function is called by the object drop handler. It invalidates the
     /// entry corresponding to the object.
     pub(crate) fn deregister_cleanup(idx: usize) {
-        let mut entries = Self::this_cpu_cleanup_entries();
+        let entries = Self::this_cpu_cleanup_entries();
         entries.entries[idx].valid = 0;
     }
 
     /// This function is called on panic to cleanup everything on the current
     /// CPU. It **must** not cause another panic
     pub(crate) unsafe fn cleanup_all() {
-        let mut entries = Self::this_cpu_cleanup_entries();
+        let entries = Self::this_cpu_cleanup_entries();
         for entry in entries.entries.iter_mut() {
             unsafe {
                 entry.cleanup();

@@ -1,15 +1,11 @@
-use crate::bindings::uapi::linux::bpf::bpf_spin_lock;
-use crate::debug::printk;
 use crate::linux::bpf::bpf_map_type;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
-use crate::panic::__rex_handle_timeout;
 use crate::per_cpu::{cpu_number, this_cpu_read};
 use crate::random32::bpf_user_rnd_u32;
 use crate::stub;
 use crate::utils::{to_result, NoRef, Result};
-use core::ffi::CStr;
-use core::mem::{self, MaybeUninit};
+use core::mem::MaybeUninit;
 // use crate::timekeeping::*;
 
 use core::intrinsics::unlikely;
@@ -17,7 +13,7 @@ use core::intrinsics::unlikely;
 macro_rules! termination_check {
     ($func:expr) => {{
         // Declare and initialize the termination flag pointer
-        let mut termination_flag: *mut u8;
+        let termination_flag: *mut u8;
         unsafe {
             termination_flag = crate::per_cpu::this_cpu_ptr_mut(
                 &raw mut crate::stub::rex_termination_state,

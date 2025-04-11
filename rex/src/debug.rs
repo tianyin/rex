@@ -1,7 +1,6 @@
-use core::any::Any;
-use core::ffi::{c_uchar, VaList};
+use core::ffi::c_uchar;
 
-use core::ffi::{c_char, c_int, CStr};
+use core::ffi::c_int;
 
 use crate::stub;
 
