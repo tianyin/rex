@@ -1,4 +1,7 @@
 // All kernel symbols we need should be declared here
+
+#![allow(dead_code)]
+
 use core::ffi::{c_uchar, VaList};
 
 use crate::bindings::linux::kernel::{
