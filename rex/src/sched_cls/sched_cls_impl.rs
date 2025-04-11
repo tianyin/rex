@@ -278,8 +278,6 @@ impl sched_cls {
     fn convert_ctx(&self, ctx: *mut ()) -> __sk_buff {
         let kptr = unsafe { &mut *(ctx as *mut sk_buff) };
 
-        let data = kptr.data as u32;
-
         // NOTE: not support jumobo frame yet with non-linear sk_buff
         let data_length = (kptr.len - kptr.data_len) as usize;
 

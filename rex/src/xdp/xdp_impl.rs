@@ -30,7 +30,6 @@ impl iphdr {
 #[inline(always)]
 pub fn compute_ip_checksum(ip_header: &mut iphdr) -> u16 {
     let mut sum: u32 = 0;
-    let checksum: u16 = 0;
     ip_header.check = 0;
 
     let count = size_of::<iphdr>() >> 1;
