@@ -203,11 +203,9 @@ impl sched_cls {
         &self,
         skb: &'b mut __sk_buff,
     ) -> AlignedMut<'b, ethhdr> {
-        unsafe {
-            convert_slice_to_struct_mut::<ethhdr>(
-                &mut skb.data_slice[0..mem::size_of::<ethhdr>()],
-            )
-        }
+        convert_slice_to_struct_mut::<ethhdr>(
+            &mut skb.data_slice[0..mem::size_of::<ethhdr>()],
+        )
     }
 
     #[inline(always)]
@@ -219,11 +217,7 @@ impl sched_cls {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<udphdr>() + begin;
 
-        unsafe {
-            convert_slice_to_struct_mut::<udphdr>(
-                &mut skb.data_slice[begin..end],
-            )
-        }
+        convert_slice_to_struct_mut::<udphdr>(&mut skb.data_slice[begin..end])
     }
 
     #[inline(always)]
@@ -235,11 +229,7 @@ impl sched_cls {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<tcphdr>() + begin;
 
-        unsafe {
-            convert_slice_to_struct_mut::<tcphdr>(
-                &mut skb.data_slice[begin..end],
-            )
-        }
+        convert_slice_to_struct_mut::<tcphdr>(&mut skb.data_slice[begin..end])
     }
 
     #[inline(always)]
@@ -251,11 +241,7 @@ impl sched_cls {
         let begin = mem::size_of::<ethhdr>();
         let end = mem::size_of::<iphdr>() + begin;
 
-        unsafe {
-            convert_slice_to_struct_mut::<iphdr>(
-                &mut skb.data_slice[begin..end],
-            )
-        }
+        convert_slice_to_struct_mut::<iphdr>(&mut skb.data_slice[begin..end])
     }
 
     #[inline(always)]

@@ -139,11 +139,7 @@ impl xdp {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<tcphdr>() + begin;
 
-        unsafe {
-            convert_slice_to_struct_mut::<tcphdr>(
-                &mut ctx.data_slice[begin..end],
-            )
-        }
+        convert_slice_to_struct_mut::<tcphdr>(&mut ctx.data_slice[begin..end])
     }
 
     #[inline(always)]
@@ -155,11 +151,7 @@ impl xdp {
         let begin = mem::size_of::<ethhdr>() + mem::size_of::<iphdr>();
         let end = mem::size_of::<udphdr>() + begin;
 
-        unsafe {
-            convert_slice_to_struct_mut::<udphdr>(
-                &mut ctx.data_slice[begin..end],
-            )
-        }
+        convert_slice_to_struct_mut::<udphdr>(&mut ctx.data_slice[begin..end])
     }
 
     #[inline(always)]
@@ -168,11 +160,7 @@ impl xdp {
         let begin = mem::size_of::<ethhdr>();
         let end = mem::size_of::<iphdr>() + begin;
 
-        unsafe {
-            convert_slice_to_struct_mut::<iphdr>(
-                &mut ctx.data_slice[begin..end],
-            )
-        }
+        convert_slice_to_struct_mut::<iphdr>(&mut ctx.data_slice[begin..end])
     }
 
     #[inline(always)]
@@ -180,11 +168,9 @@ impl xdp {
         &self,
         ctx: &'b mut xdp_md,
     ) -> AlignedMut<'b, ethhdr> {
-        unsafe {
-            convert_slice_to_struct_mut::<ethhdr>(
-                &mut ctx.data_slice[0..mem::size_of::<ethhdr>()],
-            )
-        }
+        convert_slice_to_struct_mut::<ethhdr>(
+            &mut ctx.data_slice[0..mem::size_of::<ethhdr>()],
+        )
     }
 
     // FIX: update based on xdp_md to convert to xdp_buff

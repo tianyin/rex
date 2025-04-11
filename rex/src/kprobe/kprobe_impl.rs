@@ -49,7 +49,7 @@ impl kprobe {
     #[cfg(CONFIG_BPF_KPROBE_OVERRIDE = "y")]
     pub fn bpf_override_return(&self, regs: &mut PtRegs, rc: u64) -> i32 {
         regs.regs.ax = rc;
-        regs.regs.ip = unsafe { stub::just_return_func as *const () as u64 };
+        regs.regs.ip = stub::just_return_func as *const () as u64;
         0
     }
 
