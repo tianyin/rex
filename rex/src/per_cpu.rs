@@ -106,6 +106,7 @@ pub(crate) unsafe fn this_cpu_read<T: PerCPURead>(pcp_addr: *const T) -> T {
 
 /// For addresses of per-cpu variables
 /// This is more expensive (in terms of # of insns)
+#[allow(dead_code)]
 #[inline(always)]
 pub unsafe fn this_cpu_ptr<T>(pcp_addr: *const T) -> *const T {
     unsafe {
@@ -113,6 +114,7 @@ pub unsafe fn this_cpu_ptr<T>(pcp_addr: *const T) -> *const T {
     }
 }
 
+#[inline(always)]
 pub unsafe fn this_cpu_ptr_mut<T>(pcp_addr: *mut T) -> *mut T {
     unsafe {
         pcp_addr.byte_add(this_cpu_read(&raw const ffi::this_cpu_off) as usize)
