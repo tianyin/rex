@@ -1,7 +1,6 @@
 use crate::bindings::uapi::linux::bpf::{
     bpf_map_type, BPF_PROG_TYPE_TRACEPOINT,
 };
-use crate::map::*;
 use crate::prog_type::rex_prog;
 use crate::task_struct::TaskStruct;
 use crate::Result;
