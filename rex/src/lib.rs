@@ -6,7 +6,7 @@
     core_intrinsics,
     negative_impls
 )]
-#![allow(internal_features)]
+#![allow(non_camel_case_types, internal_features)]
 
 pub mod kprobe;
 pub mod map;
