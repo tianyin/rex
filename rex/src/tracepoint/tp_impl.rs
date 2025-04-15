@@ -8,14 +8,14 @@ use crate::Result;
 use super::binding::*;
 
 pub enum tp_type {
-    Void,
     SyscallsEnterOpen,
     SyscallsExitOpen,
+    SyscallsEnterDup,
 }
 pub enum tp_ctx {
-    Void,
     SyscallsEnterOpen(&'static SyscallsEnterOpenArgs),
     SyscallsExitOpen(&'static SyscallsExitOpenArgs),
+    SyscallsEnterDup(&'static SyscallsEnterDupArgs),
 }
 
 /// First 3 fields should always be rtti, prog_fn, and name
@@ -53,12 +53,14 @@ impl tracepoint {
 
     fn convert_ctx(&self, ctx: *mut ()) -> tp_ctx {
         match self.tp_type {
-            tp_type::Void => tp_ctx::Void,
             tp_type::SyscallsEnterOpen => tp_ctx::SyscallsEnterOpen(unsafe {
                 &*(ctx as *mut SyscallsEnterOpenArgs)
             }),
             tp_type::SyscallsExitOpen => tp_ctx::SyscallsExitOpen(unsafe {
                 &*(ctx as *mut SyscallsExitOpenArgs)
+            }),
+            tp_type::SyscallsEnterDup => tp_ctx::SyscallsEnterDup(unsafe {
+                &*(ctx as *mut &SyscallsEnterDupArgs)
             }),
         }
     }
