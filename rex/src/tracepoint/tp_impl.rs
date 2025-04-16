@@ -7,17 +7,6 @@ use crate::Result;
 
 use super::binding::*;
 
-pub enum tp_type {
-    Void,
-    SyscallsEnterOpen,
-    SyscallsExitOpen,
-}
-pub enum tp_ctx {
-    Void,
-    SyscallsEnterOpen(&'static SyscallsEnterOpenArgs),
-    SyscallsExitOpen(&'static SyscallsExitOpenArgs),
-}
-
 /// First 3 fields should always be rtti, prog_fn, and name
 ///
 /// rtti should be u64, therefore after compiling the
@@ -30,36 +19,23 @@ pub enum tp_ctx {
 #[repr(C)]
 pub struct tracepoint {
     rtti: u64,
-    prog: fn(&Self, tp_ctx) -> Result,
+    prog: fn(&Self, *mut ()) -> Result,
     name: &'static str,
-    tp_type: tp_type,
 }
 
+// unlike other programs, we don't perform context conversion here
+// as it is handled by the [#rex_tracepoint] macro
 impl tracepoint {
     crate::base_helper::base_helper_defs!();
 
     pub const fn new(
-        f: fn(&tracepoint, tp_ctx) -> Result,
+        f: fn(&tracepoint, *mut ()) -> Result,
         nm: &'static str,
-        tp_ty: tp_type,
     ) -> tracepoint {
         Self {
             rtti: BPF_PROG_TYPE_TRACEPOINT as u64,
             prog: f,
             name: nm,
-            tp_type: tp_ty,
-        }
-    }
-
-    fn convert_ctx(&self, ctx: *mut ()) -> tp_ctx {
-        match self.tp_type {
-            tp_type::Void => tp_ctx::Void,
-            tp_type::SyscallsEnterOpen => tp_ctx::SyscallsEnterOpen(unsafe {
-                &*(ctx as *mut SyscallsEnterOpenArgs)
-            }),
-            tp_type::SyscallsExitOpen => tp_ctx::SyscallsExitOpen(unsafe {
-                &*(ctx as *mut SyscallsExitOpenArgs)
-            }),
         }
     }
 
@@ -70,7 +46,6 @@ impl tracepoint {
 
 impl rex_prog for tracepoint {
     fn prog_run(&self, ctx: *mut ()) -> u32 {
-        let newctx = self.convert_ctx(ctx);
-        ((self.prog)(self, newctx)).unwrap_or_else(|e| e) as u32
+        ((self.prog)(self, ctx)).unwrap_or_else(|e| e) as u32
     }
 }
