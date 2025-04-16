@@ -34,8 +34,8 @@ impl TracePoint {
         if context_type_ref
             .lifetime
             .expect_or_abort("Context reference needs to be static")
-            .ident
-            != "static"
+            .ident !=
+            "static"
         {
             abort_call_site!("Context reference needs to be static");
         }
