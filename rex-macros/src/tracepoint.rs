@@ -1,12 +1,9 @@
 use proc_macro2::TokenStream;
 use proc_macro_error::{abort_call_site, OptionExt};
-use quote::{format_ident, quote};
-use syn::{parse2, FnArg, ItemFn, Result, Type};
-
-use crate::args::parse_string_args;
+use quote::{format_ident, quote, ToTokens};
+use syn::{parse2, FnArg, Ident, ItemFn, Result, Type};
 
 pub(crate) struct TracePoint {
-    name: Option<String>,
     item: ItemFn,
 }
 
@@ -15,21 +12,17 @@ pub(crate) struct TracePoint {
 impl TracePoint {
     // parse the argument of function
     pub(crate) fn parse(
-        attrs: TokenStream,
+        _attrs: TokenStream,
         item: TokenStream,
     ) -> Result<TracePoint> {
         let item: ItemFn = parse2(item)?;
-        let args = parse_string_args(attrs)?;
-
-        let name = pop_string_args!(args, "name");
-
-        Ok(TracePoint { name, item })
+        Ok(TracePoint { item })
     }
 
     pub(crate) fn expand(&self) -> Result<TokenStream> {
         let fn_name = self.item.sig.ident.clone();
 
-        // get context type and corresponding tp_type name
+        // get context type
         let FnArg::Typed(context_arg) =
             self.item.sig.inputs.last().unwrap().clone()
         else {
@@ -46,20 +39,18 @@ impl TracePoint {
         {
             abort_call_site!("Context reference needs to be static");
         }
-        let context_type = match *context_type_ref.elem {
+        let context_type = match *context_type_ref.elem.clone() {
             Type::Verbatim(t) => parse2(t).unwrap(),
             Type::Path(p) => p.path.segments.last().unwrap().clone().ident,
             _ => {
                 abort_call_site!("Tracepoint context needs to be a literal type or a path to such")
             }
         };
-        let context_type_name = format!("{}", context_type);
-        let ctx_variant = format_ident!(
-            "{}",
-            context_type_name
-                .strip_suffix("Args")
-                .expect_or_abort("Not valid context type")
-        );
+        let full_context_type: Ident = match *context_type_ref.elem {
+            Type::Verbatim(t) => parse2(t).unwrap(),
+            Type::Path(p) => parse2(p.to_token_stream()).unwrap(),
+            _ => unreachable!(),
+        };
 
         // other tracepoint pieces
         let item = &self.item;
@@ -67,19 +58,15 @@ impl TracePoint {
         let prog_ident =
             format_ident!("PROG_{}", fn_name.to_string().to_uppercase());
 
-        let attached_name = format!(
-            "rex/tracepoint/{}",
-            self.name.as_ref().expect_or_abort(
-                "Please provide valid tracepoint attached point"
-            )
-        );
-
-        let tp_type = match ctx_variant.to_string().as_str() {
-            "SyscallsEnterOpen" => quote!(tp_type::SyscallsEnterOpen),
-            "SyscallsExitOpen" => quote!(tp_type::SyscallsExitOpen),
-            "SyscallsEnterDup" => quote!(tp_type::SyscallsEnterDup),
-            _ => abort_call_site!("Please provide valid context type"),
+        let hook_point_name = match context_type.to_string().as_str() {
+            "SyscallsEnterOpenCtx" => "syscalls/sys_enter_open",
+            "SyscallsEnterOpenatCtx" => "syscalls/sys_enter_openat",
+            "SyscallsExitOpenCtx" => "syscalls/sys_exit_open",
+            "SyscallsExitOpenatCtx" => "syscalls/sys_exit_openat",
+            "SyscallsEnterDupCtx" => "syscalls/sys_enter_dup",
+            _ => abort_call_site!("Please provide a valid context type. If your needed context isn't supported consider opening a PR!"),
         };
+        let attached_name = format!("rex/tracepoint/{}", hook_point_name);
 
         let wrapper_name = format_ident!("{}_wrapper", fn_name);
 
@@ -88,17 +75,15 @@ impl TracePoint {
             #item
 
             #[inline(always)]
-            fn #wrapper_name(obj: &tracepoint, ctx_wrapper: tp_ctx) -> Result {
-                let tp_ctx::#ctx_variant(ctx) = ctx_wrapper else {
-                    return Err(0);
-                };
+            fn #wrapper_name(obj: &tracepoint, raw_ctx: *mut ()) -> Result {
+                let ctx = unsafe { &*(raw_ctx as *mut #full_context_type) };
                 #fn_name(obj, ctx)
             }
 
             #[used]
             #[unsafe(link_section = #attached_name)]
             static #prog_ident: tracepoint =
-                tracepoint::new(#wrapper_name, #function_name, #tp_type);
+                tracepoint::new(#wrapper_name, #function_name);
         };
 
         Ok(function_body_tokens)
