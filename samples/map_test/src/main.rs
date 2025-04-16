@@ -7,7 +7,7 @@ use rex::linux::bpf::BPF_ANY;
 use rex::map::*;
 use rex::rex_tracepoint;
 use rex::tracepoint::*;
-use rex::{rex_map, rex_printk, Result};
+use rex::{Result, rex_map, rex_printk};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);

@@ -3,10 +3,10 @@
 
 extern crate rex;
 
+use rex::Result;
 use rex::rex_printk;
 use rex::rex_tracepoint;
 use rex::tracepoint::*;
-use rex::Result;
 
 #[rex_tracepoint]
 fn rex_prog1(obj: &tracepoint, _: &'static SyscallsEnterDupCtx) -> Result {
