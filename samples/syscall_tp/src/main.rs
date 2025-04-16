@@ -29,34 +29,34 @@ fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
     Ok(0)
 }
 
-#[rex_tracepoint(name = "syscalls/sys_enter_open")]
+#[rex_tracepoint]
 fn trace_enter_open(
     obj: &tracepoint,
-    _: &'static SyscallsEnterOpenArgs,
+    _: &'static SyscallsEnterOpenCtx,
 ) -> Result {
     count(obj, &enter_open_map)
 }
 
-#[rex_tracepoint(name = "syscalls/sys_enter_openat")]
+#[rex_tracepoint]
 fn trace_enter_open_at(
     obj: &tracepoint,
-    _: &'static SyscallsEnterOpenArgs,
+    _: &'static SyscallsEnterOpenatCtx,
 ) -> Result {
     count(obj, &enter_open_map)
 }
 
-#[rex_tracepoint(name = "syscalls/sys_exit_open")]
+#[rex_tracepoint]
 fn trace_enter_exit(
     obj: &tracepoint,
-    _: &'static SyscallsExitOpenArgs,
+    _: &'static SyscallsExitOpenCtx,
 ) -> Result {
     count(obj, &exit_open_map)
 }
 
-#[rex_tracepoint(name = "syscalls/sys_exit_openat")]
+#[rex_tracepoint]
 fn trace_enter_exit_at(
     obj: &tracepoint,
-    _: &'static SyscallsExitOpenArgs,
+    _: &'static SyscallsExitOpenatCtx,
 ) -> Result {
     count(obj, &exit_open_map)
 }
