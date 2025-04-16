@@ -6,7 +6,7 @@ extern crate rex;
 use rex::map::*;
 use rex::rex_tracepoint;
 use rex::tracepoint::*;
-use rex::{Result, rex_map, rex_printk};
+use rex::{rex_map, rex_printk, Result};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
@@ -191,8 +191,8 @@ fn map_test_ringbuf(obj: &tracepoint) -> Result {
 }
 */
 
-#[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
-fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
+#[rex_tracepoint(name = "syscalls/sys_enter_dup")]
+fn rex_prog1(obj: &tracepoint, _: &'static SyscallsEnterDupArgs) -> Result {
     map_test_hash(obj)
         .or_else(|e| rex_printk!("map_test failed with {}.\n", e))?;
     map_test_array(obj)

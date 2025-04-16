@@ -6,7 +6,7 @@ extern crate rex;
 use rex::linux::bpf::bpf_spin_lock;
 use rex::map::RexArrayMap;
 use rex::spinlock::rex_spinlock_guard;
-use rex::{Result, rex_map};
+use rex::{rex_map, Result};
 use rex::{rex_tracepoint, tracepoint::*};
 
 #[repr(C)]
@@ -38,8 +38,8 @@ fn test2(obj: &tracepoint) {
     }
 }
 
-#[rex_tracepoint(name = "syscalls/sys_enter_dup", tp_type = "Void")]
-fn rex_prog1(obj: &tracepoint, _: tp_ctx) -> Result {
+#[rex_tracepoint(name = "syscalls/sys_enter_dup")]
+fn rex_prog1(obj: &tracepoint, _: &'static SyscallsEnterDupArgs) -> Result {
     test1(obj);
     test2(obj);
     Ok(0)
