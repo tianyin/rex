@@ -7,8 +7,7 @@ use rex::linux::bpf::*;
 use rex::linux::perf_event::PERF_MAX_STACK_DEPTH;
 use rex::map::*;
 use rex::perf_event::*;
-use rex::rex_printk;
-use rex::{Result, rex_map, rex_perf_event};
+use rex::{Result, rex_map, rex_perf_event, rex_printk};
 
 pub const TASK_COMM_LEN: usize = 16;
 
