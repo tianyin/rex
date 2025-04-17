@@ -5,8 +5,6 @@ use crate::prog_type::rex_prog;
 use crate::task_struct::TaskStruct;
 use crate::Result;
 
-use super::binding::*;
-
 /// First 3 fields should always be rtti, prog_fn, and name
 ///
 /// rtti should be u64, therefore after compiling the
