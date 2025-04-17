@@ -184,6 +184,32 @@ impl RexRingBuf {
         }
     }
 
+    /// Copies bytes from the `data` slice into the ring buffer.
+    ///
+    /// If [`crate::linux::bpf::BPF_RB_NO_WAKEUP`] is specified in `flags`,
+    /// no notification of new data availability is sent.
+    /// If [`crate::linux::bpf::BPF_RB_FORCE_WAKEUP`] is specified in `flags`,
+    /// notification of new data availability is sent unconditionally.
+    /// If `0` is specified in `flags`, an adaptive notification of new data
+    /// availability is sent.
+    ///
+    /// Returns a [`crate::Result`] on whether the operation is successful
+    pub fn output(&'static self, data: &[u8], flags: u64) -> crate::Result {
+        let map_kptr = unsafe { core::ptr::read_volatile(&self.kptr) };
+        if unlikely(map_kptr.is_null()) {
+            return Err(EINVAL as i32);
+        }
+
+        termination_check!(unsafe {
+            to_result!(ffi::bpf_ringbuf_output(
+                map_kptr,
+                data.as_ptr() as *const (),
+                data.len() as u64,
+                flags
+            ))
+        })
+    }
+
     /// Queries the amount of data not yet consumed.
     ///
     /// Returns `None` is `self` is not a valid ring buffer.
