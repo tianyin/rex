@@ -1,3 +1,7 @@
+// use crate::timekeeping::*;
+use core::intrinsics::unlikely;
+use core::mem::MaybeUninit;
+
 use crate::ffi;
 use crate::linux::bpf::bpf_map_type;
 use crate::linux::errno::EINVAL;
@@ -5,10 +9,6 @@ use crate::map::*;
 use crate::per_cpu::{cpu_number, this_cpu_read};
 use crate::random32::bpf_user_rnd_u32;
 use crate::utils::{to_result, NoRef, Result};
-use core::mem::MaybeUninit;
-// use crate::timekeeping::*;
-
-use core::intrinsics::unlikely;
 
 macro_rules! termination_check {
     ($func:expr) => {{
@@ -445,5 +445,4 @@ macro_rules! base_helper_defs {
     };
 }
 
-pub(crate) use base_helper_defs;
-pub(crate) use termination_check;
+pub(crate) use {base_helper_defs, termination_check};

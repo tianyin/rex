@@ -3,13 +3,12 @@
 
 extern crate rex;
 
+use core::mem;
+
 use rex::map::*;
-use rex::rex_tracepoint;
 use rex::tracepoint::*;
 use rex::utils::convert_slice_to_struct_mut;
-use rex::{Result, rex_map, rex_printk};
-
-use core::mem;
+use rex::{Result, rex_map, rex_printk, rex_tracepoint};
 
 #[rex_map]
 static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
