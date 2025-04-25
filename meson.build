@@ -27,8 +27,8 @@ add_project_link_arguments(
   [
     '-Wl,-O1',
     '-Wl,--gc-sections',
-    '-Wl,-znow',
-    '-Wl,-zrelro'
+    '-Wl,-z,now',
+    '-Wl,-z,relro'
   ],
   language: ['c', 'cpp']
 )
