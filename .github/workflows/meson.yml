@@ -7,22 +7,43 @@ concurrency:
 on:
   push:
     branches: [main, ci]
-    paths-ignore:
-      - docs/**
-      - tools/**
-      - flake.nix
-      - README.md
   pull_request:
     branches: [main]
-    paths-ignore:
-      - docs/**
-      - tools/**
-      - flake.nix
-      - README.md
+
+env:
+  CARGO_TERM_COLOR: always
 
 jobs:
-  build_and_test:
+  changes:
     if: github.repository == 'rex-rs/rex'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      meson: ${{ steps.filter.outputs.meson }}
+      nix: ${{ steps.filter.outputs.nix }}
+    steps:
+      # For pull requests it's not necessary to checkout the code
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            meson:
+              - '!docs/**'
+              - '!tools/**'
+              - '!flake.nix'
+              - '!README.md'
+              - '**'
+            nix:
+              - '!docs/**'
+              - '!tools/**'
+              - '!flake.nix'
+              - '**'
+
+  build_and_test:
+    needs: changes
+    if: ${{ needs.changes.outputs.meson == 'true' }}
     runs-on: [self-hosted, gentoo]
     steps:
       - name: Checkout repository
@@ -47,3 +68,25 @@ jobs:
 
       - name: Run Rex sanity tests
         run: meson test -C build
+
+  build_with_nix:
+    needs: changes
+    if: ${{ needs.changes.outputs.nix == 'true' }}
+    runs-on: [self-hosted, nix]
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup Rex build directory
+        run: meson setup --native-file rex-native.ini --reconfigure ./build
+        shell: nix develop -v -L .#rex --command bash -e {0}
+
+      - name: Compile Rex deps
+        run: meson compile -C build build_deps
+        shell: nix develop -v -L .#rex --command bash -e {0}
+
+      - name: Compile Rex samples
+        run: meson compile -C build
+        shell: nix develop -v -L .#rex --command bash -e {0}
