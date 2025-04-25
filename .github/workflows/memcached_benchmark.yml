@@ -1,22 +1,32 @@
 name: memcached_benchmark
 
 on:
-  merge_group:
   push:
-    branches: [main, ci]
-    paths:
-      - tools/memcached_benchmark/**
   pull_request:
-    branches: [main]
-    paths:
-      - tools/memcached_benchmark/**
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  build:
+  changes:
     if: github.repository == 'rex-rs/rex'
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: read
+    outputs:
+      bench: ${{ steps.filter.outputs.bench }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dorny/paths-filter@v3
+        id: filter
+        with:
+          filters: |
+            bench:
+              - 'tools/memcached_benchmark/**'
+
+  build:
+    needs: changes
+    if: ${{ needs.changes.outputs.bench == 'true' }}
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -24,6 +34,12 @@ jobs:
 
     steps:
       - uses: actions/checkout@v4
+      - id: filter
+        uses: dorny/paths-filter@v3
+        with:
+          filters: |
+            bench:
+              - 'tools/memcached_benchmark/**'
       - uses: cachix/install-nix-action@v26
       - uses: cachix/cachix-action@v14
         with:
