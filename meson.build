@@ -7,7 +7,7 @@ project('rex-compile',
     'b_lto=true',
     'b_lto_mode=thin',
     'b_pie=true',
-    'c_std=gnu17',
+    'c_std=gnu23',
     'cpp_std=c++23'
   ]
 )
