@@ -27,6 +27,16 @@ sample_clippy = custom_target(
   build_by_default: true
 )
 
+electrode_config = custom_target(
+  'config.txt',
+  input: 'config.txt',
+  output: ['config.txt'],
+  command: ['cp', '@INPUT@', '@OUTPUT@'],
+  env: env,
+  console: false,
+  build_by_default: true
+)
+
 sample_build = custom_target(
   'electrode-build',
   output: ['electrode'],
@@ -37,7 +47,7 @@ sample_build = custom_target(
     'rustc', '-qr', '--',
     '-Cenable_rex'
   ],
-  depends: sample_clippy,
+  depends: [sample_clippy, electrode_config],
   env: env,
   console: false,
   build_by_default: true
