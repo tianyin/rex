@@ -50,8 +50,8 @@ static int nr_cpus = 0;
 
 // define our eBPF program.
 static struct bpf_progs_desc progs[] = {
-	{ "fast_paxos", BPF_PROG_TYPE_XDP, 0, -1, NULL },
-	{ "FastBroadCast", BPF_PROG_TYPE_SCHED_CLS, 1, -1, NULL },
+	{ "fast_paxos_main", BPF_PROG_TYPE_XDP, 0, -1, NULL },
+	{ "fast_broad_cast_main", BPF_PROG_TYPE_SCHED_CLS, 1, -1, NULL },
 };
 
 static int libbpf_print_fn(enum libbpf_print_level level, const char *format,
@@ -69,7 +69,7 @@ static void read_config(void)
 		bpf_object__find_map_fd_by_name(obj, "map_configure");
 	if (map_configure_fd < 0) {
 		fprintf(stderr,
-			"Error: bpf_object__find_map_fd_by_name failed\n");
+			"Error: bpf_object__find_map_fd_by_name map_configure failed\n");
 		exit(1); // return 1;
 	}
 
@@ -124,21 +124,21 @@ static void create_object(void)
 		bpf_object__find_map_fd_by_name(obj, "map_prepare_buffer");
 	if (map_prepare_buffer_fd < 0) {
 		fprintf(stderr,
-			"Error: bpf_object__find_map_fd_by_name failed\n");
+			"Error: bpf_object__find_map_fd_by_name map_prepare_buffer failed\n");
 		exit(1); // return 1;
 	}
 	map_request_buffer_fd =
 		bpf_object__find_map_fd_by_name(obj, "map_request_buffer");
 	if (map_request_buffer_fd < 0) {
 		fprintf(stderr,
-			"Error: bpf_object__find_map_fd_by_name failed\n");
+			"Error: bpf_object__find_map_fd_by_name map_request_buffer failed\n");
 		exit(1); // return 1;
 	}
 	map_paxos_ctr_state_fd =
 		bpf_object__find_map_fd_by_name(obj, "map_ctr_state");
 	if (map_paxos_ctr_state_fd < 0) {
 		fprintf(stderr,
-			"Error: bpf_object__find_map_fd_by_name failed\n");
+			"Error: bpf_object__find_map_fd_by_name map_ctr_state failed\n");
 		exit(1); // return 1;
 	}
 }

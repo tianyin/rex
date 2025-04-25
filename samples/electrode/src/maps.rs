@@ -31,7 +31,7 @@ pub(crate) struct paxos_batch {
 }
 
 #[rex_map]
-pub(crate) static MAP_CONFIGURE: RexArrayMap<PaxosConfigure> =
+pub(crate) static map_configure: RexArrayMap<PaxosConfigure> =
     RexArrayMap::new(FAST_REPLICA_MAX, 0);
 
 #[rex_map]
