@@ -12,6 +12,7 @@ librex_sources = [
 librex = library(
   'rex',
   librex_sources,
+  cpp_args: ['-Wno-missing-designated-field-initializers'],
   build_rpath: join_paths(meson.project_source_root(), 'linux/tools/lib/bpf'),
   build_by_default: false,
   dependencies: [elf_dep, llvm_dep, kernel_dep, libbpf_dep],
