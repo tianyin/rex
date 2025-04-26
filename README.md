@@ -10,7 +10,6 @@
 # Rex Kernel Extensions
 
 [![CI](https://img.shields.io/github/actions/workflow/status/rex-rs/rex/.github%2Fworkflows%2Fmeson.yml?label=ci)](https://github.com/rex-rs/rex/actions)
-[![Nix](https://img.shields.io/github/actions/workflow/status/rex-rs/rex/.github%2Fworkflows%2Fnix.yml?label=ci-nix)](https://github.com/rex-rs/rex/actions)
 
 [![Gentoo](./docs/image/gentoo-badge3.svg)](https://www.gentoo.org)
 
