@@ -107,7 +107,7 @@ static void print_stack(struct key_t *key, __u64 count)
 	else
 		printf("\n");
 
-	if (key->kernstack == -EEXIST && !warned) {
+	if (key->kernstack == (__u32)-EEXIST && !warned) {
 		printf("stackmap collisions seen. Consider increasing size\n");
 		warned = true;
 	} else if ((int)key->kernstack < 0 && (int)key->userstack < 0) {
