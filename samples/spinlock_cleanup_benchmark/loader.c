@@ -18,7 +18,9 @@
 
 #define EXE "./target/x86_64-unknown-none/release/spinlock_cleanup_benchmark"
 
-int main(int argc, char **argv)
+#define __unused __attribute__((__unused__))
+
+int main(int __unused argc, char **argv)
 {
 	struct bpf_program *prog;
 	struct bpf_object *obj;

@@ -19,6 +19,8 @@
 
 #define SAMPLE_FREQ 50
 
+#define __unused __attribute__((__unused__))
+
 static int pid;
 /* counts, stackmap */
 static int map_fd[2];
@@ -287,7 +289,7 @@ static void test_bpf_perf_event(void)
 	printf("*** PASS ***\n");
 }
 
-int main(int argc, char **argv)
+int main(int __unused argc, char **argv)
 {
 	struct bpf_object *obj = NULL;
 	char filename[256];

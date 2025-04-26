@@ -11,6 +11,8 @@
 
 #define EXE "./target/x86_64-unknown-none/release/syscount"
 
+#define __unused __attribute__((__unused__))
+
 static const char *syscall_names[] = {
 	"read",		"write",	"open",		  "close",
 	"stat",		"fstat",	"lstat",	  "poll",
@@ -43,7 +45,7 @@ static const char *syscall_names[] = {
 
 static volatile bool exiting = false;
 
-static void sig_handler(int sig)
+static void sig_handler(int __unused sig)
 {
 	exiting = true;
 }
