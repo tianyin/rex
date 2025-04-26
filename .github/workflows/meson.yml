@@ -28,18 +28,17 @@ jobs:
       - uses: dorny/paths-filter@v3
         id: filter
         with:
+          predicate-quantifier: 'every'
           filters: |
+            nix: &nix
+              - '**'
+              - '!docs/**'
+              - '!tools/**'
+              - '!**/*.md'
             meson:
-              - '!docs/**'
-              - '!tools/**'
+              - *nix
               - '!flake.nix'
-              - '!README.md'
-              - '**'
-            nix:
-              - '!docs/**'
-              - '!tools/**'
-              - '!flake.nix'
-              - '**'
+              - '!flake.lock'
 
   build_and_test:
     needs: changes
