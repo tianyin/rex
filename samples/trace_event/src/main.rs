@@ -15,7 +15,7 @@ pub const TASK_COMM_LEN: usize = 16;
 #[repr(C)]
 #[derive(Copy, Clone)]
 pub struct KeyT {
-    pub comm: [i8; TASK_COMM_LEN],
+    pub comm: [u8; TASK_COMM_LEN],
     pub kernstack: u32,
     pub userstack: u32,
 }
@@ -50,7 +50,10 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
 
     obj.bpf_get_current_task()
         .map(|t| {
-            t.get_comm(&mut key.comm);
+            let prog_name = t.get_comm().unwrap_or_default();
+            key.comm
+                .copy_from_slice(&prog_name.to_bytes()[..TASK_COMM_LEN]);
+            key.comm[TASK_COMM_LEN - 1] = 0;
             0u64
         })
         .ok_or(0i32)?;
