@@ -1,3 +1,5 @@
+use crate::bindings::uapi::linux::bpf::{BPF_F_CURRENT_CPU, BPF_F_INDEX_MASK};
+use crate::map::RexPerfEventArray;
 use core::ffi::{c_int, c_uchar};
 use core::mem;
 use core::ops::{Deref, DerefMut, Drop};
@@ -285,4 +287,40 @@ macro_rules! read_field {
             &$slice[start..start + size_of::<$ty>()],
         )
     }};
+}
+
+// For implementers, see tp_impl.rs for how to implement
+// this trait
+/// Programs that can stream data through a
+/// RexPerfEventArray will implement this trait
+pub trait PerfEventStreamer {
+    type Context;
+    fn output_event<T: Copy + NoRef>(
+        &self,
+        ctx: &Self::Context,
+        map: &'static RexPerfEventArray<T>,
+        data: &T,
+        cpu: PerfEventMaskedCPU,
+    ) -> Result;
+}
+
+/// Newtype for a cpu for perf event output to ensure
+/// type safety since the cpu must be masked with
+/// BPF_F_INDEX_MASK
+#[derive(Debug, Copy, Clone)]
+pub struct PerfEventMaskedCPU {
+    pub(crate) masked_cpu: u64,
+}
+
+impl PerfEventMaskedCPU {
+    pub fn current_cpu() -> Self {
+        PerfEventMaskedCPU {
+            masked_cpu: BPF_F_CURRENT_CPU,
+        }
+    }
+    pub fn any_cpu(cpu: u64) -> Self {
+        PerfEventMaskedCPU {
+            masked_cpu: cpu & BPF_F_INDEX_MASK,
+        }
+    }
 }
