@@ -16,13 +16,8 @@
       remoteNixpkgsPatches = [
         {
           meta.description = "cc-wrapper: remove -nostdlibinc";
-          url = "https://github.com/chinrw/nixpkgs/commit/0016d524d02035187216a6df9fff1dbffadfa81b.patch";
-          sha256 = "sha256-kYTSw+8vByZcCHXfVeWqi0/XVNjo8YJSey03k/+uxvw=";
-        }
-        {
-          meta.description = "cc-wrapper: disable warn about cross-compile";
-          url = "https://github.com/chinrw/nixpkgs/commit/3a6374fce7c048a86e7ff56671b1dbc4974757a9.patch";
-          sha256 = "sha256-pxgls4+wn5wekkQH8etdoYV3mAY8omviZ/MOu9sekE8";
+          url = "https://github.com/chinrw/nixpkgs/commit/29cd665c2bd2f3bf21d801a2c86174ae879f94ed.patch";
+          sha256 = "sha256-8LKJgAyM/KPMYt00fGgTegr4HBhjurlV3x8VORMKXg0=";
         }
       ];
 
