@@ -4,7 +4,7 @@
 
 extern crate rex;
 
-use core::mem::{size_of, swap};
+use core::mem::{offset_of, size_of, swap};
 
 use rex::sched_cls::*;
 use rex::utils::*;
@@ -37,21 +37,20 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let iphdr_end = iphdr_start + size_of::<iphdr>();
     let udphdr_end = iphdr_end + size_of::<udphdr>();
 
-    let ip_header = convert_slice_to_struct::<iphdr>(
-        &ctx.data_slice[iphdr_start..iphdr_end],
+    let protocol_start = iphdr_start + offset_of!(iphdr, protocol);
+    let protocol = convert_slice_to_struct::<u8>(
+        &ctx.data_slice[protocol_start..protocol_start + size_of::<u8>()],
     );
 
-    match u8::from_be(ip_header.protocol) as u32 {
+    match u8::from_be(*protocol) as u32 {
         IPPROTO_TCP => {
             // NOTE: currently we only take care of UDP memcached
         }
         IPPROTO_UDP => {
-            let port = u16::from_be(
-                convert_slice_to_struct::<udphdr>(
-                    &ctx.data_slice[iphdr_end..udphdr_end],
-                )
-                .dest,
-            );
+            let port_start = iphdr_end + offset_of!(udphdr, dest);
+            let port = u16::from_be(*convert_slice_to_struct::<u16>(
+                &ctx.data_slice[port_start..port_start + size_of::<u16>()],
+            ));
             let payload = &mut ctx.data_slice[header_len..];
 
             // port check, our process bound to 12345.
@@ -84,25 +83,23 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
         size_of::<iphdr>() + size_of::<ethhdr>() + size_of::<udphdr>();
     let iphdr_start = size_of::<ethhdr>();
     let iphdr_end = iphdr_start + size_of::<iphdr>();
-    let udphdr_end = iphdr_end + size_of::<udphdr>();
 
     // check if the packet is long enough
     if skb.data_slice.len() <= header_len {
         return Ok(TC_ACT_OK as i32);
     }
 
-    let ip_header = convert_slice_to_struct::<iphdr>(
-        &skb.data_slice[iphdr_start..iphdr_end],
+    let protocol_start = iphdr_start + offset_of!(iphdr, protocol);
+    let protocol = convert_slice_to_struct::<u8>(
+        &skb.data_slice[protocol_start..protocol_start + size_of::<u8>()],
     );
-    match u8::from_be(ip_header.protocol) as u32 {
+    match u8::from_be(*protocol) as u32 {
         IPPROTO_UDP => {
             // only port 12345 is allowed
-            let port = u16::from_be(
-                convert_slice_to_struct::<udphdr>(
-                    &skb.data_slice[iphdr_end..udphdr_end],
-                )
-                .dest,
-            );
+            let port_start = iphdr_end + offset_of!(udphdr, dest);
+            let port = u16::from_be(*convert_slice_to_struct::<u16>(
+                &skb.data_slice[port_start..port_start + size_of::<u16>()],
+            ));
             if port != 12345 {
                 return Ok(TC_ACT_OK as i32);
             }
