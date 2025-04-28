@@ -8,7 +8,7 @@
 // GNU Lesser General Public License v2.1 only.
 //
 // Author: asd123www <wzz@pku.edu.cn> et al.
-// Author: asd123www <ruowenq2@illinois.edu> et al.
+// Author: Ruowen Qin <ruowenq2@illinois.edu> et al.
 //
 
 pub(crate) const ETH_ALEN: usize = 6; // Octets in one ethernet addr
