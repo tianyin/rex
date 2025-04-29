@@ -31,6 +31,9 @@ pub(crate) const BROADCAST_SIGN_BIT: u32 = 1 << 31;
 pub(crate) const QUORUM_SIZE: u32 = (CLUSTER_SIZE as u32 + 1) >> 1;
 pub(crate) const QUORUM_BITSET_ENTRY: u32 = 1024; // must be 2^t
 
+pub(crate) const PAXOS_PORT: u16 = 12345;
+pub(crate) const MAGIC_BITS: [u8; MAGIC_LEN] = [0x18, 0x03, 0x05, 0x20];
+
 #[derive(Debug, PartialEq, Eq, Clone, Copy)]
 #[repr(C)]
 pub(crate) enum ReplicaStatus {

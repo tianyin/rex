@@ -1,6 +1,7 @@
 #![no_std]
 #![no_main]
 #![allow(non_camel_case_types)]
+#![allow(non_snake_case)]
 
 extern crate rex;
 
@@ -55,15 +56,9 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
             // port check, our process bound to 12345.
             // don't have magic bits...
-            if port != 12345 || payload.len() < MAGIC_LEN + size_of::<u64>() {
-                return Ok(XDP_PASS as i32);
-            }
-
-            // NOTE: currently, we don't support reassembly.
-            if payload[0] != 0x18 ||
-                payload[1] != 0x03 ||
-                payload[2] != 0x05 ||
-                payload[3] != 0x20
+            if port != PAXOS_PORT ||
+                payload.len() < MAGIC_LEN + size_of::<u64>() ||
+                !payload.starts_with(&MAGIC_BITS)
             {
                 return Ok(XDP_PASS as i32);
             }
@@ -113,10 +108,11 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
             }
             let payload = &skb.data_slice;
 
-            if payload[0] != 0x18 ||
-                payload[1] != 0x03 ||
-                payload[2] != 0x05 ||
-                payload[3] != 0x20
+            // check for the magic bits and Paxos port
+            // only port 12345 is allowed
+            if port != PAXOS_PORT ||
+                payload.len() < MAGIC_LEN + size_of::<u64>() ||
+                !payload.starts_with(&MAGIC_BITS)
             {
                 return Ok(TC_ACT_OK as i32);
             }
