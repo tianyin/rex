@@ -5,12 +5,12 @@
 
 extern crate rex;
 
-use core::mem::{offset_of, size_of, swap};
+use core::mem::{size_of, swap};
 
 use rex::sched_cls::*;
 use rex::utils::*;
 use rex::xdp::*;
-use rex::{rex_printk, rex_tc, rex_xdp};
+use rex::{read_field, rex_printk, rex_tc, rex_xdp};
 
 pub mod common;
 pub mod maps;
@@ -34,24 +34,29 @@ macro_rules! swap_field {
 fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let header_len =
         size_of::<ethhdr>() + size_of::<iphdr>() + size_of::<udphdr>();
-    let iphdr_start = size_of::<ethhdr>();
-    let iphdr_end = iphdr_start + size_of::<iphdr>();
-    let udphdr_end = iphdr_end + size_of::<udphdr>();
+    let iphdr_base = size_of::<ethhdr>();
+    let iphdr_end = iphdr_base + size_of::<iphdr>();
 
-    let protocol_start = iphdr_start + offset_of!(iphdr, protocol);
-    let protocol = convert_slice_to_struct::<u8>(
-        &ctx.data_slice[protocol_start..protocol_start + size_of::<u8>()],
-    );
-
-    match u8::from_be(*protocol) as u32 {
+    match u8::from_be(read_field!(
+        ctx.data_slice,
+        iphdr_base,
+        iphdr,
+        protocol,
+        u8
+    )) as u32
+    {
         IPPROTO_TCP => {
             // NOTE: currently we only take care of UDP memcached
         }
         IPPROTO_UDP => {
-            let port_start = iphdr_end + offset_of!(udphdr, dest);
-            let port = u16::from_be(*convert_slice_to_struct::<u16>(
-                &ctx.data_slice[port_start..port_start + size_of::<u16>()],
+            let port = u16::from_be(read_field!(
+                ctx.data_slice,
+                iphdr_end,
+                udphdr,
+                dest,
+                u16
             ));
+
             let payload = &mut ctx.data_slice[header_len..];
 
             // port check, our process bound to 12345.
@@ -74,40 +79,34 @@ fn fast_paxos_main(obj: &xdp, ctx: &mut xdp_md) -> Result {
 
 #[rex_tc]
 fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
-    let mut header_len =
+    let header_len =
         size_of::<iphdr>() + size_of::<ethhdr>() + size_of::<udphdr>();
-    let iphdr_start = size_of::<ethhdr>();
-    let iphdr_end = iphdr_start + size_of::<iphdr>();
+    let iphdr_base = size_of::<ethhdr>();
+    let iphdr_end = iphdr_base + size_of::<iphdr>();
 
     // check if the packet is long enough
     if skb.data_slice.len() <= header_len {
         return Ok(TC_ACT_OK as i32);
     }
 
-    let protocol_start = iphdr_start + offset_of!(iphdr, protocol);
-    let protocol = convert_slice_to_struct::<u8>(
-        &skb.data_slice[protocol_start..protocol_start + size_of::<u8>()],
-    );
-    match u8::from_be(*protocol) as u32 {
+    match u8::from_be(read_field!(
+        skb.data_slice,
+        iphdr_base,
+        iphdr,
+        protocol,
+        u8
+    )) as u32
+    {
         IPPROTO_UDP => {
-            // only port 12345 is allowed
-            let port_start = iphdr_end + offset_of!(udphdr, dest);
-            let port = u16::from_be(*convert_slice_to_struct::<u16>(
-                &skb.data_slice[port_start..port_start + size_of::<u16>()],
+            let port = u16::from_be(read_field!(
+                skb.data_slice,
+                iphdr_end,
+                udphdr,
+                dest,
+                u16
             ));
-            if port != 12345 {
-                return Ok(TC_ACT_OK as i32);
-            }
 
-            // check for the magic bits
-            header_len += MAGIC_LEN + size_of::<u64>();
-
-            if skb.data_slice.len() < header_len {
-                rex_printk!("data_slice.len() < header_len\n").ok();
-                return Ok(TC_ACT_OK as i32);
-            }
             let payload = &skb.data_slice[header_len..];
-
             // check for the magic bits and Paxos port
             // only port 12345 is allowed
             if port != PAXOS_PORT ||
