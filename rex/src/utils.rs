@@ -258,3 +258,31 @@ where
         unsafe { AlignedMut::from_val(ptr.read_unaligned(), slice) }
     }
 }
+
+/// Read a numeric field that is stored **big-endian** inside a header already
+/// sitting in `payload_slice` at offset `hdr_base`.
+///
+/// Example:
+/// ```
+/// let iphdr_base = size_of::<ethhdr>();
+/// let proto_be = read_field!(skb.data_slice, iphdr_base, iphdr, protocol, u8);
+/// match u8::from_be(proto_be) as u32 {
+///     IPPROTO_TCP => handle_tcp(),
+///     IPPROTO_UDP => handle_udp(),
+///     _  => {}
+/// }
+/// ```
+#[macro_export]
+macro_rules! read_field {
+    ($slice:expr,     // payload slice
+     $hdr_base:expr,  // where this header starts inside the buffer
+     $hdr:path,       // concrete header type, for `offset_of!`
+     $field:ident,    // field we want
+     $ty:ty           // Rust type of that field (u8, u16, …)
+    ) => {{
+        let start = $hdr_base + core::mem::offset_of!($hdr, $field);
+        *$crate::utils::convert_slice_to_struct::<$ty>(
+            &$slice[start..start + size_of::<$ty>()],
+        )
+    }};
+}
