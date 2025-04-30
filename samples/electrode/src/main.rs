@@ -106,7 +106,7 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
                 rex_printk!("data_slice.len() < header_len\n").ok();
                 return Ok(TC_ACT_OK as i32);
             }
-            let payload = &skb.data_slice;
+            let payload = &skb.data_slice[header_len..];
 
             // check for the magic bits and Paxos port
             // only port 12345 is allowed
