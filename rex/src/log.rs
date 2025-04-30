@@ -65,9 +65,17 @@ pub fn rex_trace_printk(args: fmt::Arguments<'_>) -> crate::Result {
 /// `println`-style convenience macro for [`rex_trace_printk`].
 /// Different from `println`, this macro produces the value of [`crate::Result`]
 /// from [`rex_trace_printk`]
+#[cfg(feature = "debug_printk")]
 #[macro_export]
-macro_rules! rex_printk {
-    ($($arg:tt)*) => {{
+macro_rules! rex_printk { ($($arg:tt)*) => {{
         $crate::rex_trace_printk(format_args!($($arg)*))
     }};
+}
+
+#[cfg(not(feature = "debug_printk"))]
+#[macro_export]
+macro_rules! rex_printk {
+    ($($arg:tt)*) => {
+        $crate::Result::Ok(0)
+    };
 }
