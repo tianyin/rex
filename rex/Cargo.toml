@@ -18,6 +18,10 @@ doctest = false
 paste = { workspace = true }
 rex-macros = { workspace = true }
 
+[features]
+default = ["debug_printk"]
+debug_printk = []
+
 [rex]
 uheaders = [
   "linux/bpf.h",
