@@ -315,7 +315,7 @@ int main(int argc, char *argv[])
 		assert(system(commandname) == 0);
 	}
 
-	assert(system("rm -f /sys/fs/bpf/FastBroadCast") == 0);
+	assert(remove("/sys/fs/bpf/fast_broad_cast_main") == 0);
 	printf("\nasd123www: quit safely!\n");
 
 	return 0;
