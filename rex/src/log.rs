@@ -52,6 +52,18 @@ impl Write for LogBuf {
     }
 }
 
+#[macro_export]
+macro_rules! function_name {
+    () => {{
+        fn f() {}
+        fn type_name_of<T>(_: T) -> &'static str {
+            core::any::type_name::<T>()
+        }
+        let data = type_name_of(f);
+        &data[..data.len() - 3]
+    }};
+}
+
 /// Prints a message defined by `args` to the TraceFS file
 /// `/sys/kernel/debug/tracing/trace`.
 pub fn rex_trace_printk(args: fmt::Arguments<'_>) -> crate::Result {
@@ -67,8 +79,15 @@ pub fn rex_trace_printk(args: fmt::Arguments<'_>) -> crate::Result {
 /// from [`rex_trace_printk`]
 #[cfg(feature = "debug_printk")]
 #[macro_export]
-macro_rules! rex_printk { ($($arg:tt)*) => {{
-        $crate::rex_trace_printk(format_args!($($arg)*))
+macro_rules! rex_printk {
+    ($($arg:tt)*) => {{
+        $crate::rex_trace_printk(
+            format_args!(
+                "[{}] {}",
+                $crate::function_name!(),
+                format_args!($($arg)*)
+            ),
+        )
     }};
 }
 
