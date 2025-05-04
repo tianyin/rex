@@ -54,7 +54,6 @@ macro_rules! define_prog_entry {
     };
 }
 
-define_prog_entry!(tracepoint);
 define_prog_entry!(kprobe);
 define_prog_entry!(perf_event);
 define_prog_entry!(xdp);
