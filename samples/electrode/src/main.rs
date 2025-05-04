@@ -260,19 +260,34 @@ fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
     let payload_index = header_len + MAGIC_LEN + size_of::<u64>();
     let payload = &mut ctx.data_slice[payload_index..];
 
-    // PrepareMessage in `vr`.
-    if len > PREPARE_TYPE_LEN && payload[19..27].starts_with(b"PrepareM") {
-        let payload_index = payload_index + PREPARE_TYPE_LEN;
-        return handle_prepare(obj, ctx, payload_index);
+    #[cfg(feature = "fast_reply")]
+    {
+        // PrepareMessage in `vr`.
+        if len > PREPARE_TYPE_LEN &&
+            payload[10..12].starts_with(b"vr") &&
+            payload[19..27].starts_with(b"PrepareM")
+        {
+            let payload_index = payload_index + PREPARE_TYPE_LEN;
+            return handle_prepare(obj, ctx, payload_index);
+        }
     }
 
-    // PrepareOK message in `vr`.
-    if len > PREPAREOK_TYPE_LEN && payload[19..27].starts_with(b"PrepareO") {
-        return handle_prepare_ok(obj, ctx, payload_index);
-    }
+    #[cfg(feature = "fast_quorum_prune")]
+    {
+        // PrepareOK message in `vr`.
+        if len > PREPAREOK_TYPE_LEN &&
+            payload[10..12].starts_with(b"vr") &&
+            payload[19..27].starts_with(b"PrepareO")
+        {
+            return handle_prepare_ok(obj, ctx, payload_index);
+        }
 
-    if len > MYPREPAREOK_TYPE_LEN && payload[13..17].starts_with(b"MyPr") {
-        return handle_prepare_ok(obj, ctx, payload_index);
+        if len > MYPREPAREOK_TYPE_LEN &&
+            payload[10..12].starts_with(b"vr") &&
+            payload[13..17].starts_with(b"MyPr")
+        {
+            return handle_prepare_ok(obj, ctx, payload_index);
+        }
     }
 
     return Ok(XDP_PASS as i32);
