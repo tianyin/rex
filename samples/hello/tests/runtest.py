@@ -60,7 +60,7 @@ def capture_output() -> bool:
         process.kill()
         std_out, std_err = process.communicate(timeout=7)
         re_match = re.findall(
-            r"bpf_trace_printk: Rust triggered from PID \d+ on CPU .+", std_out, re.M
+            r"Rust triggered from PID \d+ on CPU .+", std_out, re.M
         )
         if len(re_match) == 2:
             print("Success")
