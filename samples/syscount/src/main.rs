@@ -5,7 +5,7 @@ extern crate rex;
 use rex::linux::bpf::BPF_ANY;
 use rex::map::RexHashMap;
 use rex::tracepoint::*;
-use rex::{Result, rex_map, rex_printk, rex_tracepoint};
+use rex::{Result, rex_map, rex_tracepoint};
 
 #[rex_map]
 static SYSCALL_COUNTS: RexHashMap<u32, u64> = RexHashMap::new(512, 0);

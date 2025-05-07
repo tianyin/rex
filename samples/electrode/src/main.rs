@@ -89,36 +89,29 @@ fn fast_broad_cast_main(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
         return Ok(TC_ACT_OK as i32);
     }
 
-    match u8::from_be(read_field!(
-        skb.data_slice,
-        iphdr_base,
-        iphdr,
-        protocol,
-        u8
-    )) as u32
+    if u8::from_be(read_field!(skb.data_slice, iphdr_base, iphdr, protocol, u8))
+        as u32 ==
+        IPPROTO_UDP
     {
-        IPPROTO_UDP => {
-            let port = u16::from_be(read_field!(
-                skb.data_slice,
-                iphdr_end,
-                udphdr,
-                dest,
-                u16
-            ));
+        let port = u16::from_be(read_field!(
+            skb.data_slice,
+            iphdr_end,
+            udphdr,
+            dest,
+            u16
+        ));
 
-            let payload = &skb.data_slice[header_len..];
-            // check for the magic bits and Paxos port
-            // only port 12345 is allowed
-            if port != PAXOS_PORT ||
-                payload.len() < MAGIC_LEN + size_of::<u64>() ||
-                !payload.starts_with(&MAGIC_BITS)
-            {
-                return Ok(TC_ACT_OK as i32);
-            }
-
-            return handle_udp_fast_broad_cast(obj, skb);
+        let payload = &skb.data_slice[header_len..];
+        // check for the magic bits and Paxos port
+        // only port 12345 is allowed
+        if port != PAXOS_PORT ||
+            payload.len() < MAGIC_LEN + size_of::<u64>() ||
+            !payload.starts_with(&MAGIC_BITS)
+        {
+            return Ok(TC_ACT_OK as i32);
         }
-        _ => {}
+
+        return handle_udp_fast_broad_cast(obj, skb);
     }
 
     Ok(TC_ACT_OK as i32)
@@ -159,9 +152,7 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
 
     if message_type == FastProgXdp::FAST_PROG_XDP_HANDLE_PREPARE {
         let idx = msg_last_op & (QUORUM_BITSET_ENTRY - 1);
-        let entry = obj
-            .bpf_map_lookup_elem(&map_quorum, &idx)
-            .ok_or_else(|| 0i32)?;
+        let entry = obj.bpf_map_lookup_elem(&map_quorum, &idx).ok_or(0i32)?;
         if entry.view != msg_view || entry.opnum != msg_last_op {
             entry.view = msg_view;
             entry.opnum = msg_last_op;
@@ -174,9 +165,8 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     };
 
     let zero = 0u32;
-    let ctr_state = obj
-        .bpf_map_lookup_elem(&map_ctr_state, &zero)
-        .ok_or_else(|| 0i32)?;
+    let ctr_state =
+        obj.bpf_map_lookup_elem(&map_ctr_state, &zero).ok_or(0i32)?;
 
     let mut id = 0u8;
     let mut nxt;
@@ -219,7 +209,7 @@ fn handle_udp_fast_broad_cast(obj: &sched_cls, skb: &mut __sk_buff) -> Result {
     let key = id as u32;
     let replica_info = obj
         .bpf_map_lookup_elem(&map_configure, &key)
-        .ok_or_else(|| TC_ACT_SHOT as i32)?;
+        .ok_or(TC_ACT_SHOT as i32)?;
 
     {
         let udp_header = &mut obj.udp_header(skb);
@@ -290,7 +280,7 @@ fn handle_udp_fast_paxos(obj: &xdp, ctx: &mut xdp_md) -> Result {
         }
     }
 
-    return Ok(XDP_PASS as i32);
+    Ok(XDP_PASS as i32)
 }
 
 #[inline(always)]
@@ -345,9 +335,8 @@ fn handle_prepare(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
         u32::from_ne_bytes(payload[8..12].try_into().unwrap()) as u64;
 
     let zero = 0u32;
-    let ctr_state = obj
-        .bpf_map_lookup_elem(&map_ctr_state, &zero)
-        .ok_or_else(|| 0i32)?;
+    let ctr_state =
+        obj.bpf_map_lookup_elem(&map_ctr_state, &zero).ok_or(0i32)?;
 
     rex_printk!("handle_prepare\n").ok();
     // rare case, not handled properly now.
@@ -396,9 +385,7 @@ fn write_buffer(obj: &xdp, ctx: &mut xdp_md, payload_index: usize) -> Result {
     // buffer not enough, offload to user-space.
     // It's easy to avoid cause VR sends `CommitMessage` make followers keep up
     // with the leader.
-    let mut pt = map_prepare_buffer
-        .reserve(MAX_DATA_LEN)
-        .ok_or_else(|| 0i32)?;
+    let mut pt = map_prepare_buffer.reserve(MAX_DATA_LEN).ok_or(0i32)?;
 
     pt.copy_from_slice(&payload[0..MAX_DATA_LEN]);
     pt.submit(0); // guaranteed to succeed.
@@ -423,15 +410,14 @@ fn prepare_fast_reply(
     // read our state
     // may update to function parameter later
     let zero = 0u32;
-    let ctr_state = obj
-        .bpf_map_lookup_elem(&map_ctr_state, &zero)
-        .ok_or_else(|| 0i32)?;
+    let ctr_state =
+        obj.bpf_map_lookup_elem(&map_ctr_state, &zero).ok_or(0i32)?;
 
     // struct paxos_configure *leaderInfo =
     // bpf_map_lookup_elem(&map_configure, &ctr_state->leaderIdx);
     let leader_info = obj
         .bpf_map_lookup_elem(&map_configure, &ctr_state.leader_idx)
-        .ok_or_else(|| 0i32)?;
+        .ok_or(0i32)?;
 
     // Write NONFRAG_MAGIC to the start of the payload
     // FIX: need to check to_ne_bytes or to_be_bytes
@@ -505,7 +491,7 @@ fn prepare_fast_reply(
         return Ok(XDP_DROP as i32);
     }
 
-    return Ok(XDP_TX as i32);
+    Ok(XDP_TX as i32)
 }
 
 #[inline(always)]
@@ -530,9 +516,7 @@ fn handle_prepare_ok(
         u32::from_ne_bytes(payload[8..12].try_into().unwrap());
     let idx = msg_opnum & (QUORUM_BITSET_ENTRY - 1);
 
-    let entry = obj
-        .bpf_map_lookup_elem(&map_quorum, &idx)
-        .ok_or_else(|| 0i32)?;
+    let entry = obj.bpf_map_lookup_elem(&map_quorum, &idx).ok_or(0i32)?;
 
     if entry.view != msg_view || entry.opnum != msg_opnum {
         return Ok(XDP_PASS as i32);
@@ -553,5 +537,5 @@ fn handle_prepare_ok(
         return Ok(XDP_DROP as i32);
     }
 
-    return Ok(XDP_PASS as i32);
+    Ok(XDP_PASS as i32)
 }
