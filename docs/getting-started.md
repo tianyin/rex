@@ -93,7 +93,7 @@ Inside the VM:
 ```bash
 cd ../samples/hello
 ./loader &
-./event_trigger
+./event-trigger
 ```
 
 The following output should be printed out:
