@@ -16,7 +16,10 @@ static exit_open_map: RexArrayMap<u32> = RexArrayMap::new(1, 0);
 
 type SyscallTpMap = RexArrayMap<u32>;
 
-fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
+fn count<C: TracepointContext>(
+    obj: &tracepoint<C>,
+    map: &'static SyscallTpMap,
+) -> Result {
     match obj.bpf_map_lookup_elem(map, &0) {
         None => {
             obj.bpf_map_update_elem(map, &0, &1, BPF_NOEXIST.into())?;
@@ -31,7 +34,7 @@ fn count(obj: &tracepoint, map: &'static SyscallTpMap) -> Result {
 
 #[rex_tracepoint]
 fn trace_enter_open(
-    obj: &tracepoint,
+    obj: &tracepoint<SyscallsEnterOpenCtx>,
     _: &'static SyscallsEnterOpenCtx,
 ) -> Result {
     count(obj, &enter_open_map)
@@ -39,7 +42,7 @@ fn trace_enter_open(
 
 #[rex_tracepoint]
 fn trace_enter_open_at(
-    obj: &tracepoint,
+    obj: &tracepoint<SyscallsEnterOpenatCtx>,
     _: &'static SyscallsEnterOpenatCtx,
 ) -> Result {
     count(obj, &enter_open_map)
@@ -47,7 +50,7 @@ fn trace_enter_open_at(
 
 #[rex_tracepoint]
 fn trace_enter_exit(
-    obj: &tracepoint,
+    obj: &tracepoint<SyscallsExitOpenCtx>,
     _: &'static SyscallsExitOpenCtx,
 ) -> Result {
     count(obj, &exit_open_map)
@@ -55,7 +58,7 @@ fn trace_enter_exit(
 
 #[rex_tracepoint]
 fn trace_enter_exit_at(
-    obj: &tracepoint,
+    obj: &tracepoint<SyscallsExitOpenatCtx>,
     _: &'static SyscallsExitOpenatCtx,
 ) -> Result {
     count(obj, &exit_open_map)

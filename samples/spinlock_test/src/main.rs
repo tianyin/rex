@@ -19,7 +19,7 @@ struct MapEntry {
 #[rex_map]
 static MAP_ARRAY: RexArrayMap<MapEntry> = RexArrayMap::new(256, 0);
 
-fn test1(obj: &tracepoint) {
+fn test1(obj: &tracepoint<SyscallsEnterDupCtx>) {
     if let Some(entry) = obj.bpf_map_lookup_elem(&MAP_ARRAY, &0) {
         // entry.lock locked in rex_spinlock_guard::new
         let _guard = rex_spinlock_guard::new(&mut entry.lock);
@@ -28,7 +28,7 @@ fn test1(obj: &tracepoint) {
     }
 }
 
-fn test2(obj: &tracepoint) {
+fn test2(obj: &tracepoint<SyscallsEnterDupCtx>) {
     if let Some(entry) = obj.bpf_map_lookup_elem(&MAP_ARRAY, &0) {
         // entry.lock locked in rex_spinlock_guard::new
         let _guard = rex_spinlock_guard::new(&mut entry.lock);
@@ -39,7 +39,10 @@ fn test2(obj: &tracepoint) {
 }
 
 #[rex_tracepoint]
-fn rex_prog1(obj: &tracepoint, _: &'static SyscallsEnterDupCtx) -> Result {
+fn rex_prog1(
+    obj: &tracepoint<SyscallsEnterDupCtx>,
+    _: &'static SyscallsEnterDupCtx,
+) -> Result {
     test1(obj);
     test2(obj);
     Ok(0)

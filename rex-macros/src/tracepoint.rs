@@ -1,5 +1,5 @@
 use proc_macro2::TokenStream;
-use proc_macro_error::{abort_call_site, OptionExt};
+use proc_macro_error::abort_call_site;
 use quote::{format_ident, quote, ToTokens};
 use syn::{parse2, FnArg, Ident, ItemFn, Result, Type};
 
@@ -7,8 +7,6 @@ pub(crate) struct TracePoint {
     item: ItemFn,
 }
 
-// follow the sytle from aya
-// https://github.com/aya-rs/aya/blob/1cf3d3c222bda0351ee6a2bacf9cee5349556764/aya-ebpf-macros/src/tracepoint.rs
 impl TracePoint {
     // parse the argument of function
     pub(crate) fn parse(
@@ -31,14 +29,6 @@ impl TracePoint {
         let Type::Reference(context_type_ref) = *context_arg.ty else {
             abort_call_site!("Context type needs to be behind a reference");
         };
-        if context_type_ref
-            .lifetime
-            .expect_or_abort("Context reference needs to be static")
-            .ident !=
-            "static"
-        {
-            abort_call_site!("Context reference needs to be static");
-        }
         let context_type = match *context_type_ref.elem.clone() {
             Type::Verbatim(t) => parse2(t).unwrap(),
             Type::Path(p) => p.path.segments.last().unwrap().clone().ident,
@@ -70,22 +60,22 @@ impl TracePoint {
         };
         let attached_name = format!("rex/tracepoint/{}", hook_point_name);
 
-        let wrapper_name = format_ident!("{}_wrapper", fn_name);
+        let entry_name = format_ident!("__rex_entry_{}", fn_name);
 
         let function_body_tokens = quote! {
             #[inline(always)]
             #item
 
-            #[inline(always)]
-            fn #wrapper_name(obj: &tracepoint, raw_ctx: *mut ()) -> Result {
-                let ctx = unsafe { &*(raw_ctx as *mut #full_context_type) };
-                #fn_name(obj, ctx)
-            }
-
             #[used]
+            static #prog_ident: tracepoint<#full_context_type> =
+                tracepoint::new(#fn_name, #function_name);
+
+            #[unsafe(export_name = #function_name)]
             #[unsafe(link_section = #attached_name)]
-            static #prog_ident: tracepoint =
-                tracepoint::new(#wrapper_name, #function_name);
+            fn #entry_name(ctx: *mut ()) -> u32 {
+                use rex::prog_type::rex_prog;
+                #prog_ident.prog_run(ctx)
+            }
         };
 
         Ok(function_body_tokens)

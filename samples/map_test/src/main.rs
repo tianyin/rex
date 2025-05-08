@@ -14,7 +14,7 @@ static MAP_HASH: RexHashMap<u32, i64> = RexHashMap::new(1024, 0);
 #[rex_map]
 static MAP_ARRAY: RexArrayMap<u64> = RexArrayMap::new(256, 0);
 
-fn map_test1(obj: &tracepoint) -> Result {
+fn map_test1(obj: &tracepoint<SyscallsEnterDupCtx>) -> Result {
     let key: u32 = 0;
 
     rex_printk!("Map Testing 1 Start with key {}\n", key)?;
@@ -62,7 +62,7 @@ fn map_test1(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
-fn map_test2(obj: &tracepoint) -> Result {
+fn map_test2(obj: &tracepoint<SyscallsEnterDupCtx>) -> Result {
     rex_printk!("Array Map Testing Start\n")?;
     let key = 0;
 
@@ -92,7 +92,10 @@ fn map_test2(obj: &tracepoint) -> Result {
 }
 
 #[rex_tracepoint]
-fn rex_prog1(obj: &tracepoint, _: &'static SyscallsEnterDupCtx) -> Result {
+fn rex_prog1(
+    obj: &tracepoint<SyscallsEnterDupCtx>,
+    _: &'static SyscallsEnterDupCtx,
+) -> Result {
     map_test1(obj)
         .or_else(|e| rex_printk!("map_test1 failed with {}.\n", e))?;
     map_test2(obj).or_else(|e| rex_printk!("map_test2 failed with {}.\n", e))

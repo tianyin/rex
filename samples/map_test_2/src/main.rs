@@ -25,7 +25,7 @@ static QUEUE: RexQueue<i64> = RexQueue::new(256, 0);
 #[rex_map]
 static RINGBUF: RexRingBuf = RexRingBuf::new(4096, 0);
 
-fn map_test_hash(obj: &tracepoint) -> Result {
+fn map_test_hash(obj: &tracepoint<SyscallsEnterDupCtx>) -> Result {
     let key: u32 = 0;
 
     rex_printk!("Map Testing Hash Start with key {}\n", key)?;
@@ -73,7 +73,7 @@ fn map_test_hash(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
-fn map_test_array(obj: &tracepoint) -> Result {
+fn map_test_array(obj: &tracepoint<SyscallsEnterDupCtx>) -> Result {
     let key: u32 = 0;
 
     rex_printk!("Map Testing Array Start with key {}\n", key)?;
@@ -100,7 +100,7 @@ fn map_test_array(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
-fn map_test_stack(obj: &tracepoint) -> Result {
+fn map_test_stack(obj: &tracepoint<SyscallsEnterDupCtx>) -> Result {
     rex_printk!("Map Testing Stack Start\n")?;
 
     let pid = if let Some(task) = obj.bpf_get_current_task() {
@@ -132,7 +132,7 @@ fn map_test_stack(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
-fn map_test_queue(obj: &tracepoint) -> Result {
+fn map_test_queue(obj: &tracepoint<SyscallsEnterDupCtx>) -> Result {
     rex_printk!("Map Testing Queue Start\n")?;
 
     let pid = if let Some(task) = obj.bpf_get_current_task() {
@@ -165,7 +165,7 @@ fn map_test_queue(obj: &tracepoint) -> Result {
     Ok(0)
 }
 
-fn map_test_ringbuf(obj: &tracepoint) -> Result {
+fn map_test_ringbuf(obj: &tracepoint<SyscallsEnterDupCtx>) -> Result {
     rex_printk!("Map Testing Ring Buffer Start\n")?;
     let pid = if let Some(task) = obj.bpf_get_current_task() {
         task.get_pid()
@@ -200,7 +200,10 @@ fn map_test_ringbuf(obj: &tracepoint) -> Result {
 }
 
 #[rex_tracepoint]
-fn rex_prog1(obj: &tracepoint, _: &'static SyscallsEnterDupCtx) -> Result {
+fn rex_prog1(
+    obj: &tracepoint<SyscallsEnterDupCtx>,
+    _: &'static SyscallsEnterDupCtx,
+) -> Result {
     map_test_hash(obj)
         .or_else(|e| rex_printk!("map_test failed with {}.\n", e))?;
     map_test_array(obj)

@@ -22,7 +22,7 @@ static SYSCALL_LATENCY: RexHashMap<u32, u64> = RexHashMap::new(512, 0);
 // Tracepoint handler for raw_syscalls:sys_enter
 #[rex_tracepoint]
 fn trace_syscall_enter(
-    obj: &tracepoint,
+    obj: &tracepoint<RawSyscallsEnterCtx>,
     ctx: &'static RawSyscallsEnterCtx,
 ) -> Result {
     let syscall_id = ctx.id as u32;
@@ -60,7 +60,7 @@ fn trace_syscall_enter(
 // Tracepoint handler for raw_syscalls:sys_exit
 #[rex_tracepoint]
 fn trace_syscall_exit(
-    obj: &tracepoint,
+    obj: &tracepoint<RawSyscallsExitCtx>,
     ctx: &'static RawSyscallsExitCtx,
 ) -> Result {
     let syscall_id = ctx.id as u32;
