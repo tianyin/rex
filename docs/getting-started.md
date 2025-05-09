@@ -5,6 +5,11 @@ LLVM) and running Rex extensions requires modifications to the Linux
 kernel.  The steps below describe how to set up both the toolchain and
 kernel for running Rex extensions in a VM.
 
+Rex currently only supports the `x86-64` (`amd64`) architecture. Running
+Rex in VMs addtionally requires
+[`KVM`](https://linux-kvm.org/page/Main_Page) to be available on the host
+machine.
+
 ## Nix flake
 
 Using Nix, a package manager, allows you to bypass these dependency
