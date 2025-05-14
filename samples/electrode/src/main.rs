@@ -436,8 +436,8 @@ fn prepare_fast_reply(
     payload = &mut payload[MYPREPAREOK_TYPE_LEN..];
 
     // Write the view number, last_op and my_idx to the payload
-    payload[0..4].copy_from_slice(&ctr_state.view.to_ne_bytes());
-    payload[4..8].copy_from_slice(&payload_index.to_ne_bytes());
+    payload[0..4].copy_from_slice(&(ctr_state.view as u32).to_ne_bytes());
+    payload[4..8].copy_from_slice(&(payload_index as u32).to_ne_bytes());
     payload[8..12].copy_from_slice(&ctr_state.my_idx.to_ne_bytes());
     // Move the slice start by FAST_PAXOS_DATA_LEN
     payload = &mut payload[FAST_PAXOS_DATA_LEN..];
@@ -450,7 +450,7 @@ fn prepare_fast_reply(
     // write the len in the protocal, last_op and my_idx to the payload
     payload[0..8].copy_from_slice(&size.to_ne_bytes());
     payload[8..16].copy_from_slice(&ctr_state.view.to_ne_bytes());
-    payload[16..24].copy_from_slice(&payload_index.to_ne_bytes());
+    payload[16..24].copy_from_slice(&(payload_index as u64).to_ne_bytes());
     // Write ctr_state.my_idx
     payload[24..28].copy_from_slice(&ctr_state.my_idx.to_ne_bytes());
     // move the slice start by size_of::<u64>() * 3 + size_of::<u32>()
