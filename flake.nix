@@ -124,8 +124,7 @@
         perf-tools
 
         # for llvm/Demangle/Demangle.h
-        libllvm
-        libllvm.dev
+        libllvm.lib
         libgcc
         libclang.lib
         libclang.dev
@@ -194,8 +193,14 @@
           shellHook = ''
 
             export PATH=$(realpath "./build/rust-dist/bin"):$PATH
+            # Add required llvm-config
+            export PATH=${patchedPkgs.llvmPackages.libllvm.out}/bin:$PATH 
+            export PATH=${patchedPkgs.llvmPackages.libllvm.dev}/bin:$PATH 
             export RUST_BACKTRACE=1
             export NIX_ENFORCE_NO_NATIVE=0
+            export LLVM_SRC_INC="$PWD/rust/src/llvm-project/llvm/include"
+            # export LLVM_BUILD_INCLUDE="$PWD/build/rust-build/x86_64-unknown-linux-gnu/llvm/build/include"
+            export NIX_CFLAGS_COMPILE_BEFORE="-I$LLVM_SRC_INC"
             echo "loading rex env"
           '';
         };
