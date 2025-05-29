@@ -775,7 +775,7 @@ bpf_object *rex_obj::bpf_obj() {
     }
   }
   ptr->nr_programs = i;
-  ptr->loaded = true;
+  ptr->state = OBJ_LOADED;
 
   // Now transfer the ownership
   bpf_obj_ptr = std::move(ptr);

@@ -38,11 +38,18 @@ struct bpf_sec_def {
   libbpf_prog_attach_fn_t prog_attach_fn;
 };
 
+enum bpf_object_state {
+  OBJ_OPEN,
+  OBJ_PREPARED,
+  OBJ_LOADED,
+};
+
 struct bpf_object {
   char name[BPF_OBJ_NAME_LEN];
   char license[64];
   __u32 kern_version;
 
+  enum bpf_object_state state;
   struct bpf_program *programs;
   size_t nr_programs;
   struct bpf_map *maps;
@@ -54,7 +61,6 @@ struct bpf_object {
   int nr_extern;
   int kconfig_map_idx;
 
-  bool loaded;
   bool has_subcalls;
   bool has_rodata;
 
@@ -63,6 +69,8 @@ struct bpf_object {
   /* Information when doing ELF related work. Only valid if efile.elf is not
    * NULL */
   struct elf_state efile;
+
+  unsigned char byteorder;
 
   struct btf *btf;
   struct btf_ext *btf_ext;
