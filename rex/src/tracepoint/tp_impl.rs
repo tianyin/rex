@@ -1,19 +1,17 @@
-use crate::base_helper::termination_check;
-use crate::bindings::uapi::linux::bpf::{
-    bpf_map_type, BPF_PROG_TYPE_TRACEPOINT,
-};
-use crate::ffi;
-use crate::map::RexPerfEventArray;
-use crate::prog_type::rex_prog;
-use crate::task_struct::TaskStruct;
-use crate::utils::{to_result, NoRef, PerfEventMaskedCPU, PerfEventStreamer};
-use crate::Result;
-
 use super::{
     RawSyscallsEnterCtx, RawSyscallsExitCtx, SyscallsEnterDupCtx,
     SyscallsEnterOpenCtx, SyscallsEnterOpenatCtx, SyscallsExitOpenCtx,
     SyscallsExitOpenatCtx,
 };
+use crate::base_helper::termination_check;
+use crate::bindings::uapi::linux::bpf::{
+    bpf_map_type, BPF_PROG_TYPE_TRACEPOINT,
+};
+use crate::map::RexPerfEventArray;
+use crate::prog_type::rex_prog;
+use crate::task_struct::TaskStruct;
+use crate::utils::{to_result, NoRef, PerfEventMaskedCPU, PerfEventStreamer};
+use crate::{ffi, Result};
 
 pub trait TracepointContext {}
 impl TracepointContext for SyscallsEnterOpenCtx {}
@@ -72,6 +70,7 @@ impl<C: TracepointContext + 'static> rex_prog for tracepoint<C> {
 
 impl<C: TracepointContext + 'static> PerfEventStreamer for tracepoint<C> {
     type Context = C;
+
     fn output_event<T: Copy + NoRef>(
         &self,
         ctx: &Self::Context,

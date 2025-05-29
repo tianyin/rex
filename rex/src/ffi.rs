@@ -153,8 +153,8 @@ unsafe extern "C" {
         buf_size: u32,
     ) -> i64;
 
-    /// `long bpf_skb_event_output(struct sk_buff *skb, struct bpf_map *map, u64 flags,
-    /// void *meta, u64 meta_size)`
+    /// `long bpf_skb_event_output(struct sk_buff *skb, struct bpf_map *map, u64
+    /// flags, void *meta, u64 meta_size)`
     /// The compiler complains about some non-FFI safe type, but since the
     /// kernel is using it fine it should be safe for an FFI call using C ABI
     #[allow(improper_ctypes)]
@@ -166,8 +166,8 @@ unsafe extern "C" {
         meta_size: u64,
     ) -> i64;
 
-    /// `long bpf_xdp_event_output(struct xdp_buff *xdp, struct bpf_map *map, u64 flags,
-    /// void *meta, u64 meta_size)`
+    /// `long bpf_xdp_event_output(struct xdp_buff *xdp, struct bpf_map *map,
+    /// u64 flags, void *meta, u64 meta_size)`
     /// The compiler complains about some non-FFI safe type, but since the
     /// kernel is using it fine it should be safe for an FFI call using C ABI
     #[allow(improper_ctypes)]

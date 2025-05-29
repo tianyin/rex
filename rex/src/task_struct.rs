@@ -1,7 +1,8 @@
+use core::ffi::{self as core_ffi, CStr};
+
 use crate::bindings::linux::kernel::task_struct;
 use crate::per_cpu::{current_task, this_cpu_read};
 use crate::pt_regs::PtRegs;
-use core::ffi::{self as core_ffi, CStr};
 
 // Bindgen has problem generating these constants
 const TOP_OF_KERNEL_STACK_PADDING: u64 = 0;

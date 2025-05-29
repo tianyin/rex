@@ -1,9 +1,10 @@
-use crate::bindings::uapi::linux::bpf::{BPF_F_CURRENT_CPU, BPF_F_INDEX_MASK};
-use crate::map::RexPerfEventArray;
-use crate::prog_type::rex_prog;
 use core::ffi::{c_int, c_uchar};
 use core::mem;
 use core::ops::{Deref, DerefMut, Drop};
+
+use crate::bindings::uapi::linux::bpf::{BPF_F_CURRENT_CPU, BPF_F_INDEX_MASK};
+use crate::map::RexPerfEventArray;
+use crate::prog_type::rex_prog;
 
 #[repr(transparent)]
 #[derive(Copy, Clone)]
@@ -319,6 +320,7 @@ impl PerfEventMaskedCPU {
             masked_cpu: BPF_F_CURRENT_CPU,
         }
     }
+
     pub fn any_cpu(cpu: u64) -> Self {
         PerfEventMaskedCPU {
             masked_cpu: cpu & BPF_F_INDEX_MASK,
