@@ -6,7 +6,7 @@ use crate::ffi;
 use crate::linux::bpf::bpf_map_type;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
-use crate::per_cpu::{cpu_number, this_cpu_read};
+use crate::per_cpu::this_cpu_read;
 use crate::random32::bpf_user_rnd_u32;
 use crate::utils::{to_result, NoRef, Result};
 
@@ -42,7 +42,7 @@ macro_rules! termination_check {
 }
 
 pub(crate) fn bpf_get_smp_processor_id() -> i32 {
-    unsafe { this_cpu_read(cpu_number()) }
+    unsafe { this_cpu_read(&raw const ffi::cpu_number) }
 }
 
 pub(crate) fn bpf_map_lookup_elem<'a, const MT: bpf_map_type, K, V>(
