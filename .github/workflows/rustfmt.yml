@@ -16,7 +16,7 @@ jobs:
           rustup default nightly
           rustup component add rustfmt
       - name: formatting rex code
-        run: cargo fmt
+        run: cargo fmt --verbose --check
       - name: formatting samples code
         run: |
           for d in $(find ./samples -name Cargo.toml); do
