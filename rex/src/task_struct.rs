@@ -1,7 +1,8 @@
 use core::ffi::{self as core_ffi, CStr};
 
 use crate::bindings::linux::kernel::task_struct;
-use crate::per_cpu::{current_task, this_cpu_read};
+use crate::ffi;
+use crate::per_cpu::this_cpu_read;
 use crate::pt_regs::PtRegs;
 
 // Bindgen has problem generating these constants
@@ -24,8 +25,8 @@ impl TaskStruct {
     }
 
     pub(crate) fn get_current_task() -> Option<Self> {
-        let current: *const task_struct =
-            unsafe { this_cpu_read(current_task()) };
+        let current: *mut task_struct =
+            unsafe { this_cpu_read(&raw const ffi::current_task) };
 
         if current.is_null() {
             None

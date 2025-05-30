@@ -5,7 +5,7 @@
 use core::ffi::{c_uchar, VaList};
 
 use crate::bindings::linux::kernel::{
-    bpf_perf_event_data_kern, pcpu_hot, sk_buff, xdp_buff, MAX_BPRINTF_BUF,
+    bpf_perf_event_data_kern, sk_buff, task_struct, xdp_buff, MAX_BPRINTF_BUF,
 };
 use crate::bindings::uapi::linux::bpf::{bpf_perf_event_value, bpf_spin_lock};
 use crate::panic::{CleanupEntry, ENTRIES_SIZE};
@@ -264,12 +264,17 @@ unsafe extern "C" {
     /// Top of the per-cpu stack for rex programs
     pub(crate) static rex_stack_ptr: u64;
 
-    /// `DEFINE_PER_CPU(struct task_struct *, current_task)
-    /// ____cacheline_aligned = &init_task;`
+    /// `DECLARE_PER_CPU_CACHE_HOT(struct task_struct *, current_task);`
     ///
-    /// Per-cpu point of the current task
+    /// Per-cpu pointer of the current task
+    // rustc properly treats the empty `lock_class_key` as zero-sized
     #[allow(improper_ctypes)]
-    pub(crate) static pcpu_hot: pcpu_hot;
+    pub(crate) static current_task: *mut task_struct;
+
+    /// `DECLARE_PER_CPU_CACHE_HOT(int, cpu_number);`
+    ///
+    /// Current CPU number
+    pub(crate) static cpu_number: i32;
 
     ///  `DEFINE_PER_CPU(int, rex_termination_state);`
     ///  

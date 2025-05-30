@@ -51,9 +51,8 @@ fn rex_prog1(obj: &perf_event, ctx: &bpf_perf_event_data) -> Result {
     obj.bpf_get_current_task()
         .map(|t| {
             let prog_name = t.get_comm().unwrap_or_default();
-            key.comm
-                .copy_from_slice(&prog_name.to_bytes()[..TASK_COMM_LEN]);
-            key.comm[TASK_COMM_LEN - 1] = 0;
+            key.comm[..prog_name.count_bytes() + 1]
+                .copy_from_slice(prog_name.to_bytes_with_nul());
             0u64
         })
         .ok_or(0i32)?;
