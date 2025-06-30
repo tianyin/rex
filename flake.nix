@@ -146,6 +146,7 @@
         zoxide # in case host is using zoxide
         openssh # q-script ssh support
         zsh
+        xz
       ];
 
       llvmBuildFHSEnv = pkgs.buildFHSEnv.override { stdenv = pkgs.llvmPackages.stdenv; };
