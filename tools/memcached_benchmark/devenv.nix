@@ -5,10 +5,11 @@
   env.GREET = "devenv";
 
   # https://devenv.sh/packages/
-  packages = with pkgs; [ git mold llvmPackages.clangUseLLVM memcached openssl ];
+  packages = with pkgs; [ git mold llvmPackages_20.clangUseLLVM memcached openssl ];
 
   # https://devenv.sh/languages/
   languages.rust = {
+    enable = true;
     channel = "stable";
     components = [
       "cargo"
@@ -19,7 +20,6 @@
       "rustfmt"
     ];
     mold.enable = false;
-    enable = true;
   };
 
 
