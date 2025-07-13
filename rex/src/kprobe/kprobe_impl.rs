@@ -1,37 +1,20 @@
-use crate::bindings::uapi::linux::bpf::{bpf_map_type, BPF_PROG_TYPE_KPROBE};
+use crate::bindings::uapi::linux::bpf::bpf_map_type;
 use crate::prog_type::rex_prog;
 use crate::pt_regs::PtRegs;
 use crate::task_struct::TaskStruct;
 use crate::{ffi, Result};
 
-/// First 3 fields should always be rtti, prog_fn, and name
-///
-/// rtti should be u64, therefore after compiling the
-/// packed struct type rustc generates for LLVM does
-/// not additional padding after rtti
-///
 /// prog_fn should have &Self as its first argument
-///
-/// name is a &'static str
 #[repr(C)]
 pub struct kprobe {
-    rtti: u64,
     prog: fn(&Self, &mut PtRegs) -> Result,
-    name: &'static str,
 }
 
 impl kprobe {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(
-        f: fn(&kprobe, &mut PtRegs) -> Result,
-        nm: &'static str,
-    ) -> kprobe {
-        Self {
-            rtti: BPF_PROG_TYPE_KPROBE as u64,
-            prog: f,
-            name: nm,
-        }
+    pub const unsafe fn new(f: fn(&kprobe, &mut PtRegs) -> Result) -> kprobe {
+        Self { prog: f }
     }
 
     // Now returns a mutable ref, but since every reg is private the user prog

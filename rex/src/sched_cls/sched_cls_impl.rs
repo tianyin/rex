@@ -6,7 +6,6 @@ use crate::bindings::linux::kernel::{
     ethhdr, iphdr, sk_buff, sock, tcphdr, udphdr,
 };
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
-pub use crate::bindings::uapi::linux::bpf::BPF_PROG_TYPE_SCHED_CLS;
 pub use crate::bindings::uapi::linux::pkt_cls::{
     TC_ACT_OK, TC_ACT_REDIRECT, TC_ACT_SHOT,
 };
@@ -165,35 +164,19 @@ impl<'a> __sk_buff<'a> {
     }
 }
 
-/// First 3 fields should always be rtti, prog_fn, and name
-///
-/// rtti should be u64, therefore after compiling the
-/// packed struct type rustc generates for LLVM does
-/// not additional padding after rtti
-///
 /// prog_fn should have &Self as its first argument
-///
-/// name is a &'static str
 #[repr(C)]
 pub struct sched_cls {
-    rtti: u64,
     prog: fn(&Self, &mut __sk_buff) -> Result,
-    name: &'static str,
 }
 
 impl sched_cls {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(
-        // TODO update based on signature
+    pub const unsafe fn new(
         f: fn(&sched_cls, &mut __sk_buff) -> Result,
-        nm: &'static str,
     ) -> sched_cls {
-        Self {
-            rtti: BPF_PROG_TYPE_SCHED_CLS as u64,
-            prog: f,
-            name: nm,
-        }
+        Self { prog: f }
     }
 
     // NOTE: copied from xdp impl, may change in the future

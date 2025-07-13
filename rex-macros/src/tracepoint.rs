@@ -44,7 +44,7 @@ impl TracePoint {
 
         // other tracepoint pieces
         let item = &self.item;
-        let function_name = format!("{}", fn_name);
+        let function_name = format!("{fn_name}");
         let prog_ident =
             format_ident!("PROG_{}", fn_name.to_string().to_uppercase());
 
@@ -58,7 +58,7 @@ impl TracePoint {
             "RawSyscallsExitCtx" => "raw_syscalls/sys_exit",
             _ => abort_call_site!("Please provide a valid context type. If your needed context isn't supported consider opening a PR!"),
         };
-        let attached_name = format!("rex/tracepoint/{}", hook_point_name);
+        let attached_name = format!("rex/tracepoint/{hook_point_name}");
 
         let entry_name = format_ident!("__rex_entry_{}", fn_name);
 
@@ -68,7 +68,7 @@ impl TracePoint {
 
             #[used]
             static #prog_ident: tracepoint<#full_context_type> =
-                tracepoint::new(#fn_name, #function_name);
+               unsafe { tracepoint::new(#fn_name) };
 
             #[unsafe(export_name = #function_name)]
             #[unsafe(link_section = #attached_name)]
