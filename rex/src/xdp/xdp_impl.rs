@@ -9,7 +9,7 @@ pub use crate::bindings::linux::kernel::{
 use crate::bindings::uapi::linux::bpf::bpf_map_type;
 // expose the following constants to the user
 pub use crate::bindings::uapi::linux::bpf::{
-    BPF_PROG_TYPE_XDP, XDP_ABORTED, XDP_DROP, XDP_PASS, XDP_REDIRECT, XDP_TX,
+    XDP_ABORTED, XDP_DROP, XDP_PASS, XDP_REDIRECT, XDP_TX,
 };
 pub use crate::bindings::uapi::linux::r#in::{IPPROTO_TCP, IPPROTO_UDP};
 use crate::ffi;
@@ -81,34 +81,17 @@ impl xdp_md<'_> {
     }
 }
 
-/// First 3 fields should always be rtti, prog_fn, and name
-///
-/// rtti should be u64, therefore after compiling the
-/// packed struct type rustc generates for LLVM does
-/// not additional padding after rtti
-///
 /// prog_fn should have &Self as its first argument
-///
-/// name is a &'static str
 #[repr(C)]
 pub struct xdp {
-    rtti: u64,
     prog: fn(&Self, &mut xdp_md) -> Result,
-    name: &'static str,
 }
 
 impl xdp {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(
-        f: fn(&xdp, &mut xdp_md) -> Result,
-        nm: &'static str,
-    ) -> xdp {
-        Self {
-            rtti: BPF_PROG_TYPE_XDP as u64,
-            prog: f,
-            name: nm,
-        }
+    pub const fn new(f: fn(&xdp, &mut xdp_md) -> Result) -> xdp {
+        Self { prog: f }
     }
 
     // Now returns a mutable ref, but since every reg is private the user prog

@@ -65,7 +65,7 @@ impl KProbe {
 
             #[used]
             static #prog_ident: kprobe =
-                kprobe::new(#fn_name, #function_name);
+                kprobe::new(#fn_name);
 
             #[unsafe(export_name = #function_name)]
             #[unsafe(link_section = #attached_function)]

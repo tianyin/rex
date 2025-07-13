@@ -32,7 +32,7 @@ impl PerfEvent {
 
             #[used]
             static #prog_ident: perf_event =
-                perf_event::new(#fn_name, #function_name);
+                perf_event::new(#fn_name);
 
             #[unsafe(export_name = #function_name)]
             #[unsafe(link_section = "rex/perf_event")]

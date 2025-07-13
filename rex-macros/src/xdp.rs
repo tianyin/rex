@@ -33,7 +33,7 @@ impl Xdp {
 
             #[used]
             static #prog_ident: xdp =
-                xdp::new(#fn_name, #function_name);
+                xdp::new(#fn_name);
 
             #[unsafe(export_name = #function_name)]
             #[unsafe(link_section = "rex/xdp")]

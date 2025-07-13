@@ -2,9 +2,7 @@ use core::intrinsics::unlikely;
 
 use crate::base_helper::termination_check;
 use crate::bindings::linux::kernel::bpf_perf_event_data_kern;
-use crate::bindings::uapi::linux::bpf::{
-    bpf_map_type, bpf_perf_event_value, BPF_PROG_TYPE_PERF_EVENT,
-};
+use crate::bindings::uapi::linux::bpf::{bpf_map_type, bpf_perf_event_value};
 use crate::ffi;
 use crate::linux::errno::EINVAL;
 use crate::map::*;
@@ -35,20 +33,10 @@ impl bpf_perf_event_data {
     }
 }
 
-/// First 3 fields should always be rtti, prog_fn, and name
-///
-/// rtti should be u64, therefore after compiling the
-/// packed struct type rustc generates for LLVM does
-/// not additional padding after rtti
-///
 /// prog_fn should have &Self as its first argument
-///
-/// name is a &'static str
 #[repr(C)]
 pub struct perf_event {
-    rtti: u64,
     prog: fn(&Self, &bpf_perf_event_data) -> Result,
-    name: &'static str,
 }
 
 impl perf_event {
@@ -56,13 +44,8 @@ impl perf_event {
 
     pub const fn new(
         f: fn(&perf_event, &bpf_perf_event_data) -> Result,
-        nm: &'static str,
     ) -> perf_event {
-        Self {
-            rtti: BPF_PROG_TYPE_PERF_EVENT as u64,
-            prog: f,
-            name: nm,
-        }
+        Self { prog: f }
     }
 
     fn convert_ctx(&self, ctx: *mut ()) -> &'static bpf_perf_event_data {
