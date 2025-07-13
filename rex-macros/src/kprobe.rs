@@ -47,14 +47,14 @@ impl KProbe {
     pub(crate) fn expand(&self, flavor: KprobeFlavor) -> Result<TokenStream> {
         let fn_name = self.item.sig.ident.clone();
         let item = &self.item;
-        let function_name = format!("{}", fn_name);
+        let function_name = format!("{fn_name}");
         let prog_ident =
             format_ident!("PROG_{}", fn_name.to_string().to_uppercase());
 
         let attached_function = if self.function.is_some() {
             format!("rex/{}/{}", flavor, self.function.as_ref().unwrap())
         } else {
-            format!("rex/{}", flavor)
+            format!("rex/{flavor}")
         };
 
         let entry_name = format_ident!("__rex_entry_{}", fn_name);

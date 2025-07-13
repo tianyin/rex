@@ -14,7 +14,7 @@ macro_rules! pop_string_args {
 pub(crate) fn parse_string_args(
     input: TokenStream,
 ) -> Result<HashMap<String, LitStr>> {
-    let parsed: syn::ExprArray = parse_str(&format!("[{}]", input))?;
+    let parsed: syn::ExprArray = parse_str(&format!("[{input}]"))?;
     let mut map = HashMap::new();
 
     // Iterate over the expressions and extract key-value pairs
