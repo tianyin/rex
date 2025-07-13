@@ -173,7 +173,9 @@ pub struct sched_cls {
 impl sched_cls {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(f: fn(&sched_cls, &mut __sk_buff) -> Result) -> sched_cls {
+    pub const unsafe fn new(
+        f: fn(&sched_cls, &mut __sk_buff) -> Result,
+    ) -> sched_cls {
         Self { prog: f }
     }
 

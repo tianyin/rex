@@ -29,7 +29,7 @@ pub struct tracepoint<C: TracepointContext + 'static> {
 impl<C: TracepointContext + 'static> tracepoint<C> {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(
+    pub const unsafe fn new(
         f: fn(&tracepoint<C>, &'static C) -> Result,
     ) -> tracepoint<C> {
         Self { prog: f }

@@ -13,7 +13,7 @@ pub struct kprobe {
 impl kprobe {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(f: fn(&kprobe, &mut PtRegs) -> Result) -> kprobe {
+    pub const unsafe fn new(f: fn(&kprobe, &mut PtRegs) -> Result) -> kprobe {
         Self { prog: f }
     }
 

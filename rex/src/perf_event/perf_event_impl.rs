@@ -42,7 +42,7 @@ pub struct perf_event {
 impl perf_event {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(
+    pub const unsafe fn new(
         f: fn(&perf_event, &bpf_perf_event_data) -> Result,
     ) -> perf_event {
         Self { prog: f }

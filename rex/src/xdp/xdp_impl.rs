@@ -90,7 +90,7 @@ pub struct xdp {
 impl xdp {
     crate::base_helper::base_helper_defs!();
 
-    pub const fn new(f: fn(&xdp, &mut xdp_md) -> Result) -> xdp {
+    pub const unsafe fn new(f: fn(&xdp, &mut xdp_md) -> Result) -> xdp {
         Self { prog: f }
     }
 
