@@ -90,8 +90,8 @@
         ncurses
         openssl
         openssl.dev
-        pahole
         pkg-config
+        xz
         xz.dev
         zlib
         zlib.dev
@@ -104,7 +104,6 @@
         pahole
         strace
         zstd
-        eza
         perf-tools
         # linuxKernel.packages.linux_latest.perf
 
@@ -143,10 +142,13 @@
         memcached
         python3
 
+        # Rex utils
         zoxide # in case host is using zoxide
         openssh # q-script ssh support
+        bat
+        fd
+        eza
         zsh
-        xz
       ];
 
       llvmBuildFHSEnv = pkgs.buildFHSEnv.override { stdenv = pkgs.llvmPackages.stdenv; };
