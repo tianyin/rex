@@ -35,12 +35,3 @@ program terminates.
 The `rex_set_debug` function can be used to toggle the internal logging
 mechanism of `librex` (with `(bool)val` determining whether logging is
 enabled). This will most likely be helpful during debugging.
-
-### Build
-
-Building `librex` requires a `c++23` compatible compiler and the `mold`
-linker. With dependencies installed, simply invoke the Makefile:
-
-```bash
-make
-```
