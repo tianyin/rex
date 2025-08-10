@@ -11,7 +11,6 @@
 #include <filesystem>
 #include <fstream>
 #include <iostream>
-#include <list>
 #include <llvm/Demangle/Demangle.h>
 #include <memory>
 #include <optional>
@@ -190,7 +189,19 @@ public:
   }
 
   rex_prog(const rex_prog &) = delete;
-  rex_prog(rex_prog &&) = delete;
+
+  // std::optional only moves its underlying value and does not set the source
+  // object to std::nullopt. This prevents us from using a compiler-generated
+  // default implementation, because it would just copy the fd without
+  // invalidating afterwards (as int is trivially movable).
+  rex_prog(rex_prog &&other) noexcept
+      : name(std::move(other.name)), scn_name(std::move(other.scn_name)),
+        sec_def(std::move(other.sec_def)), offset(std::move(other.offset)),
+        prog_fd(std::move(other.prog_fd)) {
+    other.sec_def = nullptr;
+    other.offset = -1;
+    other.prog_fd = std::nullopt;
+  }
 
   ~rex_prog() {
     prog_fd.transform([](int fd) { return close(fd); });
@@ -245,8 +256,7 @@ private:
     }
   };
 
-  // std::vector requires T to be move-constructible
-  std::list<rex_prog> progs;
+  std::vector<rex_prog> progs;
   std::unordered_map<Elf64_Off, rex_map> map_defs;
 
   std::unique_ptr<Elf, elf_del> elf;
